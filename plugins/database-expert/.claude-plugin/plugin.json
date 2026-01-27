@@ -1,6 +1,0 @@
-{
-  "name": "database-expert",
-  "description": "Database optimization and schema design specialist",
-  "version": "1.0.0",
-  "agents": ["./agents/"]
-}

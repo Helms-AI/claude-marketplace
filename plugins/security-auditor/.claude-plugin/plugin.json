@@ -1,6 +1,0 @@
-{
-  "name": "security-auditor",
-  "description": "Security-focused agent for vulnerability assessment",
-  "version": "1.0.0",
-  "agents": ["./agents/"]
-}
