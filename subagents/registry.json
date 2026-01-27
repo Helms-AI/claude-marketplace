@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "description": "Registry of available subagents in the Claude Marketplace",
+  "components": [
+    {
+      "name": "security-auditor",
+      "description": "Security-focused agent for vulnerability assessment and secure coding practices",
+      "author": "security-team",
+      "version": "1.0.0",
+      "tags": ["security", "audit", "vulnerabilities"],
+      "path": "./security-auditor"
+    },
+    {
+      "name": "database-expert",
+      "description": "Database optimization and schema design specialist",
+      "author": "data-team",
+      "version": "1.0.0",
+      "tags": ["database", "sql", "optimization"],
+      "path": "./database-expert"
+    }
+  ]
+}
