@@ -1,36 +1,59 @@
 # Contributing to Claude Marketplace
 
-Thank you for contributing to the Claude Marketplace! This document provides guidelines for contributing new components.
+Thank you for contributing to the Claude Marketplace! This document provides guidelines for contributing new plugins.
 
 ## Getting Started
 
 1. Fork the repository
 2. Clone your fork locally
-3. Create a feature branch: `git checkout -b add-<component-type>-<component-name>`
+3. Create a feature branch: `git checkout -b add-plugin-<plugin-name>`
 4. Make your changes
 5. Submit a pull request
 
-## Component Guidelines
+## Plugin Guidelines
+
+### Plugin Structure
+
+Every plugin must follow this structure:
+
+```
+plugins/<plugin-name>/
+├── .claude-plugin/
+│   └── plugin.json           # Plugin manifest (required)
+├── skills/                   # For skill plugins
+│   └── <skill-name>/
+│       └── SKILL.md
+├── agents/                   # For agent plugins
+│   └── <agent-name>.md
+├── scripts/                  # For hook scripts
+└── README.md                 # Documentation (required)
+```
+
+### Plugin Manifest (plugin.json)
+
+Every plugin requires a `.claude-plugin/plugin.json` file:
+
+```json
+{
+  "name": "my-plugin",
+  "description": "What this plugin does",
+  "version": "1.0.0",
+  "skills": ["./skills/"],
+  "agents": ["./agents/"],
+  "hooks": { ... },
+  "mcpServers": { ... }
+}
+```
 
 ### Skills
 
-Skills are slash commands that users can invoke with `/<skill-name>`. They extend Claude's capabilities with reusable prompts and instructions.
+Skills are slash commands that users invoke with `/<skill-name>`.
 
-**File Structure:**
-```
-skills/<skill-name>/
-├── skill.md          # The skill definition (required)
-└── README.md         # Documentation (required)
-```
-
-**skill.md Format:**
+**SKILL.md Format:**
 ```markdown
 ---
 name: skill-name
 description: Brief description of what this skill does
-author: your-team
-version: 1.0.0
-tags: [category1, category2]
 ---
 
 # Skill Instructions
@@ -38,25 +61,15 @@ tags: [category1, category2]
 Your skill prompt and instructions go here...
 ```
 
-### Subagents
+### Agents
 
-Subagents are specialized agents configured for specific domain tasks. They define the agent's behavior, available tools, and expertise area.
-
-**File Structure:**
-```
-subagents/<agent-name>/
-├── agent.md          # Agent definition (required)
-└── README.md         # Documentation (required)
-```
+Agents are specialized assistants for domain-specific tasks.
 
 **agent.md Format:**
 ```markdown
 ---
 name: agent-name
 description: What this agent specializes in
-author: your-team
-version: 1.0.0
-tags: [domain, expertise]
 tools: [Tool1, Tool2]
 ---
 
@@ -67,74 +80,84 @@ Instructions that define the agent's behavior...
 
 ### Hooks
 
-Hooks are shell commands or scripts that run in response to Claude Code events. They enable automation and integration with external tools.
+Hooks are shell commands that run in response to Claude Code events.
 
-**File Structure:**
-```
-hooks/<hook-name>/
-├── hook.json         # Hook configuration (required)
-├── script.sh         # Hook script (if applicable)
-└── README.md         # Documentation (required)
-```
-
-**hook.json Format:**
+**plugin.json hooks format:**
 ```json
 {
-  "name": "hook-name",
-  "description": "What this hook does",
-  "author": "your-team",
-  "version": "1.0.0",
-  "event": "PreToolUse|PostToolUse|UserPromptSubmit|etc",
-  "matcher": {
-    "tool": "ToolName"
-  },
-  "command": "your-command-here",
-  "timeout": 30000
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": {
+          "tool": "Bash",
+          "command": "git commit"
+        },
+        "hooks": [
+          {
+            "type": "command",
+            "command": "your-command-here"
+          }
+        ]
+      }
+    ]
+  }
 }
 ```
+
+Use `${CLAUDE_PLUGIN_ROOT}` to reference files within your plugin.
 
 ### MCP Servers
 
 MCP (Model Context Protocol) servers provide Claude with access to external tools and data sources.
 
-**File Structure:**
-```
-mcp-servers/<server-name>/
-├── src/              # Server source code
-├── package.json      # Dependencies (for Node.js servers)
-└── README.md         # Documentation (required)
+**plugin.json mcpServers format:**
+```json
+{
+  "mcpServers": {
+    "server-name": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
+      "env": {
+        "API_KEY": "${API_KEY}"
+      }
+    }
+  }
+}
 ```
 
 ## Documentation Requirements
 
-Every component must include a README.md with:
+Every plugin must include a README.md with:
 
-1. **Overview**: What the component does
-2. **Installation**: Step-by-step setup instructions
-3. **Configuration**: Any required settings or environment variables
-4. **Usage**: Examples of how to use the component
+1. **Overview**: What the plugin does
+2. **Installation**: `/plugin install <name>@helms-ai-marketplace`
+3. **Configuration**: Any required environment variables
+4. **Usage**: Examples of how to use the plugin
 5. **Author**: Team or individual contact
 
-## Registry Updates
+## Marketplace Registration
 
-When adding a component, update the appropriate `registry.json`:
+When adding a plugin, update `.claude-plugin/marketplace.json`:
 
 ```json
 {
-  "name": "your-component",
+  "name": "your-plugin",
+  "source": "./plugins/your-plugin",
   "description": "Brief description",
-  "author": "your-team",
   "version": "1.0.0",
-  "tags": ["relevant", "tags"],
-  "path": "./your-component"
+  "author": {
+    "name": "Your Team"
+  },
+  "category": "category-name",
+  "tags": ["relevant", "tags"]
 }
 ```
 
 ## Pull Request Process
 
-1. Ensure your component follows the guidelines above
-2. Update the relevant registry.json
-3. Test your component locally
+1. Ensure your plugin follows the guidelines above
+2. Update `.claude-plugin/marketplace.json` with your plugin
+3. Test your plugin locally with `/plugin validate ./plugins/your-plugin`
 4. Create a PR with a clear description
 5. Address any review feedback
 

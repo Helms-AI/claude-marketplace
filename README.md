@@ -1,109 +1,120 @@
 # Claude Marketplace
 
-Enterprise marketplace for sharing Claude Code components across the organization.
-
-## Overview
-
-This marketplace provides a centralized repository for teams to discover, share, and contribute Claude Code components:
-
-| Component | Description | Location |
-|-----------|-------------|----------|
-| **Skills** | Slash commands that extend Claude's capabilities | [`/skills`](./skills) |
-| **Subagents** | Specialized agents for domain-specific tasks | [`/subagents`](./subagents) |
-| **Hooks** | Automation hooks that run on Claude events | [`/hooks`](./hooks) |
-| **MCP Servers** | Model Context Protocol servers for external integrations | [`/mcp-servers`](./mcp-servers) |
+Enterprise marketplace for sharing Claude Code plugins across the organization.
 
 ## Quick Start
 
-### Installing Components
+### Add the Marketplace
 
 ```bash
-# Clone the marketplace
-git clone https://github.com/Helms-AI/claude-marketplace.git
-
-# Install a skill
-cp claude-marketplace/skills/code-review/code-review.md ~/.claude/skills/
-
-# Install a hook
-cp claude-marketplace/hooks/pre-commit-lint/hook.json ~/.claude/hooks/
-
-# Install a subagent (add to your settings)
-# See specific subagent README for configuration
+/plugin marketplace add Helms-AI/claude-marketplace
 ```
 
-### Configuration Locations
+### Install a Plugin
 
-Claude Code looks for configuration in these locations:
+```bash
+# Install a skill
+/plugin install code-review@helms-ai-marketplace
 
-- **Skills**: `~/.claude/skills/` or project `.claude/skills/`
-- **Hooks**: Configured in `~/.claude/settings.json` or project `.claude/settings.json`
-- **MCP Servers**: Configured in `~/.claude/settings.json`
+# Install an agent
+/plugin install security-auditor@helms-ai-marketplace
+
+# Install a hook
+/plugin install pre-commit-lint@helms-ai-marketplace
+
+# Install an MCP server
+/plugin install jira-server@helms-ai-marketplace
+```
+
+### List Available Plugins
+
+```bash
+/plugin list helms-ai-marketplace
+```
+
+## Available Plugins
+
+| Plugin | Type | Description |
+|--------|------|-------------|
+| **code-review** | Skill | Comprehensive code review with best practices and security checks |
+| **api-docs** | Skill | Generate OpenAPI documentation from code |
+| **security-auditor** | Agent | Security-focused agent for vulnerability assessment |
+| **database-expert** | Agent | Database optimization and schema design specialist |
+| **pre-commit-lint** | Hook | Run linting before git commit operations |
+| **notify-slack** | Hook | Send Slack notifications on specific Claude actions |
+| **jira-server** | MCP Server | Jira integration - create, update, and query issues |
+| **confluence-server** | MCP Server | Confluence - search and create documentation |
 
 ## Directory Structure
 
 ```
 claude-marketplace/
-├── skills/                 # Slash command skills
-│   ├── registry.json       # Skills registry
-│   └── <skill-name>/
-│       ├── skill.md        # Skill definition
-│       └── README.md       # Documentation
-├── subagents/              # Specialized agents
-│   ├── registry.json       # Subagents registry
-│   └── <agent-name>/
-│       ├── agent.md        # Agent definition
-│       └── README.md       # Documentation
-├── hooks/                  # Automation hooks
-│   ├── registry.json       # Hooks registry
-│   └── <hook-name>/
-│       ├── hook.json       # Hook configuration
-│       └── README.md       # Documentation
-├── mcp-servers/            # MCP server implementations
-│   ├── registry.json       # MCP servers registry
-│   └── <server-name>/
-│       ├── src/            # Server source code
-│       └── README.md       # Documentation
-└── scripts/                # Installation & utility scripts
+├── .claude-plugin/
+│   └── marketplace.json      # Marketplace manifest
+├── plugins/
+│   ├── code-review/          # Code review skill
+│   ├── api-docs/             # API documentation skill
+│   ├── security-auditor/     # Security audit agent
+│   ├── database-expert/      # Database specialist agent
+│   ├── pre-commit-lint/      # Pre-commit lint hook
+│   ├── notify-slack/         # Slack notification hook
+│   ├── jira-server/          # Jira MCP server
+│   └── confluence-server/    # Confluence MCP server
+├── .github/                  # GitHub issue templates
+├── CONTRIBUTING.md           # Contribution guidelines
+└── LICENSE                   # MIT license
 ```
 
 ## Contributing
 
 We welcome contributions from all teams! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
-### Adding a New Component
+### Adding a New Plugin
 
 1. Fork this repository
-2. Create your component in the appropriate directory
-3. Add an entry to the relevant `registry.json`
-4. Submit a pull request
+2. Create your plugin in `plugins/<plugin-name>/`
+3. Add a `.claude-plugin/plugin.json` manifest
+4. Add your plugin to `.claude-plugin/marketplace.json`
+5. Submit a pull request
 
-### Component Requirements
+### Plugin Structure
 
-All components must include:
-- A `README.md` with usage documentation
-- Clear description of functionality
-- Author/team information
-- Version number
+```
+plugins/<plugin-name>/
+├── .claude-plugin/
+│   └── plugin.json           # Plugin manifest (required)
+├── skills/                   # Skills (for skill plugins)
+│   └── <skill-name>/
+│       └── SKILL.md
+├── agents/                   # Agents (for agent plugins)
+│   └── <agent-name>.md
+├── scripts/                  # Scripts (for hooks)
+└── README.md                 # Documentation (required)
+```
 
-## Registry Format
-
-Each component type has a `registry.json` for discoverability:
+### Plugin Manifest Example
 
 ```json
 {
-  "version": "1.0",
-  "components": [
-    {
-      "name": "component-name",
-      "description": "Brief description",
-      "author": "team-name",
-      "version": "1.0.0",
-      "tags": ["tag1", "tag2"],
-      "path": "./component-name"
-    }
-  ]
+  "name": "my-plugin",
+  "description": "What my plugin does",
+  "version": "1.0.0",
+  "skills": ["./skills/"],
+  "agents": ["./agents/"],
+  "hooks": { ... },
+  "mcpServers": { ... }
 }
 ```
+
+## Environment Variables
+
+Some plugins require environment variables:
+
+| Plugin | Required Variables |
+|--------|-------------------|
+| **notify-slack** | `SLACK_WEBHOOK_URL` |
+| **jira-server** | `JIRA_HOST`, `JIRA_EMAIL`, `JIRA_API_TOKEN` |
+| **confluence-server** | `CONFLUENCE_HOST`, `CONFLUENCE_EMAIL`, `CONFLUENCE_API_TOKEN` |
 
 ## Support
 

@@ -1,0 +1,16 @@
+{
+  "name": "confluence-server",
+  "description": "MCP server for Confluence - search and create documentation",
+  "version": "1.0.0",
+  "mcpServers": {
+    "confluence": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
+      "env": {
+        "CONFLUENCE_HOST": "${CONFLUENCE_HOST}",
+        "CONFLUENCE_EMAIL": "${CONFLUENCE_EMAIL}",
+        "CONFLUENCE_API_TOKEN": "${CONFLUENCE_API_TOKEN}"
+      }
+    }
+  }
+}

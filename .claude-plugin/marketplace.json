@@ -1,0 +1,97 @@
+{
+  "name": "helms-ai-marketplace",
+  "owner": {
+    "name": "Helms-AI",
+    "email": "platform@helms-ai.com"
+  },
+  "plugins": [
+    {
+      "name": "code-review",
+      "source": "./plugins/code-review",
+      "description": "Comprehensive code review skill with best practices and security checks",
+      "version": "1.0.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "code-quality",
+      "tags": ["review", "security", "best-practices"]
+    },
+    {
+      "name": "api-docs",
+      "source": "./plugins/api-docs",
+      "description": "Generate OpenAPI documentation from code",
+      "version": "1.0.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "documentation",
+      "tags": ["api", "openapi", "docs"]
+    },
+    {
+      "name": "security-auditor",
+      "source": "./plugins/security-auditor",
+      "description": "Security-focused agent for vulnerability assessment",
+      "version": "1.0.0",
+      "author": {
+        "name": "Security Team"
+      },
+      "category": "security",
+      "tags": ["security", "audit", "vulnerabilities"]
+    },
+    {
+      "name": "database-expert",
+      "source": "./plugins/database-expert",
+      "description": "Database optimization and schema design specialist",
+      "version": "1.0.0",
+      "author": {
+        "name": "Data Team"
+      },
+      "category": "database",
+      "tags": ["database", "sql", "optimization"]
+    },
+    {
+      "name": "pre-commit-lint",
+      "source": "./plugins/pre-commit-lint",
+      "description": "Run linting before git commit operations",
+      "version": "1.0.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "automation",
+      "tags": ["git", "linting", "hooks"]
+    },
+    {
+      "name": "notify-slack",
+      "source": "./plugins/notify-slack",
+      "description": "Send Slack notifications on specific Claude actions",
+      "version": "1.0.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "integration",
+      "tags": ["slack", "notifications", "hooks"]
+    },
+    {
+      "name": "jira-server",
+      "source": "./plugins/jira-server",
+      "description": "MCP server for Jira integration - create, update, and query issues",
+      "version": "1.0.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "integration",
+      "tags": ["jira", "mcp", "project-management"]
+    },
+    {
+      "name": "confluence-server",
+      "source": "./plugins/confluence-server",
+      "description": "MCP server for Confluence - search and create documentation",
+      "version": "1.0.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "integration",
+      "tags": ["confluence", "mcp", "documentation"]
+    }
+  ]
+}

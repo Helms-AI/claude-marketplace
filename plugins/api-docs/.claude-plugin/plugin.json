@@ -1,0 +1,6 @@
+{
+  "name": "api-docs",
+  "description": "Generate OpenAPI documentation from code",
+  "version": "1.0.0",
+  "skills": ["./skills/"]
+}

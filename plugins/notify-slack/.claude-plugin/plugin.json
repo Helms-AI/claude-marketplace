@@ -1,0 +1,21 @@
+{
+  "name": "notify-slack",
+  "description": "Send Slack notifications on specific Claude actions",
+  "version": "1.0.0",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": {
+          "tool": "Bash",
+          "command": "git push"
+        },
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/notify-slack.sh 'Code pushed to repository'"
+          }
+        ]
+      }
+    ]
+  }
+}

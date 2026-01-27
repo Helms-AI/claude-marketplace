@@ -1,0 +1,6 @@
+{
+  "name": "code-review",
+  "description": "Comprehensive code review skill with best practices and security checks",
+  "version": "1.0.0",
+  "skills": ["./skills/"]
+}

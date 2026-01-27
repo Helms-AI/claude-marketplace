@@ -1,0 +1,16 @@
+{
+  "name": "jira-server",
+  "description": "MCP server for Jira integration - create, update, and query issues",
+  "version": "1.0.0",
+  "mcpServers": {
+    "jira": {
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
+      "env": {
+        "JIRA_HOST": "${JIRA_HOST}",
+        "JIRA_EMAIL": "${JIRA_EMAIL}",
+        "JIRA_API_TOKEN": "${JIRA_API_TOKEN}"
+      }
+    }
+  }
+}
