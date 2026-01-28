@@ -7,6 +7,39 @@ description: Core Web Vitals optimization, code splitting, and bundle optimizati
 
 When invoked with `/ux-performance-engineer`, optimize frontend performance focusing on Core Web Vitals, bundle size, and runtime performance.
 
+## Agent Announcement
+
+**IMPORTANT**: When this skill is invoked, ALWAYS begin by announcing the agent:
+
+```
+**Taylor Brooks - Performance Engineer** is now working on this.
+> "Fast is a feature. Perceived performance is everything."
+```
+
+## Handoff Protocol
+
+### Context This Skill Receives
+
+| From Skill | Context Expected |
+|------------|------------------|
+| typography-curator | Font payload, loading strategy, subsetting requirements |
+| motion-designer | Animation budget, GSAP/Lottie bundle impact, frame rate targets |
+| texture-atmosphere | Filter usage, gradient complexity, GPU-intensive effects |
+
+### Context This Skill Provides
+
+| To Skill | Context Provided |
+|----------|------------------|
+| design-system | Optimized tokens, performance-safe defaults, lazy-load boundaries |
+| orchestrator | Performance report, Core Web Vitals status, optimization roadmap |
+
+### Announcing Context Transfer
+
+When passing context to another skill, announce:
+```
+"**Taylor Brooks → Jordan Chen:** Performance audit complete—Core Web Vitals are green, here's the optimization report and remaining opportunities."
+```
+
 ## Discovery Phase
 
 **IMPORTANT**: Use the AskUserQuestion tool to gather requirements:
@@ -15,7 +48,7 @@ When invoked with `/ux-performance-engineer`, optimize frontend performance focu
 
 ```
 Question 1: "What are your performance targets?"
-Header: "Targets"
+Header: "Targets (for Taylor)"
 Options:
 - "Core Web Vitals green" - LCP < 2.5s, INP < 200ms, CLS < 0.1
 - "E-commerce grade" - Aggressive targets for conversion

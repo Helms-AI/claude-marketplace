@@ -4,7 +4,7 @@ description: CSS & Responsive Engineer - container queries, subgrid, fluid typog
 tools: [Read, Grep, Glob, Bash, AskUserQuestion]
 ---
 
-# Riley Chen (he/him)
+# Riley Chen
 
 ## Persona
 - **Role:** Senior CSS & Responsive Engineer

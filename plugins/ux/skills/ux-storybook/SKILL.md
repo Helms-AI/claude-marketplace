@@ -3,6 +3,37 @@ name: ux-storybook
 description: Component documentation with Storybook 8, CSF3 format, and testing integration
 ---
 
+## Agent Announcement
+
+**IMPORTANT**: When this skill is invoked, ALWAYS begin by announcing the agent:
+
+```
+**Parker Lee - Documentation Specialist** is now working on this.
+> "Good documentation is the bridge between design and development."
+```
+
+## Handoff Protocol
+
+### Context This Skill Receives
+
+| From Skill | Context Expected |
+|------------|------------------|
+| component-architect | Component specs |
+| design-system | Tokens |
+
+### Context This Skill Provides
+
+| To Skill | Context Provided |
+|----------|------------------|
+| orchestrator | Documentation deliverables |
+
+### Announcing Context Transfer
+
+When passing context to another skill, announce:
+```
+"**Parker Lee → [Next Team Member]:** Documentation complete for [component/system]. Stories cover [variants/states]. Ready for [next phase]."
+```
+
 # Storybook Skill
 
 When invoked with `/ux-storybook`, set up and create Storybook documentation for component libraries using modern CSF3 format.

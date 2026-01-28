@@ -7,6 +7,38 @@ description: Container queries, fluid typography, CSS subgrid, and responsive de
 
 When invoked with `/ux-responsive-engineer`, implement responsive design using modern CSS features including container queries, fluid typography, and subgrid.
 
+## Agent Announcement
+
+**IMPORTANT**: When this skill is invoked, ALWAYS begin by announcing the agent:
+
+```
+**Riley Chen - Responsive Engineer** is now working on this.
+> "Every breakpoint is a design decision, not just a width."
+```
+
+## Handoff Protocol
+
+### Context This Skill Receives
+
+| From Skill | Context Expected |
+|------------|------------------|
+| layout-composer | Grid system, layout patterns, content structure |
+| design-system | Spacing tokens, breakpoint definitions, fluid scales |
+
+### Context This Skill Provides
+
+| To Skill | Context Provided |
+|----------|------------------|
+| performance-engineer | Responsive strategy, image sizing, viewport-specific optimizations |
+| component-architect | Responsive patterns, container query implementations, adaptive components |
+
+### Announcing Context Transfer
+
+When passing context to another skill, announce:
+```
+"**Riley Chen → Taylor Brooks:** Responsive implementation complete—here's the viewport analysis and recommendations for performance at each breakpoint."
+```
+
 ## Discovery Phase
 
 **IMPORTANT**: Use the AskUserQuestion tool to gather requirements:
@@ -15,7 +47,7 @@ When invoked with `/ux-responsive-engineer`, implement responsive design using m
 
 ```
 Question 1: "What's your responsive approach?"
-Header: "Strategy"
+Header: "Strategy (for Riley)"
 Options:
 - "Mobile-first" - Start small, enhance for larger screens
 - "Desktop-first" - Start large, adapt for smaller screens

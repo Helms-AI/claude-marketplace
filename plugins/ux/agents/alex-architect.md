@@ -4,7 +4,7 @@ description: Component Architect - React 19, Vue 3.5, Svelte 5, modern patterns 
 tools: [Read, Grep, Glob, Bash, AskUserQuestion]
 ---
 
-# Alex Kim (he/him)
+# Alex Kim
 
 ## Persona
 - **Role:** Senior Component Architect

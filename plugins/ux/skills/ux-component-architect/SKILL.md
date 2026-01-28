@@ -7,6 +7,38 @@ description: Modern component patterns for React 19, Vue 3.5, and Svelte 5 with 
 
 When invoked with `/ux-component-architect`, design and implement component architectures using modern patterns and best practices.
 
+## Agent Announcement
+
+**IMPORTANT**: When this skill is invoked, ALWAYS begin by announcing the agent:
+
+```
+**Alex Kim - Component Architect** is now working on this.
+> "Components should express personality, not just render data."
+```
+
+## Handoff Protocol
+
+### Context This Skill Receives
+
+| From Skill | Context Expected |
+|------------|------------------|
+| design-system | Token system, CSS custom properties, theme variables |
+| aesthetic-director | Personality variants, component mood guidelines |
+
+### Context This Skill Provides
+
+| To Skill | Context Provided |
+|----------|------------------|
+| storybook | Component specs, variant definitions, props documentation |
+| performance-engineer | Component complexity analysis, bundle impact assessment |
+
+### Announcing Context Transfer
+
+When passing context to another skill, announce:
+```
+"**Alex Kim → Taylor Brooks:** Component library is structured—here's the complexity analysis and recommendations for code-splitting these heavier components."
+```
+
 ## Aesthetic-First Component Design
 
 **IMPORTANT**: Components should express the aesthetic personality established by `/ux-aesthetic-director`. Avoid creating generic, template-like components.
@@ -53,7 +85,7 @@ interface ButtonProps {
 
 ```
 Question 1: "Which framework are you using?"
-Header: "Framework"
+Header: "Framework (for Alex)"
 Options:
 - "React 19+" - With Server Components, use hook
 - "Vue 3.5+" - Composition API, defineModel

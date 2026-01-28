@@ -109,6 +109,10 @@ Based on keywords and user answers, route to specialized skills:
 | "chart", "graph", "visualization", "D3", "Recharts" | `/ux-data-viz` |
 | "storybook", "component docs", "stories" | `/ux-storybook` |
 | "figma", "design tokens sync", "variables" | `/ux-figma-sync` |
+| "loading", "progress", "skeleton", "spinner", "optimistic" | `/ux-progress-ui` |
+| "form", "input", "validation", "wizard", "multi-step" | `/ux-form-experience` |
+| "navigation", "tabs", "breadcrumb", "sidebar", "pagination" | `/ux-navigation-patterns` |
+| "table", "data grid", "sorting", "filtering", "virtualization" | `/ux-data-grid` |
 | "team discussion", "multiple perspectives", "comprehensive" | `/ux-team-session` |
 
 ## Workflow Modes
@@ -135,12 +139,16 @@ For comprehensive requests (e.g., "build me a dashboard"), orchestrate multiple 
 4. **Composition Phase**:
    - `/ux-layout-composer` → Spatial design, grid systems
    - `/ux-component-architect` → Component architecture
+   - `/ux-navigation-patterns` → Tabs, sidebars, breadcrumbs
+   - `/ux-form-experience` → Form layout, validation, wizards
+   - `/ux-data-grid` → Tables, sorting, filtering
    - `/ux-storybook` → Documentation
 
 5. **Enhancement Phase**:
    - `/ux-motion-designer` → Animation, transitions
    - `/ux-texture-atmosphere` → Depth, grain, atmospheric effects
-   - `/ux-micro-delight` → Polish, hover states, loading personality
+   - `/ux-micro-delight` → Polish, hover states, personality
+   - `/ux-progress-ui` → Loading states, skeleton screens
    - `/ux-responsive-engineer` → Adaptive layouts
    - `/ux-data-viz` → Charts, visualizations
 
@@ -214,6 +222,122 @@ After all skills complete, provide a synthesis:
 5. Synthesizes results into summary with aesthetic rationale
 
 **Key Difference**: The dashboard won't look like every other analytics dashboard because it started with aesthetic intent, not just technical requirements.
+
+## Quality Gates
+
+### Pre-Finalization Quality Gate
+
+**IMPORTANT**: Before delivering final output, trigger a quality gate checkpoint:
+
+```
+Question: "Before I finalize, would you like the team to verify their areas?"
+Header: "Quality Check"
+Options:
+- "Quick verification" - Key checks only (a11y, responsive, performance)
+- "Full team review" - Each agent validates their area
+- "Skip verification" - Proceed without additional checks
+```
+
+### Team Review Protocol
+
+When "Full team review" is selected, each agent validates their domain:
+
+```markdown
+## Quality Verification Report
+
+### Aesthetic Consistency (Quinn)
+- [ ] Design follows aesthetic brief
+- [ ] No generic/template patterns crept in
+- [ ] Visual hierarchy intentional
+
+### Typography (Avery)
+- [ ] Font pairing works at all sizes
+- [ ] Line heights comfortable for reading
+- [ ] Font loading strategy optimal
+
+### Color (Morgan)
+- [ ] Contrast ratios pass WCAG
+- [ ] Color semantics consistent
+- [ ] Dark mode works if applicable
+
+### Layout (Skyler)
+- [ ] Whitespace rhythm maintained
+- [ ] Grid breaks intentional
+- [ ] Responsive behavior smooth
+
+### Motion (Jordan P.)
+- [ ] Animations enhance, don't distract
+- [ ] Reduced motion respected
+- [ ] Performance budget met
+
+### Accessibility (Casey)
+- [ ] Keyboard navigation complete
+- [ ] Screen reader announcements work
+- [ ] Focus management correct
+
+### Responsive (Riley)
+- [ ] All breakpoints tested
+- [ ] Touch targets adequate
+- [ ] No horizontal overflow
+
+### Performance (Taylor)
+- [ ] Core Web Vitals passing
+- [ ] Bundle size acceptable
+- [ ] No render-blocking resources
+```
+
+### Conflict Resolution Gate
+
+If concerns are flagged during review:
+
+```
+"**Quality Gate:** [Agent] flagged a concern:
+> [Specific concern quoted]
+
+Options:
+- 'Address before delivery' - Fix the issue now
+- 'Document as known issue' - Proceed with documented limitation
+- 'Discuss trade-offs' - Get full team perspective"
+```
+
+## Aggregated Deliverables
+
+After all skills complete, provide a comprehensive summary:
+
+```markdown
+## UX Deliverables Summary
+
+### Artifacts Created
+
+| Artifact | Owner | Files | Status |
+|----------|-------|-------|--------|
+| Aesthetic Brief | Quinn | `docs/aesthetic-brief.md` | ✓ |
+| Typography Spec | Avery | `src/styles/typography.css` | ✓ |
+| Color Tokens | Morgan | `src/styles/colors.css` | ✓ |
+| Layout System | Skyler | `src/styles/layout.css` | ✓ |
+| Components | Alex | `src/components/**` | ✓ |
+| Animation | Jordan P. | `src/styles/motion.css` | ✓ |
+
+### Quality Verification
+
+| Check | Team Member | Status |
+|-------|-------------|--------|
+| A11y Audit | Casey | ✓ Passed |
+| Performance | Taylor | ✓ LCP < 2.5s |
+| Responsive | Riley | ✓ All breakpoints |
+
+### Design Decisions Log
+
+| Decision | Rationale | Owner |
+|----------|-----------|-------|
+| [Choice] | [Why] | [Who] |
+
+### Next Steps
+
+1. [ ] [Action item]
+2. [ ] [Action item]
+3. [ ] [Action item]
+```
 
 ## Live Browser Verification
 

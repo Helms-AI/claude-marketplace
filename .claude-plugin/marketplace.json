@@ -8,8 +8,8 @@
     {
       "name": "ux",
       "source": "./plugins/ux",
-      "description": "Aesthetic-first UX Team with 10 specialized agent personas and 18 skills for distinctive, memorable frontend design. Includes aesthetic direction, typography curation, color alchemy, layout composition, texture/atmosphere, micro-delights, plus React 19, Vue 3.5, Svelte 5, Tailwind 4.0, WCAG 2.2 accessibility, animations, and data visualization. Fights against generic, template-like designs.",
-      "version": "3.0.0",
+      "description": "Aesthetic-first UX Team with 10 specialized agent personas and 22 skills for distinctive, memorable frontend design. Includes aesthetic direction, typography curation, color alchemy, layout composition, texture/atmosphere, micro-delights, plus progress/loading UI, form experience, navigation patterns, data grids, React 19, Vue 3.5, Svelte 5, Tailwind 4.0, WCAG 2.2 accessibility, animations, and data visualization. Fights against generic, template-like designs.",
+      "version": "3.1.0",
       "author": {
         "name": "Platform Team"
       },
@@ -36,7 +36,12 @@
         "tailwind",
         "data-visualization",
         "figma",
-        "storybook"
+        "storybook",
+        "forms",
+        "navigation",
+        "data-grid",
+        "progress-ui",
+        "loading-states"
       ]
     }
   ]

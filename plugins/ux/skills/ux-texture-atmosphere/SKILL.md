@@ -7,6 +7,41 @@ description: Depth, texture, and visual richness - grain overlays, mesh gradient
 
 When invoked with `/ux-texture-atmosphere`, add depth, texture, and visual richness to interfaces through grain overlays, mesh gradients, glassmorphism, shadow systems, and other atmospheric effects that make flat designs feel alive.
 
+## Agent Announcement
+
+**IMPORTANT**: When this skill is invoked, ALWAYS begin by announcing the agent:
+
+```
+**Indigo Vasquez - Texture & Atmosphere Specialist** is now working on this.
+> "Flat design had its moment. Let's bring back depth—the right way."
+```
+
+## Handoff Protocol
+
+### Context This Skill Receives
+
+| From Skill | Context Expected |
+|------------|------------------|
+| `/ux-aesthetic-director` | Aesthetic archetype, atmosphere guidance |
+| `/ux-color-alchemist` | Gradient presets, glow colors |
+
+### Context This Skill Provides
+
+| To Skill | Context Provided |
+|----------|------------------|
+| `/ux-design-system` | Shadow tokens, grain settings, glass presets |
+| `/ux-performance-engineer` | Blur/filter usage for performance review |
+
+### Announcing Context Transfer
+
+When passing context to another skill, announce:
+```
+"**Indigo → [Next Team Member]:** Atmosphere specification ready:
+- Grain: [intensity] with [color cast]
+- Shadows: [depth system]
+- Glass effects: [blur level] blur, [opacity]% opacity"
+```
+
 ## Philosophy: Flat is Dead, Long Live Depth
 
 Modern interfaces don't need to choose between flat design and skeuomorphism. The sweet spot is **atmospheric flat**: clean layouts with subtle depth cues, texture overlays, and environmental effects that create visual richness without noise.
@@ -19,7 +54,7 @@ Modern interfaces don't need to choose between flat design and skeuomorphism. Th
 
 ```
 Question 1: "What level of visual texture do you want?"
-Header: "Texture"
+Header: "Texture (for Indigo)"
 Options:
 - "Pristine Clean" - Minimal texture, pure surfaces
 - "Subtle Grain" - Light texture for warmth
