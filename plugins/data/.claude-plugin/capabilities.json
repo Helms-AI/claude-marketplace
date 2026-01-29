@@ -1,0 +1,116 @@
+{
+  "plugin": {
+    "name": "data",
+    "version": "1.0.0",
+    "description": "Enterprise data engineering team with specialized agents for comprehensive data solutions"
+  },
+  "domain": {
+    "primary": "data",
+    "subdomains": ["modeling", "pipelines", "analytics", "warehousing", "governance"]
+  },
+  "collaborates_with": ["backend", "devops", "architecture", "documentation"],
+  "agents": {
+    "jennifer-lead": {
+      "name": "Jennifer Wu",
+      "role": "Data Lead",
+      "specialties": ["data strategy", "team orchestration", "stakeholder communication", "project planning"]
+    },
+    "robert-modeling": {
+      "name": "Robert Garcia",
+      "role": "Data Modeler",
+      "specialties": ["ERD design", "normalization", "DBML", "dimensional modeling", "schema design"]
+    },
+    "anna-pipelines": {
+      "name": "Anna Schmidt",
+      "role": "Pipeline Architect",
+      "specialties": ["ETL/ELT", "Airflow", "dbt", "data orchestration", "streaming pipelines"]
+    },
+    "chris-analytics": {
+      "name": "Chris Lee",
+      "role": "Analytics Engineer",
+      "specialties": ["BI tools", "dashboards", "metrics design", "data visualization", "reporting"]
+    },
+    "maria-governance": {
+      "name": "Maria Santos",
+      "role": "Governance Advisor",
+      "specialties": ["data quality", "compliance", "data catalogs", "lineage", "privacy"]
+    }
+  },
+  "skills": {
+    "data-orchestrator": {
+      "command": "/data-orchestrator",
+      "description": "Routes data requests to appropriate specialists",
+      "capabilities": [
+        "analyze-request-type",
+        "route-to-specialist",
+        "coordinate-multi-agent-work",
+        "synthesize-recommendations"
+      ]
+    },
+    "data-team-session": {
+      "command": "/data-team-session",
+      "description": "Multi-agent collaborative data discussions",
+      "capabilities": [
+        "facilitate-team-discussions",
+        "gather-diverse-perspectives",
+        "resolve-technical-debates",
+        "build-consensus"
+      ]
+    },
+    "data-modeler": {
+      "command": "/data-modeler",
+      "description": "Data model design and optimization",
+      "capabilities": [
+        "design-entity-relationships",
+        "normalize-schemas",
+        "create-dimensional-models",
+        "generate-dbml",
+        "optimize-indexes"
+      ]
+    },
+    "data-pipeline-architect": {
+      "command": "/data-pipeline-architect",
+      "description": "ETL/ELT pipeline design and implementation",
+      "capabilities": [
+        "design-data-pipelines",
+        "implement-airflow-dags",
+        "create-dbt-models",
+        "configure-streaming",
+        "optimize-performance"
+      ]
+    },
+    "data-analytics-engineer": {
+      "command": "/data-analytics-engineer",
+      "description": "Analytics implementation and BI solutions",
+      "capabilities": [
+        "design-metrics",
+        "build-dashboards",
+        "create-reports",
+        "implement-aggregations",
+        "optimize-queries"
+      ]
+    },
+    "data-warehouse-specialist": {
+      "command": "/data-warehouse-specialist",
+      "description": "Data warehouse architecture and optimization",
+      "capabilities": [
+        "design-warehouse-architecture",
+        "implement-star-schemas",
+        "optimize-partitioning",
+        "manage-slowly-changing-dimensions",
+        "tune-performance"
+      ]
+    },
+    "data-governance-advisor": {
+      "command": "/data-governance-advisor",
+      "description": "Data governance policies and compliance",
+      "capabilities": [
+        "establish-data-quality-rules",
+        "implement-lineage-tracking",
+        "ensure-compliance",
+        "manage-data-catalogs",
+        "define-access-policies"
+      ]
+    }
+  }
+}

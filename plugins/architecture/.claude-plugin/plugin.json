@@ -1,0 +1,6 @@
+{
+  "name": "architecture",
+  "description": "Architecture team with 5 specialized agents for system design, patterns, ADRs, diagrams, and API design",
+  "version": "1.0.0",
+  "skills": ["./skills/"]
+}

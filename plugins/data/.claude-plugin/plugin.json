@@ -1,0 +1,6 @@
+{
+  "name": "data",
+  "description": "Data team with 5 specialized agents for data modeling, pipelines, analytics, warehousing, and governance",
+  "version": "1.0.0",
+  "skills": ["./skills/"]
+}

@@ -1,0 +1,72 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "domain": {
+    "primary": "backend",
+    "subdomains": ["api", "database", "auth", "services", "messaging", "integration"]
+  },
+  "collaborates_with": ["architecture", "user-experience", "frontend", "testing", "devops", "data", "security"],
+  "agents": {
+    "david-lead": {
+      "name": "David Park",
+      "role": "Backend Lead",
+      "expertise": ["technical leadership", "system design", "team orchestration", "architecture decisions"]
+    },
+    "sarah-api": {
+      "name": "Sarah Mitchell",
+      "role": "API Engineer",
+      "expertise": ["REST APIs", "GraphQL", "API versioning", "OpenAPI/Swagger", "rate limiting"]
+    },
+    "raj-database": {
+      "name": "Raj Patel",
+      "role": "Database Architect",
+      "expertise": ["PostgreSQL", "MongoDB", "Redis", "migrations", "query optimization", "data modeling"]
+    },
+    "lisa-auth": {
+      "name": "Lisa Wong",
+      "role": "Auth Specialist",
+      "expertise": ["OAuth 2.0", "JWT", "RBAC", "session management", "security best practices"]
+    },
+    "omar-services": {
+      "name": "Omar Hassan",
+      "role": "Services Engineer",
+      "expertise": ["microservices", "message queues", "event-driven architecture", "service mesh"]
+    }
+  },
+  "capabilities": {
+    "backend-orchestrator": {
+      "description": "Routes backend requests to appropriate specialists",
+      "triggers": ["backend architecture", "API design", "database schema", "authentication", "service integration"],
+      "delegates_to": ["backend-api-builder", "backend-database-modeler", "backend-auth-architect", "backend-service-builder", "backend-integration-specialist"]
+    },
+    "backend-team-session": {
+      "description": "Multi-agent backend discussions for complex decisions",
+      "use_cases": ["architecture reviews", "technology selection", "design discussions", "problem solving"]
+    },
+    "backend-api-builder": {
+      "description": "API endpoint implementation",
+      "technologies": ["Express.js", "Fastify", "NestJS", "GraphQL", "tRPC"],
+      "patterns": ["REST", "GraphQL", "gRPC", "WebSockets"]
+    },
+    "backend-database-modeler": {
+      "description": "Schema design and database migrations",
+      "technologies": ["PostgreSQL", "MongoDB", "Redis", "Prisma", "TypeORM", "Drizzle"],
+      "patterns": ["normalization", "indexing", "sharding", "replication"]
+    },
+    "backend-auth-architect": {
+      "description": "Authentication and authorization implementation",
+      "technologies": ["Passport.js", "Auth.js", "Clerk", "Auth0", "Supabase Auth"],
+      "patterns": ["OAuth 2.0", "OIDC", "JWT", "RBAC", "ABAC", "MFA"]
+    },
+    "backend-service-builder": {
+      "description": "Service implementation and orchestration",
+      "technologies": ["Docker", "Kubernetes", "RabbitMQ", "Kafka", "Redis Streams"],
+      "patterns": ["microservices", "event sourcing", "CQRS", "saga pattern"]
+    },
+    "backend-integration-specialist": {
+      "description": "Third-party API integrations",
+      "categories": ["payment", "email", "storage", "analytics", "AI/ML"],
+      "patterns": ["webhooks", "polling", "circuit breaker", "retry strategies"]
+    }
+  }
+}

@@ -1,0 +1,76 @@
+{
+  "plugin": {
+    "name": "testing",
+    "version": "1.0.0",
+    "description": "Comprehensive testing plugin with specialized agents for all testing needs"
+  },
+  "domain": {
+    "primary": "testing",
+    "subdomains": ["unit", "integration", "e2e", "performance", "security", "coverage"]
+  },
+  "collaborates_with": ["backend", "user-experience", "frontend", "devops", "security"],
+  "agents": {
+    "amanda-lead": {
+      "name": "Amanda Torres",
+      "role": "QA Lead",
+      "expertise": ["orchestration", "quality strategy", "test planning", "team coordination"]
+    },
+    "kevin-strategy": {
+      "name": "Kevin O'Brien",
+      "role": "Test Strategist",
+      "expertise": ["test planning", "coverage strategy", "risk assessment", "test architecture"]
+    },
+    "nina-unit": {
+      "name": "Nina Johansson",
+      "role": "Unit Test Specialist",
+      "expertise": ["Jest", "Vitest", "mocking", "test doubles", "isolation testing"]
+    },
+    "carlos-integration": {
+      "name": "Carlos Mendez",
+      "role": "Integration Specialist",
+      "expertise": ["API testing", "contract testing", "service integration", "database testing"]
+    },
+    "rachel-e2e": {
+      "name": "Rachel Kim",
+      "role": "E2E Engineer",
+      "expertise": ["Playwright", "Cypress", "browser automation", "user flow testing"]
+    }
+  },
+  "skills": {
+    "testing-orchestrator": {
+      "command": "/testing-orchestrator",
+      "description": "Routes testing requests to appropriate specialists",
+      "capabilities": ["request routing", "agent coordination", "task delegation"]
+    },
+    "testing-team-session": {
+      "command": "/testing-team-session",
+      "description": "Multi-agent testing discussions and collaborative problem-solving",
+      "capabilities": ["team collaboration", "strategy discussions", "consensus building"]
+    },
+    "testing-strategy-advisor": {
+      "command": "/testing-strategy-advisor",
+      "description": "Test strategy planning and architecture decisions",
+      "capabilities": ["strategy planning", "coverage goals", "risk assessment", "test pyramid design"]
+    },
+    "testing-unit-specialist": {
+      "command": "/testing-unit-specialist",
+      "description": "Unit test implementation with Jest, Vitest, and mocking strategies",
+      "capabilities": ["unit test writing", "mocking", "test isolation", "snapshot testing"]
+    },
+    "testing-integration-specialist": {
+      "command": "/testing-integration-specialist",
+      "description": "Integration test implementation for APIs and service contracts",
+      "capabilities": ["API testing", "contract testing", "database integration", "service mocking"]
+    },
+    "testing-e2e-engineer": {
+      "command": "/testing-e2e-engineer",
+      "description": "End-to-end test implementation with Playwright and Cypress",
+      "capabilities": ["browser automation", "user flow testing", "visual regression", "cross-browser testing"]
+    },
+    "testing-coverage-analyzer": {
+      "command": "/testing-coverage-analyzer",
+      "description": "Coverage analysis and gap identification",
+      "capabilities": ["coverage reporting", "gap analysis", "coverage improvement", "metrics tracking"]
+    }
+  }
+}

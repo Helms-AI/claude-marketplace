@@ -1,0 +1,73 @@
+{
+  "name": "documentation",
+  "version": "1.0.0",
+  "domain": {
+    "primary": "documentation",
+    "subdomains": ["api-docs", "guides", "architecture-docs", "runbooks", "onboarding"]
+  },
+  "collaborates_with": ["architecture", "backend", "devops", "security"],
+  "capabilities": {
+    "docs-orchestrator": {
+      "description": "Routes documentation requests to appropriate specialists",
+      "triggers": ["documentation request", "docs help", "writing assistance"],
+      "outputs": ["routing decision", "specialist recommendation", "documentation plan"]
+    },
+    "docs-team-session": {
+      "description": "Multi-agent documentation discussions and collaborative writing",
+      "triggers": ["team review", "documentation strategy", "collaborative docs"],
+      "outputs": ["team discussion", "consensus document", "action items"]
+    },
+    "docs-api-writer": {
+      "description": "API documentation including OpenAPI specs, Swagger, and examples",
+      "triggers": ["api docs", "openapi", "swagger", "endpoint documentation"],
+      "outputs": ["openapi spec", "api reference", "code examples", "authentication guides"]
+    },
+    "docs-guide-writer": {
+      "description": "User guides, tutorials, and how-to documentation",
+      "triggers": ["tutorial", "how-to", "user guide", "getting started"],
+      "outputs": ["step-by-step guide", "tutorial", "quickstart", "troubleshooting guide"]
+    },
+    "docs-architecture-documenter": {
+      "description": "Architecture documentation including C4 diagrams and ADRs",
+      "triggers": ["architecture docs", "c4 diagram", "adr", "system design"],
+      "outputs": ["c4 diagrams", "architecture decision records", "system overview", "component docs"]
+    },
+    "docs-runbook-writer": {
+      "description": "Operational runbooks and incident response playbooks",
+      "triggers": ["runbook", "playbook", "incident response", "operations docs"],
+      "outputs": ["runbook", "incident playbook", "escalation procedures", "recovery guides"]
+    },
+    "docs-onboarding-creator": {
+      "description": "Developer onboarding materials and setup guides",
+      "triggers": ["onboarding", "new developer", "setup guide", "team introduction"],
+      "outputs": ["onboarding checklist", "environment setup", "codebase tour", "team processes"]
+    }
+  },
+  "agents": {
+    "patricia-lead": {
+      "name": "Patricia Moore",
+      "role": "Documentation Lead",
+      "specializations": ["documentation strategy", "content organization", "team coordination"]
+    },
+    "andrew-api": {
+      "name": "Andrew Kim",
+      "role": "API Documentation Writer",
+      "specializations": ["openapi", "swagger", "api examples", "sdk documentation"]
+    },
+    "laura-guides": {
+      "name": "Laura Hernandez",
+      "role": "Guide Writer",
+      "specializations": ["tutorials", "how-tos", "user guides", "learning paths"]
+    },
+    "steven-arch": {
+      "name": "Steven Brown",
+      "role": "Architecture Documenter",
+      "specializations": ["c4 diagrams", "adrs", "system design", "technical specifications"]
+    },
+    "michelle-runbooks": {
+      "name": "Michelle Lee",
+      "role": "Runbook Writer",
+      "specializations": ["operational docs", "incident response", "playbooks", "SRE documentation"]
+    }
+  }
+}

@@ -6,28 +6,68 @@
   },
   "plugins": [
     {
-      "name": "ux",
-      "source": "./plugins/ux",
-      "description": "Aesthetic-first UX Team with 10 specialized agent personas and 22 skills for distinctive, memorable frontend design. Includes aesthetic direction, typography curation, color alchemy, layout composition, texture/atmosphere, micro-delights, plus progress/loading UI, form experience, navigation patterns, data grids, React 19, Vue 3.5, Svelte 5, Tailwind 4.0, WCAG 2.2 accessibility, animations, and data visualization. Fights against generic, template-like designs.",
-      "version": "3.1.0",
+      "name": "pm",
+      "source": "./plugins/pm",
+      "description": "Project Manager broker for cross-domain orchestration. Routes requests to specialized domain plugins, manages workflow handoffs, tracks decisions/artifacts, and resolves conflicts between domains.",
+      "version": "1.0.1",
       "author": {
         "name": "Platform Team"
       },
-      "category": "frontend",
+      "category": "orchestration",
       "tags": [
-        "ui",
+        "orchestration",
+        "project-management",
+        "workflow",
+        "handoffs",
+        "cross-domain",
+        "routing",
+        "conflict-resolution",
+        "capability-matching"
+      ]
+    },
+    {
+      "name": "user-experience",
+      "source": "./plugins/user-experience",
+      "description": "Design thinking and ideation team with 8 specialized agent personas and 9 skills for distinctive, memorable design direction. Includes aesthetic direction, typography curation, color alchemy, layout composition, texture/atmosphere, micro-delight design, and user research. Pre-code design phase that creates aesthetic briefs and hands off to frontend for implementation.",
+      "version": "4.0.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "design",
+      "tags": [
         "ux",
-        "design-system",
+        "design",
         "aesthetic",
         "typography",
         "color",
         "layout",
         "texture",
         "micro-interactions",
+        "user-research",
+        "personas",
+        "journey-mapping",
+        "brand",
+        "visual-identity",
+        "design-thinking"
+      ]
+    },
+    {
+      "name": "frontend",
+      "source": "./plugins/frontend",
+      "description": "Frontend implementation team with 14 specialized agent personas and 15 skills for building production-ready UI components. Includes design systems, component architecture, motion design, accessibility auditing, responsive engineering, performance optimization, progress UI, forms, navigation, data grids, data visualization, Storybook documentation, and Figma sync. React 19, Vue 3.5, Svelte 5, Tailwind 4.0, WCAG 2.2 accessibility.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "frontend",
+      "tags": [
+        "frontend",
+        "ui",
+        "design-system",
+        "components",
         "accessibility",
         "wcag",
         "performance",
-        "components",
         "responsive",
         "animation",
         "react",
@@ -42,6 +82,203 @@
         "data-grid",
         "progress-ui",
         "loading-states"
+      ]
+    },
+    {
+      "name": "architecture",
+      "source": "./plugins/architecture",
+      "description": "Architecture team with 5 specialized agents for system design, design patterns, ADRs, technical diagrams, and API design. Includes high-level system architecture, scalability patterns, Mermaid/PlantUML/C4 diagrams, and REST/GraphQL/gRPC API specifications.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "architecture",
+      "tags": [
+        "architecture",
+        "system-design",
+        "design-patterns",
+        "adr",
+        "diagrams",
+        "mermaid",
+        "plantuml",
+        "c4",
+        "api-design",
+        "rest",
+        "graphql",
+        "grpc",
+        "scalability",
+        "microservices",
+        "distributed-systems"
+      ]
+    },
+    {
+      "name": "backend",
+      "source": "./plugins/backend",
+      "description": "Backend team with 5 specialized agents for API development, database design, authentication, services, and third-party integrations. Includes REST/GraphQL endpoints, PostgreSQL/MongoDB schemas, OAuth/JWT/RBAC auth, microservices patterns, and integration with external APIs.",
+      "version": "1.0.1",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "backend",
+      "tags": [
+        "backend",
+        "api",
+        "rest",
+        "graphql",
+        "database",
+        "postgresql",
+        "mongodb",
+        "redis",
+        "authentication",
+        "oauth",
+        "jwt",
+        "rbac",
+        "microservices",
+        "message-queues",
+        "integrations"
+      ]
+    },
+    {
+      "name": "testing",
+      "source": "./plugins/testing",
+      "description": "Testing team with 5 specialized agents for test strategy, unit tests, integration tests, E2E tests, and coverage analysis. Includes Jest/Vitest for unit testing, API contract testing with Pact, Playwright/Cypress for E2E, and comprehensive coverage reporting.",
+      "version": "1.0.1",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "testing",
+      "tags": [
+        "testing",
+        "qa",
+        "unit-tests",
+        "jest",
+        "vitest",
+        "integration-tests",
+        "contract-testing",
+        "pact",
+        "e2e",
+        "playwright",
+        "cypress",
+        "coverage",
+        "test-strategy",
+        "tdd",
+        "mocking"
+      ]
+    },
+    {
+      "name": "devops",
+      "source": "./plugins/devops",
+      "description": "DevOps team with 5 specialized agents for CI/CD pipelines, deployment strategies, infrastructure as code, monitoring/observability, and containerization. Includes GitHub Actions, blue-green/canary deployments, Terraform, Kubernetes, and Prometheus/Grafana observability.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "devops",
+      "tags": [
+        "devops",
+        "ci-cd",
+        "github-actions",
+        "jenkins",
+        "deployment",
+        "blue-green",
+        "canary",
+        "infrastructure",
+        "terraform",
+        "kubernetes",
+        "docker",
+        "monitoring",
+        "prometheus",
+        "grafana",
+        "observability",
+        "alerting"
+      ]
+    },
+    {
+      "name": "data",
+      "source": "./plugins/data",
+      "description": "Data team with 5 specialized agents for data modeling, pipelines, analytics, warehousing, and governance. Includes ERD design, DBML, Airflow DAGs, dbt models, star schemas, data quality rules, and compliance frameworks.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "data",
+      "tags": [
+        "data",
+        "data-modeling",
+        "erd",
+        "dbml",
+        "etl",
+        "elt",
+        "pipelines",
+        "airflow",
+        "dbt",
+        "analytics",
+        "bi",
+        "dashboards",
+        "data-warehouse",
+        "snowflake",
+        "bigquery",
+        "redshift",
+        "governance",
+        "data-quality",
+        "compliance",
+        "lineage"
+      ]
+    },
+    {
+      "name": "security",
+      "source": "./plugins/security",
+      "description": "Security team with 5 specialized agents for security audits, threat modeling, compliance, secrets management, and penetration testing guidance. Defensive security focus covering OWASP, STRIDE, SOC2, GDPR, HIPAA, PCI-DSS, HashiCorp Vault, and security code review.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "security",
+      "tags": [
+        "security",
+        "audit",
+        "vulnerability",
+        "threat-modeling",
+        "stride",
+        "compliance",
+        "soc2",
+        "gdpr",
+        "hipaa",
+        "pci-dss",
+        "secrets",
+        "vault",
+        "kms",
+        "owasp",
+        "code-review",
+        "penetration-testing",
+        "risk-assessment",
+        "defensive-security"
+      ]
+    },
+    {
+      "name": "documentation",
+      "source": "./plugins/documentation",
+      "description": "Documentation team with 5 specialized agents for API docs, guides, architecture documentation, runbooks, and onboarding materials. Includes OpenAPI/Swagger specs, tutorials, C4 diagrams, ADRs, incident playbooks, and developer onboarding.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "documentation",
+      "tags": [
+        "documentation",
+        "api-docs",
+        "openapi",
+        "swagger",
+        "tutorials",
+        "guides",
+        "architecture",
+        "c4",
+        "adr",
+        "runbooks",
+        "playbooks",
+        "onboarding",
+        "sre",
+        "technical-writing"
       ]
     }
   ]

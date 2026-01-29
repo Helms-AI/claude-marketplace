@@ -1,0 +1,78 @@
+{
+  "plugin": {
+    "name": "security",
+    "version": "1.0.0",
+    "description": "Comprehensive security team providing defensive security expertise across auditing, threat modeling, compliance, secrets management, and penetration testing guidance"
+  },
+  "domain": {
+    "primary": "security",
+    "subdomains": ["audit", "threat-modeling", "compliance", "secrets", "penetration"]
+  },
+  "collaborates_with": ["backend", "devops", "architecture", "documentation"],
+  "agents": {
+    "nathan-lead": {
+      "name": "Nathan Brooks",
+      "role": "Security Lead",
+      "expertise": ["security strategy", "team orchestration", "risk assessment", "security architecture"]
+    },
+    "diana-audit": {
+      "name": "Diana Chen",
+      "role": "Security Auditor",
+      "expertise": ["code review", "vulnerability assessment", "SAST", "DAST", "dependency scanning"]
+    },
+    "victor-threat": {
+      "name": "Victor Okonkwo",
+      "role": "Threat Modeler",
+      "expertise": ["STRIDE methodology", "attack trees", "threat analysis", "risk prioritization"]
+    },
+    "sarah-compliance": {
+      "name": "Sarah Johnson",
+      "role": "Compliance Advisor",
+      "expertise": ["SOC2", "GDPR", "HIPAA", "PCI-DSS", "ISO 27001", "regulatory frameworks"]
+    },
+    "mark-secrets": {
+      "name": "Mark Thompson",
+      "role": "Secrets Manager",
+      "expertise": ["HashiCorp Vault", "key management", "credential rotation", "secrets detection"]
+    }
+  },
+  "capabilities": {
+    "security-orchestrator": {
+      "description": "Routes security requests to appropriate specialists",
+      "invoked_by": "/security-orchestrator",
+      "outputs": ["routing decisions", "team coordination", "security recommendations"]
+    },
+    "security-team-session": {
+      "description": "Multi-agent collaborative security discussions",
+      "invoked_by": "/security-team-session",
+      "outputs": ["comprehensive security analysis", "multi-perspective recommendations"]
+    },
+    "security-auditor": {
+      "description": "Security-focused code review and vulnerability assessment",
+      "invoked_by": "/security-auditor",
+      "outputs": ["vulnerability reports", "remediation guidance", "security findings"]
+    },
+    "security-threat-modeler": {
+      "description": "Systematic threat modeling using STRIDE and attack trees",
+      "invoked_by": "/security-threat-modeler",
+      "outputs": ["threat models", "attack trees", "risk matrices", "mitigation strategies"]
+    },
+    "security-compliance-advisor": {
+      "description": "Compliance assessment and regulatory guidance",
+      "invoked_by": "/security-compliance-advisor",
+      "outputs": ["compliance checklists", "gap analysis", "remediation roadmaps"]
+    },
+    "security-secrets-manager": {
+      "description": "Secrets management strategy and implementation guidance",
+      "invoked_by": "/security-secrets-manager",
+      "outputs": ["secrets architecture", "rotation policies", "vault configurations"]
+    },
+    "security-penetration-advisor": {
+      "description": "Defensive penetration testing guidance and methodology",
+      "invoked_by": "/security-penetration-advisor",
+      "outputs": ["testing methodologies", "scope definitions", "findings interpretation"]
+    }
+  },
+  "focus": "defensive-security-only",
+  "disclaimer": "This plugin provides defensive security guidance only. It does not assist with offensive hacking, exploitation techniques, or malicious activities."
+}

@@ -1,0 +1,6 @@
+{
+  "name": "devops",
+  "description": "DevOps team with 5 specialized agents for CI/CD, deployment, infrastructure, monitoring, and containerization",
+  "version": "1.0.0",
+  "skills": ["./skills/"]
+}

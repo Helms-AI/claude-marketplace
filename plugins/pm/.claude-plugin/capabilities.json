@@ -1,0 +1,64 @@
+{
+  "plugin": {
+    "name": "pm",
+    "version": "1.0.0"
+  },
+  "domain": {
+    "primary": "orchestration",
+    "subdomains": ["routing", "workflow", "handoffs", "conflict-resolution"],
+    "collaborates_with": ["user-experience", "frontend", "architecture", "backend", "testing", "devops", "data", "security", "documentation"]
+  },
+  "capabilities": [
+    {
+      "id": "pm.orchestrate.workflow",
+      "verb": "orchestrate",
+      "artifacts": ["workflow", "handoff-chain"],
+      "keywords": ["coordinate", "manage", "orchestrate", "plan project", "multi-domain"],
+      "intent_patterns": [
+        "build me a * with *",
+        "create a full-stack *",
+        "implement * end-to-end",
+        "help me with * across *"
+      ],
+      "skill": "/pm",
+      "priority": 10,
+      "requires_context_from": [],
+      "provides_context_to": ["all-domains"]
+    },
+    {
+      "id": "pm.view.status",
+      "verb": "view",
+      "artifacts": ["workflow-status", "handoff-chain"],
+      "keywords": ["status", "progress", "where are we", "what's happening"],
+      "intent_patterns": [
+        "show me the status",
+        "what's the current progress",
+        "where are we in the workflow"
+      ],
+      "skill": "/pm-status",
+      "priority": 8,
+      "requires_context_from": [],
+      "provides_context_to": []
+    },
+    {
+      "id": "pm.resolve.conflicts",
+      "verb": "resolve",
+      "artifacts": ["decisions", "conflicts"],
+      "keywords": ["conflict", "resolve", "decide", "choose", "pending decisions"],
+      "intent_patterns": [
+        "resolve the conflict",
+        "help me decide between",
+        "what decisions are pending"
+      ],
+      "skill": "/pm-resolve",
+      "priority": 9,
+      "requires_context_from": [],
+      "provides_context_to": ["all-domains"]
+    }
+  ],
+  "orchestrator": {
+    "skill": "/pm",
+    "is_broker": true,
+    "routing_strategy": "capability-match"
+  }
+}

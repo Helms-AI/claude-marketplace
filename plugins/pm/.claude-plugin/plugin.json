@@ -1,0 +1,6 @@
+{
+  "name": "pm",
+  "description": "Project Manager broker for cross-domain orchestration - routes requests to specialized domain plugins and manages workflow handoffs",
+  "version": "1.0.1",
+  "skills": ["./skills/"]
+}

@@ -1,0 +1,124 @@
+{
+  "plugin": {
+    "name": "devops",
+    "version": "1.0.0",
+    "description": "DevOps team with 5 specialized agents for CI/CD, deployment, infrastructure, monitoring, and containerization"
+  },
+  "domain": {
+    "primary": "devops",
+    "subdomains": ["ci-cd", "deployment", "infrastructure", "monitoring", "containers"]
+  },
+  "collaborates_with": ["backend", "testing", "security", "data"],
+  "capabilities": [
+    {
+      "id": "devops-orchestrator",
+      "verb": "route",
+      "artifacts": ["devops-request", "team-coordination"],
+      "keywords": ["devops", "pipeline", "deploy", "infrastructure", "ci", "cd", "container", "monitor"],
+      "intent_patterns": [
+        "help with devops",
+        "need devops assistance",
+        "devops question",
+        "pipeline help",
+        "deployment issue"
+      ],
+      "skill": "devops-orchestrator",
+      "priority": 100
+    },
+    {
+      "id": "devops-team-session",
+      "verb": "discuss",
+      "artifacts": ["architecture-decision", "devops-strategy", "team-consensus"],
+      "keywords": ["team", "discussion", "review", "strategy", "planning", "architecture"],
+      "intent_patterns": [
+        "team discussion about",
+        "review our devops",
+        "plan the deployment",
+        "discuss infrastructure",
+        "strategy session"
+      ],
+      "skill": "devops-team-session",
+      "priority": 95
+    },
+    {
+      "id": "devops-ci-architect",
+      "verb": "design",
+      "artifacts": ["pipeline", "workflow", "github-actions", "jenkins-file", "ci-config"],
+      "keywords": ["ci", "continuous integration", "pipeline", "github actions", "jenkins", "build", "test", "workflow"],
+      "intent_patterns": [
+        "create ci pipeline",
+        "setup github actions",
+        "configure jenkins",
+        "build workflow",
+        "automate testing",
+        "ci/cd pipeline"
+      ],
+      "skill": "devops-ci-architect",
+      "priority": 90
+    },
+    {
+      "id": "devops-deployment-engineer",
+      "verb": "deploy",
+      "artifacts": ["deployment-strategy", "rollback-plan", "release-config"],
+      "keywords": ["deploy", "release", "rollback", "blue-green", "canary", "rolling", "deployment"],
+      "intent_patterns": [
+        "deploy application",
+        "setup blue-green",
+        "canary deployment",
+        "rolling update",
+        "release strategy",
+        "rollback plan"
+      ],
+      "skill": "devops-deployment-engineer",
+      "priority": 90
+    },
+    {
+      "id": "devops-infrastructure-specialist",
+      "verb": "provision",
+      "artifacts": ["terraform", "iac", "kubernetes-manifest", "cloud-config"],
+      "keywords": ["terraform", "infrastructure", "iac", "aws", "gcp", "azure", "cloud", "provision", "kubernetes", "k8s"],
+      "intent_patterns": [
+        "create terraform",
+        "setup infrastructure",
+        "provision cloud",
+        "infrastructure as code",
+        "kubernetes cluster",
+        "cloud architecture"
+      ],
+      "skill": "devops-infrastructure-specialist",
+      "priority": 90
+    },
+    {
+      "id": "devops-monitoring-engineer",
+      "verb": "monitor",
+      "artifacts": ["dashboard", "alert-rules", "metrics-config", "logging-config"],
+      "keywords": ["monitoring", "observability", "alerting", "metrics", "logging", "prometheus", "grafana", "datadog"],
+      "intent_patterns": [
+        "setup monitoring",
+        "create alerts",
+        "configure logging",
+        "observability stack",
+        "metrics dashboard",
+        "trace requests"
+      ],
+      "skill": "devops-monitoring-engineer",
+      "priority": 90
+    },
+    {
+      "id": "devops-container-specialist",
+      "verb": "containerize",
+      "artifacts": ["dockerfile", "docker-compose", "kubernetes-manifest", "helm-chart"],
+      "keywords": ["docker", "container", "kubernetes", "k8s", "helm", "pod", "service", "ingress"],
+      "intent_patterns": [
+        "create dockerfile",
+        "containerize application",
+        "kubernetes deployment",
+        "helm chart",
+        "docker compose",
+        "container orchestration"
+      ],
+      "skill": "devops-container-specialist",
+      "priority": 90
+    }
+  ]
+}

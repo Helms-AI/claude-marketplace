@@ -1,0 +1,6 @@
+{
+  "name": "testing",
+  "description": "Testing team with 5 specialized agents for test strategy, unit tests, integration tests, E2E tests, and coverage analysis",
+  "version": "1.0.1",
+  "skills": ["./skills/"]
+}

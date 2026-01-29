@@ -1,0 +1,118 @@
+{
+  "plugin": {
+    "name": "architecture",
+    "version": "1.0.0"
+  },
+  "domain": {
+    "primary": "architecture",
+    "subdomains": ["system-design", "patterns", "decisions", "diagrams", "api-design"]
+  },
+  "collaborates_with": ["backend", "devops", "data", "security", "documentation"],
+  "capabilities": [
+    {
+      "id": "arch-orchestrator",
+      "verb": "route",
+      "artifacts": ["architecture-guidance", "skill-delegation"],
+      "keywords": ["architecture", "design", "system", "structure", "organize"],
+      "intent_patterns": [
+        "help me with architecture",
+        "I need to design a system",
+        "what's the best approach for",
+        "architecture advice",
+        "how should I structure"
+      ],
+      "skill": "arch-orchestrator",
+      "priority": 100
+    },
+    {
+      "id": "arch-team-session",
+      "verb": "discuss",
+      "artifacts": ["architecture-discussion", "team-recommendations", "collaborative-insights"],
+      "keywords": ["team", "discussion", "collaborate", "review", "brainstorm", "session"],
+      "intent_patterns": [
+        "let's discuss the architecture",
+        "I need the team's input",
+        "architecture review session",
+        "brainstorm architecture options",
+        "get multiple perspectives on"
+      ],
+      "skill": "arch-team-session",
+      "priority": 95
+    },
+    {
+      "id": "arch-system-designer",
+      "verb": "design",
+      "artifacts": ["system-design", "architecture-diagram", "component-breakdown", "scalability-plan"],
+      "keywords": ["system", "design", "scalability", "distributed", "microservices", "monolith", "components"],
+      "intent_patterns": [
+        "design a system for",
+        "how should I architect",
+        "create a system design",
+        "what components do I need",
+        "scale this system"
+      ],
+      "skill": "arch-system-designer",
+      "priority": 90
+    },
+    {
+      "id": "arch-pattern-advisor",
+      "verb": "recommend",
+      "artifacts": ["pattern-recommendation", "implementation-guide", "best-practices"],
+      "keywords": ["pattern", "best practice", "design pattern", "anti-pattern", "refactor", "SOLID", "DRY"],
+      "intent_patterns": [
+        "what pattern should I use",
+        "recommend a design pattern",
+        "is this an anti-pattern",
+        "best practices for",
+        "how to implement this pattern"
+      ],
+      "skill": "arch-pattern-advisor",
+      "priority": 85
+    },
+    {
+      "id": "arch-adr-writer",
+      "verb": "document",
+      "artifacts": ["adr", "decision-record", "technical-documentation"],
+      "keywords": ["ADR", "decision", "record", "document", "rationale", "tradeoff", "why"],
+      "intent_patterns": [
+        "write an ADR",
+        "document this decision",
+        "create architecture decision record",
+        "record the rationale",
+        "document why we chose"
+      ],
+      "skill": "arch-adr-writer",
+      "priority": 80
+    },
+    {
+      "id": "arch-diagram-creator",
+      "verb": "visualize",
+      "artifacts": ["mermaid-diagram", "plantuml-diagram", "c4-diagram", "sequence-diagram", "flowchart"],
+      "keywords": ["diagram", "mermaid", "plantuml", "C4", "sequence", "flowchart", "visualization", "draw"],
+      "intent_patterns": [
+        "create a diagram",
+        "draw the architecture",
+        "visualize this system",
+        "generate a sequence diagram",
+        "show the data flow"
+      ],
+      "skill": "arch-diagram-creator",
+      "priority": 75
+    },
+    {
+      "id": "arch-api-designer",
+      "verb": "design",
+      "artifacts": ["api-spec", "openapi", "graphql-schema", "grpc-proto", "endpoint-design"],
+      "keywords": ["API", "REST", "GraphQL", "gRPC", "OpenAPI", "endpoint", "contract", "schema"],
+      "intent_patterns": [
+        "design an API",
+        "create OpenAPI spec",
+        "define the endpoints",
+        "GraphQL schema for",
+        "API contract for"
+      ],
+      "skill": "arch-api-designer",
+      "priority": 70
+    }
+  ]
+}

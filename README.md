@@ -1,6 +1,6 @@
 # Claude Marketplace
 
-Enterprise marketplace for sharing Claude Code plugins across organizations.
+Enterprise marketplace for sharing Claude Code plugins across organizations. Features a comprehensive multi-domain plugin ecosystem with cross-domain orchestration.
 
 ## Quick Start
 
@@ -10,10 +10,22 @@ Enterprise marketplace for sharing Claude Code plugins across organizations.
 /plugin marketplace add Helms-AI/claude-marketplace
 ```
 
-### Install the UX Plugin
+### Install Plugins
 
 ```bash
-/plugin install ux@helms-ai-marketplace
+# Install the PM broker for cross-domain orchestration
+/plugin install pm@helms-ai-marketplace
+
+# Install domain plugins
+/plugin install user-experience@helms-ai-marketplace
+/plugin install frontend@helms-ai-marketplace
+/plugin install architecture@helms-ai-marketplace
+/plugin install backend@helms-ai-marketplace
+/plugin install testing@helms-ai-marketplace
+/plugin install devops@helms-ai-marketplace
+/plugin install data@helms-ai-marketplace
+/plugin install security@helms-ai-marketplace
+/plugin install documentation@helms-ai-marketplace
 ```
 
 ### List Available Plugins
@@ -24,110 +36,238 @@ Enterprise marketplace for sharing Claude Code plugins across organizations.
 
 ## Available Plugins
 
-| Plugin | Version | Category | Description |
-|--------|---------|----------|-------------|
-| **[ux](./plugins/ux)** | 3.1.0 | frontend | Aesthetic-first UX Team with 10 specialized agents and 22 skills for distinctive, memorable frontend design |
+| Plugin | Version | Category | Agents | Skills | Description |
+|--------|---------|----------|--------|--------|-------------|
+| **[pm](./plugins/pm)** | 1.0.0 | orchestration | 1 | 3 | Cross-domain orchestration broker |
+| **[user-experience](./plugins/user-experience)** | 4.0.0 | design | 8 | 9 | Design thinking and ideation (pre-code) |
+| **[frontend](./plugins/frontend)** | 1.0.0 | frontend | 14 | 15 | Component implementation and engineering |
+| **[architecture](./plugins/architecture)** | 1.0.0 | architecture | 5 | 7 | System design and patterns |
+| **[backend](./plugins/backend)** | 1.0.0 | backend | 5 | 7 | APIs, databases, services |
+| **[testing](./plugins/testing)** | 1.0.0 | testing | 5 | 7 | Test strategy and implementation |
+| **[devops](./plugins/devops)** | 1.0.0 | devops | 5 | 7 | CI/CD and infrastructure |
+| **[data](./plugins/data)** | 1.0.0 | data | 5 | 7 | Data modeling and pipelines |
+| **[security](./plugins/security)** | 1.0.0 | security | 5 | 7 | Security audits and compliance |
+| **[documentation](./plugins/documentation)** | 1.0.0 | documentation | 5 | 7 | Technical writing and docs |
 
-## UX Plugin Overview
+**Total: 10 plugins, 58 agents, 76 skills**
 
-The flagship plugin provides a complete **Conversational UX Team** for modern frontend development with an aesthetic-first philosophy.
+## Architecture Overview
 
-### Key Features
+```
+                         ┌─────────────────┐
+                         │      /pm        │
+                         │  (thin broker)  │
+                         └────────┬────────┘
+                                  │ routes by intent/capability
+        ┌─────────┬───────┬──────┴──────┬───────┬─────────┬─────────┬─────────┐
+        ▼         ▼       ▼             ▼       ▼         ▼         ▼         ▼
+   ┌────────┐┌────────┐┌────────┐┌──────────┐┌────────┐┌────────┐┌────────┐┌────────┐
+   │  U/E   ││Frontend││  Arch  ││ Backend  ││ DevOps ││  Data  ││Security││  Docs  │
+   └────────┘└────────┘└────────┘└──────────┘└────────┘└────────┘└────────┘└────────┘
+        │         │
+        └────┬────┘
+             ▼
+      Design → Code
+       Handoff
+```
 
-- **Aesthetic-First Workflow**: Every project starts with visual identity before implementation
-- **Team Visibility**: See which agent is working and watch handoffs between specialists
-- **Quality Gates**: Pre-finalization checkpoints with team review protocol
-- **Agent Collaboration**: Cross-functional partnerships (Research↔Aesthetic, Typography↔Performance, Systems↔Accessibility)
+### Design-to-Code Workflow
 
-### 10 Agent Personas
+The **user-experience** and **frontend** plugins work together:
 
-| Agent | Name | Role |
-|-------|------|------|
-| **Lead** | Jordan Chen | Team Lead & Design Strategist |
-| **Aesthetic** | Quinn Martinez | Aesthetic Director |
-| **Typography** | Avery Nakamura | Typography Curator |
-| **Color** | Morgan Blake | Color Alchemist |
-| **Layout** | Skyler Okonkwo | Layout Composer |
-| **Research** | Maya Torres | Senior User Researcher |
-| **Architecture** | Alex Kim | Senior Component Architect |
-| **Systems** | Sam Rivera | Design Systems Lead |
-| **Motion** | Jordan Park | Senior Motion Designer |
-| **A11y** | Casey Williams | Accessibility Lead |
-| **Responsive** | Riley Chen | Senior CSS Engineer |
-| **Performance** | Taylor Brooks | Senior Performance Engineer |
+1. **User Experience** (pre-code): Aesthetic direction, typography, color, layout, research
+2. **Handoff**: Creates aesthetic brief with design specifications
+3. **Frontend** (code): Implements components, design systems, accessibility, performance
 
-*Plus 6 additional specialists for texture, micro-interactions, data visualization, forms, navigation, and data grids.*
+### Cross-Domain Orchestration
 
-### 22 Skills
+The **PM (Project Manager)** plugin acts as a broker that:
+1. Analyzes user intent to detect involved domains
+2. Matches capabilities across installed plugins
+3. Creates workflow handoff chains
+4. Tracks decisions and artifacts
+5. Surfaces conflicts for user resolution
 
-#### Orchestration & Collaboration
+**Example multi-domain request:**
+```
+/pm build a user dashboard with real-time analytics
+```
+
+This automatically routes through:
+- Architecture → system design
+- User Experience → aesthetic direction
+- Frontend → components, design system
+- Backend → API endpoints, database schema
+- Data → analytics pipeline
+- Testing → E2E tests
+- DevOps → CI/CD pipeline
+- Documentation → API docs, user guide
+
+## Domain Plugins
+
+### PM - Project Manager Broker
+
+The orchestration layer for cross-domain work.
+
 | Skill | Command | Description |
 |-------|---------|-------------|
-| **Orchestrator** | `/ux-orchestrator` | Routes requests to specialized skills with quality gates |
-| **Team Session** | `/ux-team-session` | Multi-agent team discussions with visible handoffs |
+| PM | `/pm` | Main broker - routes to domain plugins |
+| Status | `/pm-status` | View workflow status and decisions |
+| Resolve | `/pm-resolve` | Resolve conflicts between domains |
 
-#### Aesthetic Foundation
-| Skill | Command | Description |
-|-------|---------|-------------|
-| **Aesthetic Director** | `/ux-aesthetic-director` | Visual identity, tone, and anti-generic direction |
-| **Typography Curator** | `/ux-typography-curator` | Font pairing with personality, not defaults |
-| **Color Alchemist** | `/ux-color-alchemist` | OKLCH color science, emotional palettes |
-| **Layout Composer** | `/ux-layout-composer` | Grid-breaking spatial composition |
-| **Texture Atmosphere** | `/ux-texture-atmosphere` | Depth, grain, and atmospheric effects |
-| **Micro Delight** | `/ux-micro-delight` | Hover states, empty states, loading personality |
+### User Experience Plugin (v4.0.0)
 
-#### Implementation
-| Skill | Command | Description |
-|-------|---------|-------------|
-| **Design System** | `/ux-design-system` | Style Dictionary, Tailwind 4.0, multi-theme |
-| **Component Architect** | `/ux-component-architect` | React 19 RSC, Vue 3.5, Svelte 5 |
-| **Progress UI** | `/ux-progress-ui` | Loading states, skeleton screens, optimistic UI |
-| **Form Experience** | `/ux-form-experience` | Form layout, validation, multi-step wizards |
-| **Navigation Patterns** | `/ux-navigation-patterns` | Tabs, breadcrumbs, sidebars, pagination |
-| **Data Grid** | `/ux-data-grid` | Tables, sorting, filtering, virtualization |
+Design thinking and ideation team with 8 specialized agents and 9 skills. Pre-code design phase.
 
-#### Quality & Enhancement
-| Skill | Command | Description |
-|-------|---------|-------------|
-| **Motion Designer** | `/ux-motion-designer` | GSAP, Lottie, Rive, Framer Motion |
-| **Accessibility Auditor** | `/ux-accessibility-auditor` | WCAG 2.2 AA/AAA, ARIA patterns |
-| **Responsive Engineer** | `/ux-responsive-engineer` | Container queries, fluid typography |
-| **Performance Engineer** | `/ux-performance-engineer` | LCP/INP/CLS, code splitting |
+**Agents:** Dana Reyes (Lead), Quinn Martinez (Aesthetic), Avery Nakamura (Typography), Maya Torres (Research), Morgan Blake (Color), Skyler Okonkwo (Layout), Indigo Vasquez (Texture), Ember Nguyen (Micro-Delight)
 
-#### Research & Documentation
-| Skill | Command | Description |
-|-------|---------|-------------|
-| **User Researcher** | `/ux-user-researcher` | Personas, journey maps, JTBD |
-| **Data Visualization** | `/ux-data-viz` | D3, Recharts, Tremor |
-| **Storybook** | `/ux-storybook` | Component documentation, CSF3 |
-| **Figma Sync** | `/ux-figma-sync` | Figma Variables, Token Studio |
+**Skills:** `/user-experience-orchestrator`, `/user-experience-team-session`, `/user-experience-aesthetic-director`, `/user-experience-typography-curator`, `/user-experience-color-alchemist`, `/user-experience-layout-composer`, `/user-experience-texture-atmosphere`, `/user-experience-micro-delight`, `/user-experience-user-researcher`
 
-### Technologies
+See [plugins/user-experience/README.md](./plugins/user-experience/README.md) for full details.
 
-- **Frameworks**: React 19, Vue 3.5, Svelte 5, Next.js 15, Astro 5
-- **Styling**: Tailwind CSS 4.0, CSS Container Queries, OKLCH Color Science
-- **Animation**: GSAP, Lottie, Rive, Framer Motion, View Transitions API
-- **Data Viz**: D3.js, Recharts, Tremor
-- **Accessibility**: WCAG 2.2, ARIA, axe-core
-- **Design Tokens**: W3C Format, Style Dictionary 4.0, Figma Variables
+### Frontend Plugin (v1.0.0)
+
+Component implementation team with 14 specialized agents and 15 skills. Production-ready code.
+
+**Agents:** Chris Nakamura (Lead), Alex Kim (Architecture), Sam Rivera (Systems), Jordan Park (Motion), Casey Williams (A11y), Riley Chen (Responsive), Taylor Brooks (Performance), Drew Patel (Data Viz), Kai Tanaka (Progress UI), Jesse Morgan (Forms), Sage Martinez (Navigation), Reese Kim (Data Grid), Parker Lee (Storybook), Cameron Reyes (Figma Sync)
+
+**Skills:** `/frontend-orchestrator`, `/frontend-team-session`, `/frontend-design-system`, `/frontend-component-architect`, `/frontend-motion-designer`, `/frontend-accessibility-auditor`, `/frontend-responsive-engineer`, `/frontend-performance-engineer`, `/frontend-progress-ui`, `/frontend-form-experience`, `/frontend-navigation-patterns`, `/frontend-data-grid`, `/frontend-data-viz`, `/frontend-storybook`, `/frontend-figma-sync`
+
+See [plugins/frontend/README.md](./plugins/frontend/README.md) for full details.
+
+### Architecture Plugin
+
+System design, patterns, and technical decisions.
+
+| Agent | Role |
+|-------|------|
+| Sofia Reyes | Architecture Lead |
+| Marcus Chen | Systems Architect |
+| Elena Kowalski | Patterns Specialist |
+| James Okonjo | Decision Recorder (ADRs) |
+| Priya Sharma | API Designer |
+
+**Skills:** `/arch-orchestrator`, `/arch-team-session`, `/arch-system-designer`, `/arch-pattern-advisor`, `/arch-adr-writer`, `/arch-diagram-creator`, `/arch-api-designer`
+
+### Backend Plugin
+
+APIs, databases, authentication, and services.
+
+| Agent | Role |
+|-------|------|
+| David Park | Backend Lead |
+| Sarah Mitchell | API Engineer |
+| Raj Patel | Database Architect |
+| Lisa Wong | Auth Specialist |
+| Omar Hassan | Services Engineer |
+
+**Skills:** `/backend-orchestrator`, `/backend-team-session`, `/backend-api-builder`, `/backend-database-modeler`, `/backend-auth-architect`, `/backend-service-builder`, `/backend-integration-specialist`
+
+### Testing Plugin
+
+Test strategy, unit tests, integration tests, E2E, and coverage.
+
+| Agent | Role |
+|-------|------|
+| Amanda Torres | QA Lead |
+| Kevin O'Brien | Test Strategist |
+| Nina Johansson | Unit Test Specialist |
+| Carlos Mendez | Integration Specialist |
+| Rachel Kim | E2E Engineer |
+
+**Skills:** `/testing-orchestrator`, `/testing-team-session`, `/testing-strategy-advisor`, `/testing-unit-specialist`, `/testing-integration-specialist`, `/testing-e2e-engineer`, `/testing-coverage-analyzer`
+
+### DevOps Plugin
+
+CI/CD, deployment, infrastructure, and monitoring.
+
+| Agent | Role |
+|-------|------|
+| Michael Chang | DevOps Lead |
+| Emma Watson | CI/CD Architect |
+| Alex Rivera | Deployment Engineer |
+| Tom Anderson | Infrastructure Specialist |
+| Aisha Patel | Monitoring Engineer |
+
+**Skills:** `/devops-orchestrator`, `/devops-team-session`, `/devops-ci-architect`, `/devops-deployment-engineer`, `/devops-infrastructure-specialist`, `/devops-monitoring-engineer`, `/devops-container-specialist`
+
+### Data Plugin
+
+Data modeling, pipelines, analytics, and governance.
+
+| Agent | Role |
+|-------|------|
+| Jennifer Wu | Data Lead |
+| Robert Garcia | Data Modeler |
+| Anna Schmidt | Pipeline Architect |
+| Chris Lee | Analytics Engineer |
+| Maria Santos | Governance Advisor |
+
+**Skills:** `/data-orchestrator`, `/data-team-session`, `/data-modeler`, `/data-pipeline-architect`, `/data-analytics-engineer`, `/data-warehouse-specialist`, `/data-governance-advisor`
+
+### Security Plugin
+
+Security audits, threat modeling, compliance, and secrets management.
+
+| Agent | Role |
+|-------|------|
+| Nathan Brooks | Security Lead |
+| Diana Chen | Security Auditor |
+| Victor Okonkwo | Threat Modeler |
+| Sarah Johnson | Compliance Advisor |
+| Mark Thompson | Secrets Manager |
+
+**Skills:** `/security-orchestrator`, `/security-team-session`, `/security-auditor`, `/security-threat-modeler`, `/security-compliance-advisor`, `/security-secrets-manager`, `/security-penetration-advisor`
+
+### Documentation Plugin
+
+API docs, guides, architecture documentation, and runbooks.
+
+| Agent | Role |
+|-------|------|
+| Patricia Moore | Docs Lead |
+| Andrew Kim | API Doc Writer |
+| Laura Hernandez | Guide Writer |
+| Steven Brown | Architecture Documenter |
+| Michelle Lee | Runbook Writer |
+
+**Skills:** `/docs-orchestrator`, `/docs-team-session`, `/docs-api-writer`, `/docs-guide-writer`, `/docs-architecture-documenter`, `/docs-runbook-writer`, `/docs-onboarding-creator`
 
 ## Directory Structure
 
 ```
 claude-marketplace/
 ├── .claude-plugin/
-│   └── marketplace.json      # Registry of all plugins
+│   ├── marketplace.json      # Registry of all plugins
+│   └── taxonomy.json         # Centralized domain taxonomy
 ├── plugins/
-│   └── ux/                   # UX Team plugin (v3.1.0)
-│       ├── .claude-plugin/
-│       │   └── plugin.json   # Plugin manifest
-│       ├── agents/           # 10 agent personas
-│       ├── skills/           # 22 skills
-│       └── README.md
-├── .github/                  # GitHub templates
+│   ├── pm/                   # Project Manager broker
+│   ├── user-experience/      # User Experience Team (v4.0.0)
+│   ├── frontend/             # Frontend Team (v1.0.0)
+│   ├── architecture/         # Architecture Team
+│   ├── backend/              # Backend Team
+│   ├── testing/              # Testing Team
+│   ├── devops/               # DevOps Team
+│   ├── data/                 # Data Team
+│   ├── security/             # Security Team
+│   └── documentation/        # Documentation Team
 ├── CLAUDE.md                 # Claude Code instructions
 ├── CONTRIBUTING.md           # Contribution guidelines
 └── LICENSE                   # MIT license
+```
+
+## Handoff Protocol
+
+Cross-domain workflows use file-based handoffs stored in `.claude/handoffs/`:
+
+```
+.claude/
+└── handoffs/
+    └── <session-id>/
+        ├── session.json          # Session metadata
+        ├── handoff_001.json      # First handoff
+        ├── handoff_002.json      # Second handoff
+        └── artifacts/            # Shared artifacts
 ```
 
 ## Contributing
@@ -138,16 +278,18 @@ We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guideline
 
 1. Fork this repository
 2. Create your plugin in `plugins/<plugin-name>/`
-3. Add a `.claude-plugin/plugin.json` manifest
-4. Register in `.claude-plugin/marketplace.json`
-5. Submit a pull request
+3. Add `.claude-plugin/plugin.json` manifest
+4. Add `.claude-plugin/capabilities.json` for cross-domain routing
+5. Register in `.claude-plugin/marketplace.json`
+6. Submit a pull request
 
 ### Plugin Structure
 
 ```
 plugins/<plugin-name>/
 ├── .claude-plugin/
-│   └── plugin.json           # Plugin manifest (required)
+│   ├── plugin.json           # Plugin manifest (required)
+│   └── capabilities.json     # Capability registry (recommended)
 ├── skills/                   # Slash commands
 │   └── <skill-name>/
 │       └── SKILL.md
@@ -155,17 +297,6 @@ plugins/<plugin-name>/
 │   └── <agent-name>.md
 ├── scripts/                  # Hook scripts
 └── README.md                 # Documentation (required)
-```
-
-### Plugin Manifest
-
-```json
-{
-  "name": "plugin-name",
-  "description": "What this plugin does",
-  "version": "1.0.0",
-  "skills": ["./skills/"]
-}
 ```
 
 ### Versioning

@@ -1,6 +1,0 @@
-{
-  "name": "ux",
-  "description": "Aesthetic-first UX Team with 10 specialized agents and 22 skills for distinctive, memorable frontend design - not generic templates",
-  "version": "3.1.0",
-  "skills": ["./skills/"]
-}

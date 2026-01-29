@@ -1,0 +1,6 @@
+{
+  "name": "documentation",
+  "description": "Documentation team with 5 specialized agents for API docs, guides, architecture documentation, runbooks, and onboarding materials",
+  "version": "1.0.0",
+  "skills": ["./skills/"]
+}

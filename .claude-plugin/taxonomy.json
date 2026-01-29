@@ -1,0 +1,112 @@
+{
+  "version": "1.0.0",
+  "description": "Centralized taxonomy for cross-domain plugin ecosystem",
+  "domains": {
+    "user-experience": {
+      "description": "Design thinking, ideation, visual direction (pre-code)",
+      "subdomains": ["aesthetic", "typography", "color", "layout", "texture", "micro-delight", "research"]
+    },
+    "frontend": {
+      "description": "Component implementation, engineering, quality (code)",
+      "subdomains": ["components", "design-system", "accessibility", "responsive", "performance", "motion", "forms", "navigation", "data-viz", "data-grid", "progress-ui", "storybook", "figma-sync"]
+    },
+    "architecture": {
+      "description": "System design, patterns, decisions",
+      "subdomains": ["system-design", "patterns", "decisions", "diagrams", "api-design"]
+    },
+    "backend": {
+      "description": "APIs, databases, services",
+      "subdomains": ["api", "database", "auth", "services", "messaging", "integration"]
+    },
+    "testing": {
+      "description": "QA, test strategies, coverage",
+      "subdomains": ["unit", "integration", "e2e", "performance", "security", "coverage"]
+    },
+    "devops": {
+      "description": "CI/CD, deployment, infrastructure",
+      "subdomains": ["ci-cd", "deployment", "infrastructure", "monitoring", "containers"]
+    },
+    "data": {
+      "description": "Data modeling, pipelines, analytics",
+      "subdomains": ["modeling", "pipelines", "analytics", "warehousing", "governance"]
+    },
+    "security": {
+      "description": "Audits, threat modeling, compliance",
+      "subdomains": ["audit", "threat-modeling", "compliance", "secrets", "penetration"]
+    },
+    "documentation": {
+      "description": "Technical writing, API docs",
+      "subdomains": ["api-docs", "guides", "architecture-docs", "runbooks", "onboarding"]
+    }
+  },
+  "verbs": {
+    "create": {
+      "description": "Build new artifacts",
+      "synonyms": ["build", "generate", "implement", "scaffold", "make", "add", "write"]
+    },
+    "audit": {
+      "description": "Review/assess existing",
+      "synonyms": ["review", "assess", "analyze", "evaluate", "inspect", "check"]
+    },
+    "improve": {
+      "description": "Enhance existing",
+      "synonyms": ["optimize", "refactor", "enhance", "upgrade", "fix", "update"]
+    },
+    "document": {
+      "description": "Create documentation",
+      "synonyms": ["write docs", "describe", "explain", "annotate", "comment"]
+    },
+    "test": {
+      "description": "Verify behavior",
+      "synonyms": ["verify", "validate", "check", "ensure", "confirm"]
+    },
+    "deploy": {
+      "description": "Release to environments",
+      "synonyms": ["release", "ship", "publish", "push", "launch"]
+    },
+    "migrate": {
+      "description": "Transform/move artifacts",
+      "synonyms": ["convert", "upgrade", "port", "transfer", "transform"]
+    },
+    "design": {
+      "description": "Plan and architect",
+      "synonyms": ["plan", "architect", "blueprint", "sketch", "outline", "draft"]
+    }
+  },
+  "artifacts": {
+    "code": ["component", "service", "test", "migration", "pipeline", "hook", "endpoint", "model", "controller", "middleware"],
+    "documentation": ["adr", "api-spec", "runbook", "guide", "threat-model", "readme", "changelog", "tutorial"],
+    "configuration": ["ci-config", "infra-config", "docker", "env-config", "terraform", "kubernetes", "helm"],
+    "design": ["system-diagram", "data-model", "aesthetic-brief", "design-tokens", "wireframe", "flowchart", "sequence-diagram", "erd"]
+  },
+  "cross_domain_patterns": {
+    "full_stack_feature": {
+      "description": "End-to-end feature implementation",
+      "domains": ["architecture", "backend", "user-experience", "frontend", "testing", "documentation"]
+    },
+    "api_development": {
+      "description": "API design and implementation",
+      "domains": ["architecture", "backend", "testing", "documentation"]
+    },
+    "frontend_feature": {
+      "description": "UI feature with design and backend integration",
+      "domains": ["user-experience", "frontend", "backend", "testing"]
+    },
+    "infrastructure_change": {
+      "description": "Infrastructure and deployment changes",
+      "domains": ["devops", "security", "documentation"]
+    },
+    "data_pipeline": {
+      "description": "Data processing and analytics",
+      "domains": ["data", "backend", "devops", "documentation"]
+    },
+    "security_review": {
+      "description": "Security audit and hardening",
+      "domains": ["security", "backend", "devops", "documentation"]
+    },
+    "design_to_code": {
+      "description": "Design ideation through implementation",
+      "domains": ["user-experience", "frontend", "testing"]
+    }
+  }
+}

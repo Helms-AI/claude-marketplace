@@ -1,0 +1,6 @@
+{
+  "name": "user-experience",
+  "description": "Design thinking, visual direction, and aesthetic foundation for distinctive user experiences. Pre-code design phase focused on visual identity, typography, color, layout, and user research.",
+  "version": "4.0.0",
+  "skills": ["./skills/"]
+}

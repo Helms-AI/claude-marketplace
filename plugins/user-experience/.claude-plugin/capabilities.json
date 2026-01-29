@@ -1,0 +1,84 @@
+{
+  "plugin": {
+    "name": "user-experience",
+    "version": "4.0.0"
+  },
+  "domain": {
+    "primary": "user-experience",
+    "subdomains": ["aesthetic", "typography", "color", "layout", "texture", "research", "micro-delight"],
+    "collaborates_with": ["frontend", "architecture", "pm"]
+  },
+  "capabilities": [
+    {
+      "id": "user-experience.design.aesthetic",
+      "verb": "design",
+      "artifacts": ["aesthetic-brief", "visual-identity"],
+      "keywords": ["aesthetic", "visual direction", "brand", "look and feel", "design direction", "visual identity", "anti-generic"],
+      "intent_patterns": ["establish * direction", "define * aesthetic", "design * identity", "what should * look like"],
+      "skill": "/user-experience-aesthetic-director",
+      "priority": 9
+    },
+    {
+      "id": "user-experience.design.typography",
+      "verb": "design",
+      "artifacts": ["typography-spec", "font-pairing"],
+      "keywords": ["typography", "fonts", "typeface", "font pairing", "type scale", "typographic"],
+      "intent_patterns": ["select * fonts", "choose * typography", "font * pairing", "type * system"],
+      "skill": "/user-experience-typography-curator",
+      "priority": 8
+    },
+    {
+      "id": "user-experience.design.color",
+      "verb": "design",
+      "artifacts": ["color-palette", "color-tokens"],
+      "keywords": ["color", "palette", "OKLCH", "color system", "theme colors", "brand colors"],
+      "intent_patterns": ["create * palette", "design * colors", "color * system", "choose * colors"],
+      "skill": "/user-experience-color-alchemist",
+      "priority": 8
+    },
+    {
+      "id": "user-experience.design.layout",
+      "verb": "design",
+      "artifacts": ["layout-spec", "grid-system"],
+      "keywords": ["layout", "grid", "spacing", "composition", "whitespace", "spatial"],
+      "intent_patterns": ["design * layout", "create * grid", "compose * space", "arrange * elements"],
+      "skill": "/user-experience-layout-composer",
+      "priority": 7
+    },
+    {
+      "id": "user-experience.design.texture",
+      "verb": "design",
+      "artifacts": ["texture-spec", "atmosphere-tokens"],
+      "keywords": ["texture", "grain", "depth", "atmosphere", "glassmorphism", "gradients"],
+      "intent_patterns": ["add * texture", "create * depth", "design * atmosphere", "grain * effect"],
+      "skill": "/user-experience-texture-atmosphere",
+      "priority": 6
+    },
+    {
+      "id": "user-experience.design.microdelight",
+      "verb": "design",
+      "artifacts": ["interaction-spec", "delight-moments"],
+      "keywords": ["micro-interactions", "hover states", "delight", "polish", "surprise", "personality"],
+      "intent_patterns": ["add * delight", "design * interactions", "polish * details", "micro * moments"],
+      "skill": "/user-experience-micro-delight",
+      "priority": 6
+    },
+    {
+      "id": "user-experience.research.user",
+      "verb": "audit",
+      "artifacts": ["persona", "journey-map", "jtbd"],
+      "keywords": ["user research", "personas", "journey map", "JTBD", "user needs", "user insight"],
+      "intent_patterns": ["understand * users", "research * needs", "create * persona", "map * journey"],
+      "skill": "/user-experience-user-researcher",
+      "priority": 7
+    }
+  ],
+  "orchestrator": {
+    "skill": "/user-experience-orchestrator"
+  },
+  "handoff": {
+    "outputs_to": ["frontend"],
+    "receives_from": ["pm"],
+    "artifact_types": ["aesthetic-brief", "typography-spec", "color-palette", "layout-spec"]
+  }
+}

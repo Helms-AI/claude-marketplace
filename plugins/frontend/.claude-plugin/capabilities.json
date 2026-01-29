@@ -1,0 +1,138 @@
+{
+  "plugin": {
+    "name": "frontend",
+    "version": "1.0.0"
+  },
+  "domain": {
+    "primary": "frontend",
+    "subdomains": ["components", "design-system", "accessibility", "responsive", "performance", "motion", "data-viz", "forms", "navigation", "testing"],
+    "collaborates_with": ["user-experience", "backend", "testing", "pm"]
+  },
+  "capabilities": [
+    {
+      "id": "frontend.create.design-system",
+      "verb": "create",
+      "artifacts": ["design-tokens", "theme-config"],
+      "keywords": ["design system", "tokens", "Tailwind", "theme", "dark mode", "CSS variables"],
+      "intent_patterns": ["create * design system", "set up * tokens", "configure * theme", "build * dark mode"],
+      "skill": "/frontend-design-system",
+      "priority": 9
+    },
+    {
+      "id": "frontend.create.component",
+      "verb": "create",
+      "artifacts": ["component", "hook"],
+      "keywords": ["component", "React", "Vue", "Svelte", "UI component", "widget"],
+      "intent_patterns": ["build * component", "create * button", "implement * card", "make * modal"],
+      "skill": "/frontend-component-architect",
+      "priority": 9
+    },
+    {
+      "id": "frontend.create.motion",
+      "verb": "create",
+      "artifacts": ["animation", "transition"],
+      "keywords": ["animation", "motion", "GSAP", "Framer Motion", "Lottie", "Rive", "transition"],
+      "intent_patterns": ["animate * element", "add * transition", "create * animation", "implement * motion"],
+      "skill": "/frontend-motion-designer",
+      "priority": 7
+    },
+    {
+      "id": "frontend.audit.accessibility",
+      "verb": "audit",
+      "artifacts": ["a11y-report", "aria-patterns"],
+      "keywords": ["accessibility", "a11y", "WCAG", "ARIA", "screen reader", "keyboard navigation"],
+      "intent_patterns": ["audit * accessibility", "check * WCAG", "fix * a11y", "improve * accessibility"],
+      "skill": "/frontend-accessibility-auditor",
+      "priority": 9
+    },
+    {
+      "id": "frontend.create.responsive",
+      "verb": "create",
+      "artifacts": ["responsive-layout", "fluid-typography"],
+      "keywords": ["responsive", "mobile", "container queries", "fluid", "breakpoints"],
+      "intent_patterns": ["make * responsive", "adapt * mobile", "fluid * design", "responsive * layout"],
+      "skill": "/frontend-responsive-engineer",
+      "priority": 8
+    },
+    {
+      "id": "frontend.audit.performance",
+      "verb": "audit",
+      "artifacts": ["performance-report", "optimization"],
+      "keywords": ["performance", "Core Web Vitals", "LCP", "CLS", "INP", "bundle size"],
+      "intent_patterns": ["optimize * performance", "improve * speed", "reduce * bundle", "fix * LCP"],
+      "skill": "/frontend-performance-engineer",
+      "priority": 8
+    },
+    {
+      "id": "frontend.create.progress-ui",
+      "verb": "create",
+      "artifacts": ["loading-states", "skeleton-screens"],
+      "keywords": ["loading", "skeleton", "progress", "spinner", "optimistic UI"],
+      "intent_patterns": ["create * loading", "add * skeleton", "implement * progress", "design * states"],
+      "skill": "/frontend-progress-ui",
+      "priority": 6
+    },
+    {
+      "id": "frontend.create.form",
+      "verb": "create",
+      "artifacts": ["form-component", "validation"],
+      "keywords": ["form", "input", "validation", "wizard", "multi-step"],
+      "intent_patterns": ["create * form", "build * wizard", "implement * validation", "design * checkout"],
+      "skill": "/frontend-form-experience",
+      "priority": 7
+    },
+    {
+      "id": "frontend.create.navigation",
+      "verb": "create",
+      "artifacts": ["navigation-component", "menu"],
+      "keywords": ["navigation", "tabs", "breadcrumbs", "sidebar", "menu", "pagination"],
+      "intent_patterns": ["create * navigation", "build * tabs", "implement * sidebar", "add * breadcrumbs"],
+      "skill": "/frontend-navigation-patterns",
+      "priority": 7
+    },
+    {
+      "id": "frontend.create.data-grid",
+      "verb": "create",
+      "artifacts": ["table-component", "data-grid"],
+      "keywords": ["table", "data grid", "sorting", "filtering", "virtualization"],
+      "intent_patterns": ["create * table", "build * grid", "implement * sorting", "data * display"],
+      "skill": "/frontend-data-grid",
+      "priority": 7
+    },
+    {
+      "id": "frontend.create.data-viz",
+      "verb": "create",
+      "artifacts": ["chart", "visualization"],
+      "keywords": ["chart", "graph", "D3", "Recharts", "Tremor", "visualization", "dashboard"],
+      "intent_patterns": ["create * chart", "build * dashboard", "visualize * data", "implement * graph"],
+      "skill": "/frontend-data-viz",
+      "priority": 7
+    },
+    {
+      "id": "frontend.create.storybook",
+      "verb": "create",
+      "artifacts": ["story", "documentation"],
+      "keywords": ["Storybook", "documentation", "component docs", "stories", "CSF"],
+      "intent_patterns": ["document * components", "create * stories", "set up * Storybook", "write * docs"],
+      "skill": "/frontend-storybook",
+      "priority": 5
+    },
+    {
+      "id": "frontend.create.figma-sync",
+      "verb": "create",
+      "artifacts": ["token-sync", "figma-config"],
+      "keywords": ["Figma", "design tokens", "Token Studio", "sync", "variables"],
+      "intent_patterns": ["sync * Figma", "import * tokens", "connect * design", "extract * variables"],
+      "skill": "/frontend-figma-sync",
+      "priority": 5
+    }
+  ],
+  "orchestrator": {
+    "skill": "/frontend-orchestrator"
+  },
+  "handoff": {
+    "outputs_to": ["testing", "documentation"],
+    "receives_from": ["user-experience", "pm", "architecture"],
+    "artifact_types": ["component", "design-tokens", "a11y-report"]
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "frontend",
+  "description": "Component implementation, engineering, and quality assurance for frontend development. Implementation phase focused on design systems, components, accessibility, performance, and tooling.",
+  "version": "1.0.0",
+  "skills": ["./skills/"]
+}

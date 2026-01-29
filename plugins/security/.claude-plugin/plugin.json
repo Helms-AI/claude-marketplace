@@ -1,0 +1,6 @@
+{
+  "name": "security",
+  "description": "Security team with 5 specialized agents for security audits, threat modeling, compliance, secrets management, and penetration testing",
+  "version": "1.0.0",
+  "skills": ["./skills/"]
+}
