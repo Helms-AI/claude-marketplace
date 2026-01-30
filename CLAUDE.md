@@ -42,7 +42,8 @@ claude-marketplace/
     ├── devops/               # DevOps Team (CI/CD, infrastructure, monitoring)
     ├── data/                 # Data Team (modeling, pipelines, analytics)
     ├── security/             # Security Team (audits, compliance, secrets)
-    └── documentation/        # Documentation Team (API docs, guides, runbooks)
+    ├── documentation/        # Documentation Team (API docs, guides, runbooks)
+    └── dashboard/            # Web Dashboard (visualization, monitoring, real-time)
 ```
 
 ### Plugin Types
@@ -134,6 +135,22 @@ Location: `plugins/documentation/`
 Technical writing with 5 agents and 7 skills:
 - **Agents**: Patricia Moore (Lead), Andrew Kim (API), Laura Hernandez (Guides), Steven Brown (Arch), Michelle Lee (Runbooks)
 - **Skills**: docs-orchestrator, docs-team-session, docs-api-writer, docs-guide-writer, docs-architecture-documenter, docs-runbook-writer, docs-onboarding-creator
+
+### Dashboard Plugin (v1.0.0)
+Location: `plugins/dashboard/`
+
+Real-time web dashboard for visualizing the marketplace:
+- **Skills**: dashboard
+- **Purpose**: View all agents, skills, sessions, and domain interactions in a web UI
+- **Features**:
+  - Agent Explorer: 58 agents across 10 domains with search/filter
+  - Skill Browser: 77 skills with handoff relationships
+  - Session Viewer: Real-time conversation tracking via SSE
+  - Domain Graph: D3.js visualization of domain collaborations
+  - Handoff Timeline: Visual swimlane view of cross-domain handoffs
+- **Tech**: Flask server, vanilla JS frontend, D3.js for graphs
+- **Launch**: `/dashboard` or `python -m server.app --open-browser`
+- **URL**: http://localhost:24282
 
 ## Cross-Domain Orchestration
 

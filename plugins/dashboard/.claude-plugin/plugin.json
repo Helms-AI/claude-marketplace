@@ -1,0 +1,15 @@
+{
+  "name": "dashboard",
+  "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, sessions, and cross-domain orchestration",
+  "version": "1.5.0",
+  "skills": ["./skills/"],
+  "mcpServers": {
+    "dashboard": {
+      "command": "python3",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/run_dashboard.py", "--open-browser"],
+      "env": {
+        "DASHBOARD_PORT": "24282"
+      }
+    }
+  }
+}

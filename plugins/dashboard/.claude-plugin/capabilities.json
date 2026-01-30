@@ -1,0 +1,43 @@
+{
+  "plugin": {
+    "name": "dashboard",
+    "version": "1.0.0"
+  },
+  "domain": {
+    "primary": "observability",
+    "subdomains": ["monitoring", "visualization", "analytics"],
+    "collaborates_with": ["pm", "user-experience", "frontend", "architecture", "backend", "testing", "devops", "data", "security", "documentation"]
+  },
+  "capabilities": [
+    {
+      "id": "dashboard.view.agents",
+      "verb": "view",
+      "artifacts": ["agent-list", "agent-activity"],
+      "keywords": ["agents", "personas", "team members", "who", "list agents"],
+      "intent_patterns": ["show * agents", "list * agents", "view * team", "who can help"],
+      "skill": "/dashboard",
+      "priority": 8
+    },
+    {
+      "id": "dashboard.view.sessions",
+      "verb": "view",
+      "artifacts": ["session-list", "conversation-transcript"],
+      "keywords": ["sessions", "conversations", "activity", "history"],
+      "intent_patterns": ["show * sessions", "view * activity", "conversation * history"],
+      "skill": "/dashboard",
+      "priority": 7
+    },
+    {
+      "id": "dashboard.view.handoffs",
+      "verb": "view",
+      "artifacts": ["handoff-timeline", "domain-graph"],
+      "keywords": ["handoffs", "workflow", "orchestration", "cross-domain"],
+      "intent_patterns": ["show * handoffs", "view * workflow", "track * orchestration"],
+      "skill": "/dashboard",
+      "priority": 7
+    }
+  ],
+  "orchestrator": {
+    "skill": "/dashboard"
+  }
+}

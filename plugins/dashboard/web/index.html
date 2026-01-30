@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Marketplace Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/dashboard.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1 class="logo">Claude Marketplace</h1>
+                <span class="version" id="dashboardVersion">Dashboard</span>
+            </div>
+            <div class="header-center">
+                <nav class="nav">
+                    <button class="nav-btn active" data-view="agents">Agents</button>
+                    <button class="nav-btn" data-view="skills">Skills</button>
+                    <button class="nav-btn" data-view="sessions">Sessions</button>
+                    <button class="nav-btn" data-view="graph">Graph</button>
+                </nav>
+            </div>
+            <div class="header-right">
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Connecting...</span>
+                </div>
+                <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+                    <span class="theme-icon">&#9790;</span>
+                </button>
+                <div class="profile-menu" id="profileMenu">
+                    <button class="profile-btn" id="profileBtn" title="Server options">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </button>
+                    <div class="profile-dropdown" id="profileDropdown">
+                        <div class="dropdown-header">Server</div>
+                        <button class="dropdown-item" id="restartServer">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M23 4v6h-6"></path>
+                                <path d="M1 20v-6h6"></path>
+                                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                            </svg>
+                            Restart Server
+                        </button>
+                        <button class="dropdown-item dropdown-item-danger" id="killServer">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                            </svg>
+                            Kill Server
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Agents View -->
+            <section class="view active" id="agentsView">
+                <div class="view-header">
+                    <h2>Agent Registry</h2>
+                    <div class="view-controls">
+                        <input type="text" class="search-input" id="agentSearch" placeholder="Search agents...">
+                        <select class="filter-select" id="domainFilter">
+                            <option value="">All Domains</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="stats-bar" id="agentStats"></div>
+                <div class="domain-groups" id="agentGrid"></div>
+            </section>
+
+            <!-- Skills View -->
+            <section class="view" id="skillsView">
+                <div class="view-header">
+                    <h2>Skill Browser</h2>
+                    <div class="view-controls">
+                        <input type="text" class="search-input" id="skillSearch" placeholder="Search skills...">
+                        <select class="filter-select" id="skillDomainFilter">
+                            <option value="">All Domains</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="stats-bar" id="skillStats"></div>
+                <div class="domain-groups" id="skillGrid"></div>
+            </section>
+
+            <!-- Sessions View -->
+            <section class="view" id="sessionsView">
+                <div class="sessions-layout">
+                    <div class="sessions-sidebar">
+                        <div class="sidebar-header">
+                            <h3>Sessions</h3>
+                            <span class="session-count" id="sessionCount">0</span>
+                        </div>
+                        <div class="session-list" id="sessionList"></div>
+                    </div>
+                    <div class="sessions-main">
+                        <div class="conversation-header" id="conversationHeader">
+                            <div class="header-placeholder">
+                                <span class="placeholder-icon">&#9638;</span>
+                                <span>Select a session to view conversation</span>
+                            </div>
+                        </div>
+                        <div class="conversation-container" id="conversationContainer">
+                            <div class="conversation-empty">
+                                <div class="empty-terminal">
+                                    <div class="terminal-line">$ awaiting session selection...</div>
+                                    <div class="terminal-cursor"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Graph View -->
+            <section class="view" id="graphView">
+                <div class="view-header">
+                    <h2>Domain Interaction Graph</h2>
+                    <div class="view-controls">
+                        <button class="btn" id="resetGraph">Reset View</button>
+                    </div>
+                </div>
+                <div class="graph-container" id="graphContainer">
+                    <svg id="graphSvg"></svg>
+                </div>
+                <div class="graph-legend" id="graphLegend"></div>
+            </section>
+        </main>
+
+        <!-- Activity Feed -->
+        <aside class="activity-feed" id="activityFeed">
+            <div class="feed-header">
+                <h3>Live Activity</h3>
+                <button class="feed-toggle" id="feedToggle">&#9660;</button>
+            </div>
+            <div class="feed-content" id="feedContent"></div>
+        </aside>
+    </div>
+
+    <!-- Agent Detail Modal -->
+    <div class="modal" id="agentModal">
+        <div class="modal-content">
+            <button class="modal-close" id="closeAgentModal">&times;</button>
+            <div class="modal-body" id="agentModalBody"></div>
+        </div>
+    </div>
+
+    <!-- Skill Detail Modal -->
+    <div class="modal" id="skillModal">
+        <div class="modal-content">
+            <button class="modal-close" id="closeSkillModal">&times;</button>
+            <div class="modal-body" id="skillModalBody"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/dashboard.js"></script>
+    <script src="js/agents.js"></script>
+    <script src="js/skills.js"></script>
+    <script src="js/sessions.js"></script>
+    <script src="js/graph.js"></script>
+    <script src="js/conversation.js"></script>
+    <script src="js/timeline.js"></script>
+</body>
+</html>
