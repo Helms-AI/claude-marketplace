@@ -20,6 +20,7 @@ This is an enterprise marketplace for sharing Claude Code plugins. It contains r
 - **Once per commit**: Only increment the version ONCE per commit, regardless of how many changes are made. If you add 3 skills and modify 2 agents before committing, that's still only ONE version bump.
 - **Highest level wins**: If changes span multiple levels (e.g., both patch and minor changes), only increment the highest level (minor in this case).
 - **Check before incrementing**: Before bumping a version, check if it was already incremented in the current uncommitted changes using `git diff`.
+- **Already bumped? Bump patch**: If `git diff` shows the version was already bumped but not committed, always increment the patch version (Z) for any additional changes in the same uncommitted batch.
 
 **After changes to a plugin** (once per commit), update the version in:
 1. `plugins/<name>/.claude-plugin/plugin.json` - the `version` field

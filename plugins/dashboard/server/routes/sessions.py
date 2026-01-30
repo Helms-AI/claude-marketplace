@@ -26,6 +26,58 @@ def get_session(session_id):
     return jsonify(tracker.to_dict(session))
 
 
+@sessions_bp.route('/api/sessions/<session_id>', methods=['DELETE'])
+def delete_session(session_id):
+    """Delete a session and all its files.
+
+    This removes the entire session directory from .claude/handoffs/<session_id>/
+    """
+    import os
+    import shutil
+
+    tracker = current_app.config['session_tracker']
+    session = tracker.get_session(session_id)
+
+    if not session:
+        return jsonify({'error': 'Session not found'}), 404
+
+    project_path = session.project_path
+    if not project_path:
+        return jsonify({'error': 'No project path for session'}), 400
+
+    # Build the session directory path
+    session_dir = os.path.join(project_path, '.claude', 'handoffs', session_id)
+
+    if not os.path.isdir(session_dir):
+        return jsonify({'error': 'Session directory not found', 'path': session_dir}), 404
+
+    # Delete the entire session directory
+    try:
+        shutil.rmtree(session_dir)
+    except Exception as e:
+        return jsonify({'error': f'Failed to delete session: {str(e)}'}), 500
+
+    # Remove from tracker's in-memory state
+    with tracker.lock:
+        if session_id in tracker.sessions:
+            del tracker.sessions[session_id]
+        # Remove related handoffs
+        tracker.handoffs = [h for h in tracker.handoffs if h.session_id != session_id]
+
+    # Broadcast deletion via SSE
+    sse_manager = current_app.config.get('sse_manager')
+    if sse_manager:
+        sse_manager.broadcast({
+            'session_id': session_id
+        }, event_type='session_deleted')
+
+    return jsonify({
+        'status': 'deleted',
+        'session_id': session_id,
+        'deleted_path': session_dir
+    })
+
+
 @sessions_bp.route('/api/sessions/<session_id>/conversation', methods=['GET'])
 def get_session_conversation(session_id):
     """Get full conversation transcript for a session."""

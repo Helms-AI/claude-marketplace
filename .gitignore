@@ -29,3 +29,5 @@ npm-debug.log*
 *.tsbuildinfo
 
 .playwright-mcp
+
+.claude/handoffs/

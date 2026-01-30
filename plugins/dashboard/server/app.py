@@ -24,9 +24,54 @@ from .services.skill_registry import SkillRegistry
 from .services.session_tracker import SessionTracker
 from .services.event_store import EventStore
 from .services.file_watcher import FileWatcher
+from .services.session_watcher import SessionWatcher, SessionFileEvent
 from .routes import agents_bp, skills_bp, sessions_bp, events_bp, stream_bp, capabilities_bp
 from .services.transcript_reader import TranscriptReader
 from .services.transcript_watcher import TranscriptWatcher
+
+
+def get_session_snapshot(session) -> dict:
+    """Extract comparable fields from a session for change detection.
+
+    Args:
+        session: SessionInfo object.
+
+    Returns:
+        Dictionary of snapshot fields for comparison.
+    """
+    return {
+        'id': session.id,
+        'phase': session.phase,
+        'event_count': len(session.events),
+        'handoff_count': session.handoff_count or len(session.handoffs),
+        'domains_involved': tuple(sorted(session.domains_involved or [])),
+        'current_domain': session.current_domain,
+        'current_agent': session.current_agent,
+        'artifacts': tuple(sorted(session.artifacts or []))
+    }
+
+
+def diff_sessions(old_snapshot: dict, new_snapshot: dict) -> dict:
+    """Compare two session snapshots and return changed fields.
+
+    Args:
+        old_snapshot: Previous session state.
+        new_snapshot: Current session state.
+
+    Returns:
+        Dictionary of fields that changed with their new values.
+    """
+    changes = {}
+    for key in new_snapshot:
+        if key == 'id':
+            continue
+        if old_snapshot.get(key) != new_snapshot.get(key):
+            # Convert tuples back to lists for JSON serialization
+            value = new_snapshot[key]
+            if isinstance(value, tuple):
+                value = list(value)
+            changes[key] = value
+    return changes
 
 
 def start_session_scanner(session_tracker, sse_manager, interval: float = 3.0):
@@ -40,10 +85,12 @@ def start_session_scanner(session_tracker, sse_manager, interval: float = 3.0):
     Returns:
         The started background thread.
     """
-    last_session_ids = set(s.id for s in session_tracker.get_all_sessions())
+    # Build initial snapshots for all sessions
+    initial_sessions = session_tracker.get_all_sessions()
+    last_session_snapshots = {s.id: get_session_snapshot(s) for s in initial_sessions}
 
     def scan_loop():
-        nonlocal last_session_ids
+        nonlocal last_session_snapshots
         while not _shutdown_event.is_set():
             time.sleep(interval)
             if _shutdown_event.is_set():
@@ -51,22 +98,40 @@ def start_session_scanner(session_tracker, sse_manager, interval: float = 3.0):
 
             session_tracker.scan()
             current_sessions = session_tracker.get_all_sessions()
-            current_ids = set(s.id for s in current_sessions)
+            current_snapshots = {s.id: get_session_snapshot(s) for s in current_sessions}
 
             # Detect new sessions
-            new_ids = current_ids - last_session_ids
-            if new_ids:
-                for session_id in new_ids:
+            new_ids = set(current_snapshots.keys()) - set(last_session_snapshots.keys())
+            for session_id in new_ids:
+                session = next((s for s in current_sessions if s.id == session_id), None)
+                if session:
+                    sse_manager.broadcast({
+                        'session_id': session.id,
+                        'started_at': session.started_at.isoformat(),
+                        'phase': session.phase,
+                        'domains_involved': session.domains_involved
+                    }, event_type='session_created')
+
+            # Detect updated sessions (existing sessions with changed content)
+            existing_ids = set(current_snapshots.keys()) & set(last_session_snapshots.keys())
+            for session_id in existing_ids:
+                old_snap = last_session_snapshots[session_id]
+                new_snap = current_snapshots[session_id]
+                changes = diff_sessions(old_snap, new_snap)
+
+                if changes:
                     session = next((s for s in current_sessions if s.id == session_id), None)
                     if session:
+                        # Build full session dict for reconciliation
+                        full_session = session_tracker.to_dict(session)
                         sse_manager.broadcast({
-                            'session_id': session.id,
-                            'started_at': session.started_at.isoformat(),
-                            'phase': session.phase,
-                            'domains_involved': session.domains_involved
-                        }, event_type='session_created')
+                            'session_id': session_id,
+                            'changes': changes,
+                            'full_session': full_session
+                        }, event_type='session_updated')
 
-                last_session_ids = current_ids
+            # Update snapshots for next iteration
+            last_session_snapshots = current_snapshots
 
     thread = threading.Thread(target=scan_loop, daemon=True)
     thread.start()
@@ -180,7 +245,17 @@ def create_app(local_only: bool = True) -> Flask:
     app = Flask(__name__, static_folder=web_dir)
 
     # Discover project paths for sessions
-    project_paths = get_project_paths()
+    # By default, only show sessions from the current working directory
+    # This scopes the dashboard to the current Claude Code terminal session
+    cwd = os.getcwd()
+    cwd_handoffs = os.path.join(cwd, '.claude', 'handoffs')
+
+    if os.path.isdir(cwd_handoffs):
+        # Primary: current working directory has handoffs
+        project_paths = [cwd]
+    else:
+        # Fallback: discover from common locations
+        project_paths = get_project_paths()
 
     # Check for debug mode from environment
     debug_mode = os.environ.get('DASHBOARD_DEBUG', '').lower() in ('1', 'true', 'yes')
@@ -226,9 +301,57 @@ def create_app(local_only: bool = True) -> Flask:
     session_tracker.scan()
     print(f"Found {len(session_tracker.get_all_sessions())} sessions")
 
-    # Start background session scanner for real-time discovery
-    scanner_thread = start_session_scanner(session_tracker, sse_manager, interval=3.0)
-    print("Started session scanner (3s interval)")
+    # Start background session scanner for periodic reconciliation (fallback)
+    scanner_thread = start_session_scanner(session_tracker, sse_manager, interval=5.0)
+    print("Started session scanner (5s interval for reconciliation)")
+
+    # Start instant session watcher for real-time detection
+    def on_session_file_event(event: SessionFileEvent):
+        """Handle session file events for instant SSE broadcast."""
+        if debug_mode:
+            print(f"[SessionWatcher] {event.event_type}: {event.session_id}", flush=True)
+
+        if event.event_type == 'created':
+            # Rescan to pick up the new session
+            session_tracker.scan()
+            session = session_tracker.get_session(event.session_id)
+            if session:
+                sse_manager.broadcast({
+                    'session_id': session.id,
+                    'started_at': session.started_at.isoformat(),
+                    'phase': session.phase,
+                    'domains_involved': session.domains_involved,
+                    'full_session': session_tracker.to_dict(session)
+                }, event_type='session_created')
+
+        elif event.event_type == 'modified':
+            # Rescan and get updated session
+            session_tracker.scan()
+            session = session_tracker.get_session(event.session_id)
+            if session:
+                full_session = session_tracker.to_dict(session)
+                sse_manager.broadcast({
+                    'session_id': event.session_id,
+                    'changes': {'modified': True},
+                    'full_session': full_session
+                }, event_type='session_updated')
+
+        elif event.event_type == 'deleted':
+            # Remove from tracker
+            with session_tracker.lock:
+                if event.session_id in session_tracker.sessions:
+                    del session_tracker.sessions[event.session_id]
+            sse_manager.broadcast({
+                'session_id': event.session_id
+            }, event_type='session_deleted')
+
+    session_watcher = SessionWatcher(
+        project_paths=project_paths,
+        on_session_event=on_session_file_event,
+        poll_interval=0.5  # Fast polling for near-instant detection
+    )
+    session_watcher.start()
+    print(f"Started instant session watcher (0.5s polling) for {project_paths}")
 
     # Initialize auth
     auth_manager.initialize(local_only=local_only)
@@ -244,6 +367,7 @@ def create_app(local_only: bool = True) -> Flask:
     app.config['event_store'] = event_store
     app.config['sse_manager'] = sse_manager
     app.config['auth_manager'] = auth_manager
+    app.config['session_watcher'] = session_watcher
     app.config['transcript_reader'] = transcript_reader
     app.config['transcript_watcher'] = transcript_watcher
     app.config['plugin_paths'] = plugin_paths
@@ -395,24 +519,77 @@ def create_app(local_only: bool = True) -> Flask:
             'debug_mode': debug_mode
         })
 
-    # Version endpoint - reads from plugin.json
+    # Version endpoint - reads from plugin.json and checks for updates
     @app.route('/api/version')
     def get_version():
-        """Return dashboard version from plugin.json."""
+        """Return dashboard version and check for newer source version."""
         import json
+        from pathlib import Path
+
+        # Get running version (from where server is actually running)
         plugin_json_path = os.path.join(
             os.path.dirname(__file__), '..', '.claude-plugin', 'plugin.json'
         )
+        running_version = 'unknown'
+        running_path = os.path.dirname(os.path.dirname(__file__))
+
         try:
             with open(plugin_json_path, 'r') as f:
                 plugin_data = json.load(f)
-            return {
-                'name': plugin_data.get('name', 'dashboard'),
-                'version': plugin_data.get('version', 'unknown'),
-                'description': plugin_data.get('description', '')
-            }
-        except Exception as e:
-            return {'name': 'dashboard', 'version': 'unknown', 'error': str(e)}
+            running_version = plugin_data.get('version', 'unknown')
+        except Exception:
+            pass
+
+        # Check if running from cache (contains /cache/ in path)
+        is_cached = '/cache/' in running_path or '\\cache\\' in running_path
+
+        # Try to find source version from marketplace
+        source_version = None
+        source_path = None
+
+        # Look for marketplace source directories
+        search_paths = [
+            os.getcwd(),  # Current working directory
+            os.path.expanduser('~/GitHub/claude-marketplace'),
+            os.path.expanduser('~/Projects/claude-marketplace'),
+            os.path.expanduser('~/code/claude-marketplace'),
+        ]
+
+        for base_path in search_paths:
+            marketplace_json = os.path.join(base_path, '.claude-plugin', 'marketplace.json')
+            if os.path.isfile(marketplace_json):
+                try:
+                    with open(marketplace_json, 'r') as f:
+                        marketplace = json.load(f)
+                    for plugin in marketplace.get('plugins', []):
+                        if plugin.get('name') == 'dashboard':
+                            source_version = plugin.get('version')
+                            source_path = base_path
+                            break
+                    if source_version:
+                        break
+                except Exception:
+                    pass
+
+        # Determine if update is available
+        update_available = False
+        if source_version and running_version != 'unknown':
+            try:
+                from packaging.version import Version
+                update_available = Version(source_version) > Version(running_version)
+            except Exception:
+                # Simple string comparison fallback
+                update_available = source_version != running_version
+
+        return {
+            'name': 'dashboard',
+            'version': running_version,
+            'source_version': source_version,
+            'update_available': update_available,
+            'is_cached': is_cached,
+            'running_path': running_path,
+            'source_path': source_path
+        }
 
     # Plugin paths debugging endpoint
     @app.route('/api/plugin-paths')
@@ -498,6 +675,77 @@ def create_app(local_only: bool = True) -> Flask:
 
         threading.Thread(target=restart, daemon=True).start()
         return {'status': 'restarting'}
+
+    @app.route('/api/server/update', methods=['POST'])
+    def update_server():
+        """Update and restart from source directory if newer version available."""
+        import json
+        import subprocess
+
+        if not local_only:
+            return {'error': 'Server control only available locally'}, 403
+
+        # Find source directory
+        search_paths = [
+            os.getcwd(),
+            os.path.expanduser('~/GitHub/claude-marketplace'),
+            os.path.expanduser('~/Projects/claude-marketplace'),
+            os.path.expanduser('~/code/claude-marketplace'),
+        ]
+
+        source_path = None
+        source_version = None
+
+        for base_path in search_paths:
+            marketplace_json = os.path.join(base_path, '.claude-plugin', 'marketplace.json')
+            if os.path.isfile(marketplace_json):
+                try:
+                    with open(marketplace_json, 'r') as f:
+                        marketplace = json.load(f)
+                    for plugin in marketplace.get('plugins', []):
+                        if plugin.get('name') == 'dashboard':
+                            source_version = plugin.get('version')
+                            source_path = base_path
+                            break
+                    if source_version:
+                        break
+                except Exception:
+                    pass
+
+        if not source_path:
+            return {'error': 'Could not find marketplace source directory'}, 404
+
+        dashboard_source = os.path.join(source_path, 'plugins', 'dashboard')
+        run_script = os.path.join(dashboard_source, 'run_dashboard.py')
+
+        if not os.path.isfile(run_script):
+            return {'error': f'run_dashboard.py not found at {run_script}'}, 404
+
+        def restart_from_source():
+            time.sleep(0.5)  # Give response time to send
+            _shutdown_event.set()
+
+            # Start new process from source directory
+            env = os.environ.copy()
+            env['PYTHONPATH'] = dashboard_source
+
+            # Start new dashboard from source
+            subprocess.Popen(
+                [sys.executable, run_script, '--standalone', '--open-browser'],
+                cwd=dashboard_source,
+                env=env,
+                start_new_session=True
+            )
+
+            # Kill current process
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        threading.Thread(target=restart_from_source, daemon=True).start()
+        return {
+            'status': 'updating',
+            'source_path': dashboard_source,
+            'source_version': source_version
+        }
 
     return app
 

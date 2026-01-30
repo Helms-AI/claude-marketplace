@@ -33,9 +33,48 @@ const Dashboard = {
             const versionEl = document.getElementById('dashboardVersion');
             if (versionEl && data.version) {
                 versionEl.textContent = `Dashboard v${data.version}`;
+
+                // Check if update is available
+                if (data.update_available && data.source_version) {
+                    versionEl.classList.add('update-available');
+                    versionEl.title = `Click to update to v${data.source_version}`;
+                    versionEl.style.cursor = 'pointer';
+
+                    // Add update indicator
+                    const indicator = document.createElement('span');
+                    indicator.className = 'update-indicator';
+                    indicator.textContent = '↑';
+                    versionEl.appendChild(indicator);
+
+                    // Click to update
+                    versionEl.addEventListener('click', () => this.promptUpdate(data));
+                }
             }
         } catch (e) {
             console.error('Error loading version:', e);
+        }
+    },
+
+    async promptUpdate(versionData) {
+        const confirmed = confirm(
+            `Update available!\n\n` +
+            `Current: v${versionData.version}\n` +
+            `Available: v${versionData.source_version}\n\n` +
+            `The dashboard will restart from the source directory.\n` +
+            `Continue?`
+        );
+
+        if (confirmed) {
+            try {
+                await fetch('/api/server/update', { method: 'POST' });
+                // Page will reload when new server starts
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            } catch (e) {
+                console.error('Update failed:', e);
+                alert('Update failed. Check console for details.');
+            }
         }
     },
 
@@ -249,6 +288,20 @@ const Dashboard = {
         if (data.type === 'session_created') {
             console.log('New session detected:', data.data.session_id);
             Sessions.addSession(data.data);
+            return;
+        }
+
+        // Handle session updated (real-time state changes)
+        if (data.type === 'session_updated') {
+            console.log('Session updated:', data.data.session_id, data.data.changes);
+            Sessions.updateSession(data.data);
+            return;
+        }
+
+        // Handle session deleted
+        if (data.type === 'session_deleted') {
+            console.log('Session deleted:', data.data.session_id);
+            Sessions.removeSession(data.data.session_id);
             return;
         }
 

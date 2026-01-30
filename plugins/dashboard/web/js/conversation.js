@@ -453,38 +453,90 @@ const Conversation = {
         const name = tool.name || 'Unknown Tool';
         const input = tool.input || {};
 
-        // Format input preview
-        let inputPreview = '';
-        if (typeof input === 'object') {
-            const keys = Object.keys(input);
-            if (keys.length > 0) {
-                // Show first few params
-                const previewKeys = keys.slice(0, 2);
-                inputPreview = previewKeys.map(k => {
-                    let val = input[k];
-                    if (typeof val === 'string') {
-                        val = val.length > 50 ? val.substring(0, 50) + '...' : val;
-                    } else if (typeof val === 'object') {
-                        val = '[object]';
-                    }
-                    return `${k}: ${val}`;
-                }).join(', ');
-                if (keys.length > 2) {
-                    inputPreview += ` (+${keys.length - 2} more)`;
-                }
+        const keys = typeof input === 'object' ? Object.keys(input) : [];
+        const paramCount = keys.length;
+
+        // For single parameter tools, show the value inline in the header
+        let headerContent = '';
+        let showExpandable = true;
+
+        if (paramCount === 1) {
+            // Single param: show value in header
+            const key = keys[0];
+            let val = input[key];
+            if (typeof val === 'string') {
+                // Truncate long values for header display
+                val = val.length > 80 ? val.substring(0, 80) + '...' : val;
+                headerContent = `<span class="tool-inline-param">${this.escapeHtml(val)}</span>`;
+            } else if (typeof val === 'object') {
+                // For objects, still show expandable
+                headerContent = `<span class="tool-param-count">1 param</span>`;
+            } else {
+                headerContent = `<span class="tool-inline-param">${this.escapeHtml(String(val))}</span>`;
             }
+            // Only show expandable if value was truncated or is complex
+            showExpandable = typeof val === 'object' || (typeof input[key] === 'string' && input[key].length > 80);
+        } else if (paramCount > 1) {
+            // Multiple params: show count badge
+            headerContent = `<span class="tool-param-count">${paramCount} params</span>`;
         }
 
+        // Format full input details for expandable body
+        let inputDetails = '';
+        if (paramCount > 0) {
+            inputDetails = keys.map(k => {
+                let val = input[k];
+                if (typeof val === 'string') {
+                    // Truncate very long values but keep more than preview
+                    val = val.length > 500 ? val.substring(0, 500) + '...' : val;
+                } else if (typeof val === 'object') {
+                    try {
+                        val = JSON.stringify(val, null, 2);
+                        if (val.length > 500) val = val.substring(0, 500) + '...';
+                    } catch {
+                        val = '[object]';
+                    }
+                }
+                return `<div class="tool-param-row"><span class="tool-param-key">${this.escapeHtml(k)}:</span> <span class="tool-param-value">${this.escapeHtml(String(val))}</span></div>`;
+            }).join('');
+        }
+
+        // For single simple params that aren't truncated, don't make it expandable
+        if (paramCount === 1 && !showExpandable) {
+            return `
+                <div class="tool-call-card tool-call-simple">
+                    <div class="tool-call-header">
+                        <span class="tool-icon">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                            </svg>
+                        </span>
+                        <span class="tool-name">${this.escapeHtml(name)}</span>
+                        ${headerContent}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Expandable version for multiple params or complex single params
         return `
-            <div class="tool-call-card">
-                <span class="tool-icon">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
-                    </svg>
-                </span>
-                <span class="tool-name">${this.escapeHtml(name)}</span>
-                ${inputPreview ? `<span class="tool-params">${this.escapeHtml(inputPreview)}</span>` : ''}
-            </div>
+            <details class="tool-call-card">
+                <summary class="tool-call-header">
+                    <span class="tool-icon">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                        </svg>
+                    </span>
+                    <span class="tool-name">${this.escapeHtml(name)}</span>
+                    ${headerContent}
+                    <span class="tool-expand-icon">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </span>
+                </summary>
+                ${inputDetails ? `<div class="tool-call-body">${inputDetails}</div>` : '<div class="tool-call-body tool-call-empty">No parameters</div>'}
+            </details>
         `;
     },
 
