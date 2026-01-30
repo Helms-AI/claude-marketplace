@@ -115,6 +115,33 @@ const Sessions = {
         return initials[domain] || domain.substring(0, 2).toUpperCase();
     },
 
+    /**
+     * Extract unique domains from the Conversation's agent metadata.
+     * Maps built-in agent types to domains as well.
+     */
+    extractDomainsFromAgentMetadata() {
+        const domains = [];
+        const agentMetadata = Conversation.agentMetadata || {};
+
+        // Map built-in agent types to domains
+        const typeToDomain = {
+            'Explore': 'pm',
+            'Plan': 'architecture',
+            'Bash': 'devops',
+            'general-purpose': 'pm'
+        };
+
+        for (const [agentId, info] of Object.entries(agentMetadata)) {
+            if (info.domain) {
+                domains.push(info.domain);
+            } else if (info.type && typeToDomain[info.type]) {
+                domains.push(typeToDomain[info.type]);
+            }
+        }
+
+        return [...new Set(domains)]; // Return unique domains
+    },
+
     async selectSession(sessionId) {
         const previousSessionId = this.data.currentSessionId;
         this.data.currentSessionId = sessionId;
@@ -123,6 +150,9 @@ const Sessions = {
         document.querySelectorAll('.session-item').forEach(item => {
             item.classList.toggle('active', item.dataset.sessionId === sessionId);
         });
+
+        // Set the task session (clears previous tasks)
+        Tasks.setSession(sessionId);
 
         // Unwatch previous session if any
         if (previousSessionId && previousSessionId !== sessionId) {
@@ -147,8 +177,16 @@ const Sessions = {
             this.data.events = conversationResponse.events || [];
             this.data.transcript = transcriptResponse;
 
+            // Set agent metadata from transcript response for proper agent naming/coloring
+            if (transcriptResponse.agent_metadata) {
+                Conversation.setAgentMetadata(transcriptResponse.agent_metadata);
+            }
+
             this.renderConversationHeader(conversationResponse.session);
             Conversation.render(this.data.events, conversationResponse.session, transcriptResponse);
+
+            // Extract tasks from existing tool calls in the transcript
+            this.initializeTasksFromTranscript(transcriptResponse);
 
             // Start watching this session for real-time updates
             try {
@@ -161,11 +199,52 @@ const Sessions = {
         }
     },
 
+    /**
+     * Initialize tasks from existing tool calls in the transcript
+     * @param {Object} transcriptResponse - The transcript response with messages
+     */
+    initializeTasksFromTranscript(transcriptResponse) {
+        const allToolCalls = [];
+
+        // Collect tool calls from main messages
+        const messages = transcriptResponse.messages || [];
+        for (const msg of messages) {
+            if (msg.tool_calls && Array.isArray(msg.tool_calls)) {
+                allToolCalls.push(...msg.tool_calls);
+            }
+        }
+
+        // Collect tool calls from merged timeline if available
+        const timeline = transcriptResponse.merged_timeline || [];
+        for (const entry of timeline) {
+            const msg = entry.message;
+            if (msg && msg.tool_calls && Array.isArray(msg.tool_calls)) {
+                allToolCalls.push(...msg.tool_calls);
+            }
+        }
+
+        // Filter for task-related tool calls and process them
+        const taskToolCalls = allToolCalls.filter(tc =>
+            tc.name === 'TaskCreate' || tc.name === 'TaskUpdate' || tc.name === 'TaskList' || tc.name === 'TaskGet'
+        );
+
+        if (taskToolCalls.length > 0) {
+            Tasks.processTranscriptToolCalls(taskToolCalls);
+        }
+    },
+
     renderConversationHeader(session) {
         const header = document.getElementById('conversationHeader');
 
+        // Collect domains from session metadata AND agent metadata
+        const sessionDomains = session.domains_involved || [];
+        const agentDomains = this.extractDomainsFromAgentMetadata();
+
+        // Merge and dedupe domains
+        const allDomains = [...new Set([...sessionDomains, ...agentDomains])];
+
         // Build domains badges
-        const domainsBadges = (session.domains_involved || [])
+        const domainsBadges = allDomains
             .map(d => {
                 const initial = this.getDomainInitial(d);
                 return `<span class="header-domain domain-${d.replace(/_/g, '-')}" title="${d}">${initial}</span>`;

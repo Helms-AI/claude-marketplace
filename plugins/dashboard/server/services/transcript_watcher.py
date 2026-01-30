@@ -8,6 +8,8 @@ import time
 from datetime import datetime
 from typing import Callable, Optional
 
+from .task_state_extractor import TaskStateExtractor
+
 
 class TranscriptWatcher:
     """Watches transcript files for new content and broadcasts via SSE.
@@ -51,6 +53,9 @@ class TranscriptWatcher:
         self._running = False
         self._thread: Optional[threading.Thread] = None
         self._broadcast_count = 0
+
+        # Task state extractors per session
+        self._task_extractors: dict[str, TaskStateExtractor] = {}
 
     def _log(self, msg: str) -> None:
         """Log a debug message if debug mode is enabled."""
@@ -112,6 +117,8 @@ class TranscriptWatcher:
                 'subagent_paths': subagent_paths,
                 'subagent_positions': subagent_positions
             }
+            # Create a task extractor for this session
+            self._task_extractors[session_id] = TaskStateExtractor()
             self._log(f"Now watching {len(self._watches)} session(s)")
 
         return True
@@ -128,6 +135,9 @@ class TranscriptWatcher:
         with self._lock:
             if session_id in self._watches:
                 del self._watches[session_id]
+                # Clean up task extractor
+                if session_id in self._task_extractors:
+                    del self._task_extractors[session_id]
                 return True
             return False
 
@@ -285,6 +295,16 @@ class TranscriptWatcher:
                 'message': msg_dict,
                 'timestamp': msg_dict.get('timestamp', datetime.now().isoformat())
             }, 'transcript_message')
+
+            # Process Task* tool calls for task state tracking
+            task_extractor = self._task_extractors.get(session_id)
+            if task_extractor:
+                for tool_call in msg_dict.get('tool_calls', []):
+                    task_event = task_extractor.process_tool_call(tool_call)
+                    if task_event:
+                        task_event['session_id'] = session_id
+                        self._log(f"Broadcasting task event: {task_event.get('event')}")
+                        self.broadcast_callback(task_event, 'task_state_change')
 
             return msg_dict
 

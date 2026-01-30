@@ -1772,6 +1772,55 @@ body {
     border-color: color-mix(in srgb, var(--accent-color) 20%, var(--border-color));
 }
 
+/* Consecutive Message Grouping */
+.message-avatar-spacer {
+    width: 36px;
+    height: 0;
+    flex-shrink: 0;
+}
+
+.chat-message.consecutive {
+    margin-top: calc(-1 * var(--spacing-md) + var(--spacing-xs));
+}
+
+.chat-message.consecutive .message-header {
+    display: none;
+}
+
+.message-time-inline {
+    display: none;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    opacity: 0.6;
+    margin-left: auto;
+    padding-left: var(--spacing-sm);
+    white-space: nowrap;
+}
+
+.chat-message.consecutive:hover .message-time-inline {
+    display: inline;
+}
+
+.chat-message.consecutive .message-content {
+    border-top-left-radius: var(--radius-xs);
+    border-top-right-radius: var(--radius-xs);
+    margin-top: 2px;
+}
+
+.chat-message.group-start .message-content {
+    border-bottom-left-radius: var(--radius-xs);
+    border-bottom-right-radius: var(--radius-xs);
+}
+
+.user-message.consecutive {
+    flex-direction: row-reverse;
+}
+
+.user-message.consecutive .message-avatar-spacer {
+    order: -1;
+}
+
 /* Content Elements */
 .skill-invoke {
     display: inline-flex;
@@ -2476,7 +2525,7 @@ body {
 .subagent-indent {
     margin-left: var(--spacing-xl);
     padding-left: var(--spacing-md);
-    border-left: 2px solid var(--domain-architecture);
+    border-left: 2px solid var(--agent-color, var(--domain-architecture));
 }
 
 /* Subagent context markers */
@@ -2508,11 +2557,11 @@ body {
 .subagent-context-line {
     flex: 1;
     height: 1px;
-    background: linear-gradient(90deg, var(--domain-architecture) 0%, transparent 100%);
+    background: linear-gradient(90deg, var(--agent-color, var(--domain-architecture)) 0%, transparent 100%);
 }
 
 .subagent-context-end .subagent-context-line {
-    background: linear-gradient(90deg, transparent 0%, var(--domain-architecture) 100%);
+    background: linear-gradient(90deg, transparent 0%, var(--agent-color, var(--domain-architecture)) 100%);
 }
 
 .subagent-context-label {
@@ -2520,12 +2569,12 @@ body {
     align-items: center;
     gap: var(--spacing-xs);
     padding: var(--spacing-xs) var(--spacing-sm);
-    background: color-mix(in srgb, var(--domain-architecture) 10%, var(--bg-primary));
-    border: 1px solid color-mix(in srgb, var(--domain-architecture) 30%, var(--border-color));
+    background: color-mix(in srgb, var(--agent-color, var(--domain-architecture)) 10%, var(--bg-primary));
+    border: 1px solid color-mix(in srgb, var(--agent-color, var(--domain-architecture)) 30%, var(--border-color));
     border-radius: var(--radius-sm);
     font-family: var(--font-mono-display);
     font-size: var(--font-size-xs);
-    color: var(--domain-architecture);
+    color: var(--agent-color, var(--domain-architecture));
     white-space: nowrap;
 }
 
@@ -2558,10 +2607,10 @@ body {
 .subagent-badge {
     font-size: 9px;
     padding: 2px 6px;
-    background: color-mix(in srgb, var(--domain-architecture) 15%, var(--bg-tertiary));
-    border: 1px dashed var(--domain-architecture);
+    background: color-mix(in srgb, var(--agent-color, var(--domain-architecture)) 15%, var(--bg-tertiary));
+    border: 1px dashed var(--agent-color, var(--domain-architecture));
     border-radius: 3px;
-    color: var(--domain-architecture);
+    color: var(--agent-color, var(--domain-architecture));
     font-family: var(--font-mono-display);
     text-transform: uppercase;
     letter-spacing: 0.3px;
@@ -2654,6 +2703,395 @@ body {
 .header-stat.value-changed {
     border-radius: var(--radius-sm);
 }
+
+/* ============================================
+   Task List Overlay
+   Real-time task tracking panel
+   ============================================ */
+
+/* Task Overlay Container */
+.tasks-overlay {
+    position: fixed;
+    bottom: 0;
+    left: var(--spacing-lg);
+    width: 360px;
+    max-height: 400px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-bottom: none;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    transform: translateY(calc(100% - 44px));
+    transition: transform var(--transition-normal);
+}
+
+.tasks-overlay.tasks-visible {
+    transform: translateY(0);
+}
+
+.tasks-overlay.tasks-pinned {
+    position: relative;
+    bottom: auto;
+    left: auto;
+    width: 100%;
+    max-height: 300px;
+    margin-top: var(--spacing-md);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    transform: none;
+}
+
+.tasks-overlay.tasks-hidden {
+    display: none;
+}
+
+/* Task Header */
+.tasks-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+    flex-shrink: 0;
+}
+
+.tasks-overlay.tasks-pinned .tasks-header {
+    cursor: default;
+    border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
+.tasks-header-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.tasks-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-family: var(--font-mono-display);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.tasks-title-icon {
+    color: var(--success-color);
+}
+
+.tasks-count {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    padding: 2px 6px;
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+}
+
+/* Progress Bar */
+.tasks-progress {
+    flex: 1;
+    height: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 0 var(--spacing-md);
+    max-width: 100px;
+}
+
+.tasks-progress-bar {
+    height: 100%;
+    background: var(--success-color);
+    border-radius: 2px;
+    transition: width var(--transition-normal);
+}
+
+/* Header Actions */
+.tasks-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.tasks-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.tasks-btn:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.tasks-btn.active {
+    background: var(--accent-color);
+    color: white;
+}
+
+.tasks-btn svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Task List Content */
+.tasks-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-sm);
+}
+
+.tasks-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-lg);
+    color: var(--text-muted);
+    font-size: var(--font-size-sm);
+    text-align: center;
+}
+
+.tasks-empty-icon {
+    font-size: 24px;
+    margin-bottom: var(--spacing-sm);
+    opacity: 0.5;
+}
+
+/* Task Item */
+.task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-xs);
+    transition: all var(--transition-fast);
+    animation: taskSlideIn 0.3s ease-out;
+}
+
+@keyframes taskSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.task-item:last-child {
+    margin-bottom: 0;
+}
+
+.task-item:hover {
+    border-color: var(--accent-color);
+}
+
+.task-item.task-new {
+    animation: taskSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Task Status Checkbox */
+.task-checkbox {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 2px;
+    transition: all var(--transition-fast);
+}
+
+/* Status-specific checkbox styles */
+.task-status-pending .task-checkbox {
+    border-color: var(--text-muted);
+    background: transparent;
+}
+
+.task-status-in_progress .task-checkbox {
+    border-color: var(--warning-color);
+    background: color-mix(in srgb, var(--warning-color) 15%, transparent);
+}
+
+.task-status-in_progress .task-checkbox::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border: 2px solid var(--warning-color);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: taskSpinner 1s linear infinite;
+}
+
+@keyframes taskSpinner {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.task-status-completed .task-checkbox {
+    border-color: var(--success-color);
+    background: var(--success-color);
+}
+
+.task-status-completed .task-checkbox::after {
+    content: '';
+    width: 6px;
+    height: 10px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg) translateY(-1px);
+}
+
+/* Task Body */
+.task-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.task-subject {
+    font-family: var(--font-mono-display);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.task-status-completed .task-subject {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.task-active-form {
+    font-size: var(--font-size-xs);
+    color: var(--warning-color);
+    margin-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.task-active-form::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--warning-color);
+    animation: taskPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes taskPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+}
+
+/* Task Dependencies */
+.task-deps {
+    display: flex;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-xs);
+    flex-wrap: wrap;
+}
+
+.task-dep-badge {
+    font-size: 9px;
+    padding: 1px 4px;
+    background: var(--bg-tertiary);
+    border-radius: 2px;
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.task-dep-badge.blocked {
+    background: color-mix(in srgb, var(--error-color) 15%, var(--bg-tertiary));
+    color: var(--error-color);
+}
+
+/* Task Highlight Animation */
+.task-item.task-highlight {
+    animation: taskHighlight 0.6s ease-out;
+}
+
+@keyframes taskHighlight {
+    0% {
+        background: color-mix(in srgb, var(--accent-color) 30%, var(--bg-primary));
+        transform: scale(1.02);
+    }
+    100% {
+        background: var(--bg-primary);
+        transform: scale(1);
+    }
+}
+
+/* Task Complete Animation */
+.task-item.task-completing {
+    animation: taskComplete 0.5s ease-out forwards;
+}
+
+@keyframes taskComplete {
+    0% {
+        background: var(--bg-primary);
+    }
+    50% {
+        background: color-mix(in srgb, var(--success-color) 20%, var(--bg-primary));
+    }
+    100% {
+        background: var(--bg-primary);
+    }
+}
+
+/* Collapsed State */
+.tasks-overlay.tasks-collapsed .tasks-content {
+    display: none;
+}
+
+.tasks-overlay.tasks-collapsed {
+    transform: translateY(calc(100% - 44px));
+}
+
+.tasks-overlay.tasks-pinned.tasks-collapsed {
+    max-height: 44px;
+    transform: none;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .tasks-overlay {
+        width: 100%;
+        left: 0;
+        border-radius: var(--radius-md) var(--radius-md) 0 0;
+    }
+
+    .tasks-progress {
+        display: none;
+    }
+}
+
+/* ============================================
+   End Task List Overlay
+   ============================================ */
 
 /* Responsive Adjustments */
 @media (max-width: 768px) {

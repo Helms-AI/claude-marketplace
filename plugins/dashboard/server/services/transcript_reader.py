@@ -413,6 +413,77 @@ class TranscriptReader:
             'content': message.content
         }
 
+    def extract_agent_types(
+        self,
+        main_messages: list[TranscriptMessage],
+        subagent_ids: list[str] = None
+    ) -> dict[str, dict]:
+        """Extract agent_id -> agent_type mapping from Task tool calls.
+
+        When the main conversation invokes a subagent via the Task tool, the tool_use
+        block contains a subagent_type field. By matching Task tool calls with
+        subagent IDs (from transcript directories), we can map agent_id to proper
+        names and domains.
+
+        Args:
+            main_messages: List of messages from the main conversation.
+            subagent_ids: List of agent IDs from subagent transcripts (optional).
+                          If provided, matches Task calls to agents by order.
+
+        Returns:
+            Dict mapping agent_id to metadata:
+            {
+                'a9af56c': {
+                    'type': 'Explore',
+                    'name': 'Explore',
+                    'domain': None,  # or 'frontend' if type is 'frontend:frontend-lead'
+                    'description': 'Search for files'
+                }
+            }
+        """
+        agent_types = {}
+
+        # Collect all Task tool calls in order
+        task_calls = []
+        for msg in main_messages:
+            if msg.role == 'assistant':
+                for tool_call in msg.tool_calls:
+                    if tool_call.get('name') == 'Task':
+                        input_data = tool_call.get('input', {})
+                        subagent_type = input_data.get('subagent_type', '')
+                        description = input_data.get('description', '')
+
+                        # Parse domain from type like "frontend:frontend-lead"
+                        domain = None
+                        agent_name = subagent_type
+                        if ':' in subagent_type:
+                            parts = subagent_type.split(':', 1)
+                            domain = parts[0]
+                            agent_name = parts[1] if len(parts) > 1 else subagent_type
+
+                        task_calls.append({
+                            'tool_id': tool_call.get('id', ''),
+                            'type': subagent_type,
+                            'name': agent_name,
+                            'domain': domain,
+                            'description': description
+                        })
+
+        # If we have subagent IDs, match them with Task calls by order
+        if subagent_ids and task_calls:
+            # Match Task calls to subagent IDs by order of appearance
+            for i, agent_id in enumerate(subagent_ids):
+                if i < len(task_calls):
+                    task_info = task_calls[i]
+                    agent_types[agent_id] = {
+                        'type': task_info['type'],
+                        'name': task_info['name'],
+                        'domain': task_info['domain'],
+                        'description': task_info['description']
+                    }
+
+        return agent_types
+
     def get_recent_transcripts(self, project_path: str, limit: int = 10) -> list[str]:
         """Get the most recently modified transcript files.
 

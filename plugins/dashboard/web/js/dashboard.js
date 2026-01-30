@@ -25,6 +25,14 @@ const Dashboard = {
         Skills.init();
         Sessions.init();
         Graph.init();
+        Tasks.init();
+
+        // Check URL hash for initial view
+        const hash = window.location.hash.slice(1); // Remove #
+        const validViews = ['agents', 'skills', 'sessions', 'graph'];
+        if (hash && validViews.includes(hash)) {
+            this.switchView(hash);
+        }
     },
 
     async loadVersion() {
@@ -107,9 +115,23 @@ const Dashboard = {
                 this.switchView(view);
             });
         });
+
+        // Handle browser back/forward navigation
+        window.addEventListener('hashchange', () => {
+            const hash = window.location.hash.slice(1);
+            const validViews = ['agents', 'skills', 'sessions', 'graph'];
+            if (hash && validViews.includes(hash) && hash !== this.state.currentView) {
+                this.switchView(hash, false); // Don't update hash again
+            }
+        });
     },
 
-    switchView(viewName) {
+    switchView(viewName, updateHash = true) {
+        // Update URL hash without triggering hashchange loop
+        if (updateHash) {
+            history.replaceState(null, '', `#${viewName}`);
+        }
+
         // Update nav buttons
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.classList.toggle('active', btn.dataset.view === viewName);
@@ -312,6 +334,12 @@ const Dashboard = {
             if (msgData.session_id === Sessions.data.currentSessionId) {
                 Conversation.addTranscriptMessage(msgData.message, msgData.source);
             }
+            return;
+        }
+
+        // Handle task state change events
+        if (data.type === 'task_state_change') {
+            Tasks.handleTaskEvent(data.data);
             return;
         }
 

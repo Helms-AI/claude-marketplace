@@ -2,6 +2,60 @@
 
 Enterprise marketplace for sharing Claude Code plugins across organizations. Features a comprehensive multi-domain plugin ecosystem with cross-domain orchestration.
 
+---
+
+## ✨ New: Real-Time Dashboard (v1.7.0)
+
+**Visualize your Claude Code sessions in real-time with the new Dashboard plugin.**
+
+```bash
+/dashboard
+```
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Agents-58-blue" alt="58 Agents">
+  <img src="https://img.shields.io/badge/Skills-77-green" alt="77 Skills">
+  <img src="https://img.shields.io/badge/Domains-10-orange" alt="10 Domains">
+  <img src="https://img.shields.io/badge/Real--time-SSE-purple" alt="Real-time SSE">
+</p>
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **Agent Explorer** | Browse 58 agents across 10 domains with search & filter |
+| **Skill Browser** | Explore 77 skills with collapsible domain groups |
+| **Session Viewer** | Live conversation streaming with inline subagent threads |
+| **Task List Overlay** | Real-time task progress tracking (pending → in_progress → completed) |
+| **Domain Graph** | D3.js visualization of cross-domain interactions |
+| **Handoff Timeline** | Visual swimlane view of domain handoffs |
+
+### Task List Overlay
+
+Track Claude's task progress in real-time with the new Task List panel:
+
+```
+┌─────────────────────────────────────────┐
+│ ✓ Tasks          2/5  ████░░░░  📌 ▼   │
+├─────────────────────────────────────────┤
+│ ◯ Implement user auth                   │
+│ ⟳ Implementing login flow...            │
+│ ○ Add logout button                     │
+│ ✓ Set up database                       │
+│ ✓ Create API endpoints                  │
+└─────────────────────────────────────────┘
+```
+
+- **◯** Pending tasks
+- **⟳** In-progress with live status text
+- **✓** Completed tasks
+- Pin below conversation or float as overlay
+- Progress bar shows completion percentage
+
+**Launch:** `/dashboard` or visit `http://localhost:24282`
+
+---
+
 ## Quick Start
 
 ### Add the Marketplace
@@ -13,6 +67,9 @@ Enterprise marketplace for sharing Claude Code plugins across organizations. Fea
 ### Install Plugins
 
 ```bash
+# Install the real-time dashboard (recommended first!)
+/plugin install dashboard@helms-ai-marketplace
+
 # Install the PM broker for cross-domain orchestration
 /plugin install pm@helms-ai-marketplace
 
@@ -48,8 +105,9 @@ Enterprise marketplace for sharing Claude Code plugins across organizations. Fea
 | **[data](./plugins/data)** | 1.0.0 | data | 5 | 7 | Data modeling and pipelines |
 | **[security](./plugins/security)** | 1.0.0 | security | 5 | 7 | Security audits and compliance |
 | **[documentation](./plugins/documentation)** | 1.0.0 | documentation | 5 | 7 | Technical writing and docs |
+| **[dashboard](./plugins/dashboard)** | 1.7.0 | observability | - | 1 | Real-time web dashboard with task tracking |
 
-**Total: 10 plugins, 58 agents, 76 skills**
+**Total: 11 plugins, 58 agents, 77 skills**
 
 ## Architecture Overview
 
@@ -233,6 +291,30 @@ API docs, guides, architecture documentation, and runbooks.
 
 **Skills:** `/docs-orchestrator`, `/docs-team-session`, `/docs-api-writer`, `/docs-guide-writer`, `/docs-architecture-documenter`, `/docs-runbook-writer`, `/docs-onboarding-creator`
 
+### Dashboard Plugin (v1.7.0)
+
+Real-time web dashboard for visualizing the marketplace ecosystem.
+
+| Feature | Description |
+|---------|-------------|
+| Agent Explorer | Browse all 58 agents with domain filtering |
+| Skill Browser | Explore 77 skills with collapsible groups |
+| Session Viewer | Live conversation with inline subagents |
+| Task List Overlay | Real-time task progress tracking |
+| Domain Graph | D3.js interactive visualization |
+| Handoff Timeline | Visual swimlane of domain handoffs |
+
+**Launch Command:** `/dashboard`
+
+**URL:** `http://localhost:24282`
+
+**Tech Stack:**
+- Backend: Flask with SSE (Server-Sent Events)
+- Frontend: Vanilla JS, D3.js for graphs
+- Real-time: Transcript file watching with live updates
+
+See [plugins/dashboard/README.md](./plugins/dashboard/README.md) for full details.
+
 ## Directory Structure
 
 ```
@@ -250,7 +332,8 @@ claude-marketplace/
 │   ├── devops/               # DevOps Team
 │   ├── data/                 # Data Team
 │   ├── security/             # Security Team
-│   └── documentation/        # Documentation Team
+│   ├── documentation/        # Documentation Team
+│   └── dashboard/            # Real-time Web Dashboard (v1.7.0)
 ├── CLAUDE.md                 # Claude Code instructions
 ├── CONTRIBUTING.md           # Contribution guidelines
 └── LICENSE                   # MIT license

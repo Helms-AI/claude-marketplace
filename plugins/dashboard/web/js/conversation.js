@@ -10,6 +10,8 @@ const Conversation = {
     messageIndex: 0,
     currentTranscript: null,
     viewMode: 'unified', // 'unified' | 'events' | 'transcript'
+    agentMetadata: {}, // Mapping of agent_id -> agent type info
+    autoScrollEnabled: true, // Smart auto-scroll: disabled when user scrolls up
 
     // Domain initials for avatars
     domainInitials: {
@@ -41,6 +43,109 @@ const Conversation = {
 
     init() {
         this.container = document.getElementById('conversationContainer');
+        this.autoScrollEnabled = true;
+    },
+
+    /**
+     * Setup scroll tracking for smart auto-scroll behavior.
+     * Disables auto-scroll when user scrolls up, re-enables at bottom.
+     */
+    setupScrollTracking() {
+        if (!this.container) return;
+
+        // Remove existing listener if any (avoid duplicates)
+        if (this._scrollHandler) {
+            this.container.removeEventListener('scroll', this._scrollHandler);
+        }
+
+        this._scrollHandler = () => {
+            // Check if scrolled to bottom (with small threshold)
+            const threshold = 50; // pixels from bottom
+            const isAtBottom =
+                this.container.scrollHeight - this.container.scrollTop - this.container.clientHeight < threshold;
+
+            this.autoScrollEnabled = isAtBottom;
+        };
+
+        this.container.addEventListener('scroll', this._scrollHandler);
+    },
+
+    /**
+     * Set agent metadata from transcript API response.
+     * @param {Object} metadata - Mapping of agent_id to agent info
+     */
+    setAgentMetadata(metadata) {
+        this.agentMetadata = metadata || {};
+    },
+
+    /**
+     * Get agent information for display.
+     * @param {string} agentId - The agent ID
+     * @returns {Object} Agent info with name, type, domain, color, initial
+     */
+    getAgentInfo(agentId) {
+        const info = this.agentMetadata[agentId] || {};
+        const type = info.type || agentId;
+        const domain = info.domain || this.inferDomainFromType(type);
+
+        return {
+            name: info.name || this.formatAgentName(type),
+            type: type,
+            domain: domain,
+            color: domain ? (this.domainColors[domain] || '#a78bfa') : '#a78bfa',
+            initial: this.getAgentInitial(info.name || type)
+        };
+    },
+
+    /**
+     * Infer domain from built-in agent types.
+     * @param {string} type - The agent type
+     * @returns {string|null} Domain name or null
+     */
+    inferDomainFromType(type) {
+        // Map built-in agent types to domains
+        const typeToDomain = {
+            'Explore': 'pm',
+            'Plan': 'architecture',
+            'Bash': 'devops',
+            'general-purpose': 'pm'
+        };
+        return typeToDomain[type] || null;
+    },
+
+    /**
+     * Format agent type into a display name.
+     * @param {string} type - The agent type (e.g., "frontend-lead" or "Explore")
+     * @returns {string} Formatted name (e.g., "Frontend Lead" or "Explore")
+     */
+    formatAgentName(type) {
+        if (!type) return 'Agent';
+        // Handle short IDs (hash-like)
+        if (/^[a-f0-9]+$/.test(type) && type.length <= 8) {
+            return `Agent ${type}`;
+        }
+        // Convert kebab-case to Title Case
+        return type.split(/[-_]/).map(w =>
+            w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+        ).join(' ');
+    },
+
+    /**
+     * Get 2-character initial from agent name.
+     * @param {string} name - The agent name
+     * @returns {string} 2-char initial
+     */
+    getAgentInitial(name) {
+        if (!name) return 'AG';
+        // Handle hash-like IDs
+        if (/^[a-f0-9]+$/.test(name) && name.length <= 8) {
+            return name.substring(0, 2).toUpperCase();
+        }
+        const words = name.split(/[\s-_]+/);
+        if (words.length >= 2) {
+            return (words[0][0] + words[1][0]).toUpperCase();
+        }
+        return name.substring(0, 2).toUpperCase();
     },
 
     render(events, session, transcript = null) {
@@ -101,7 +206,11 @@ const Conversation = {
         // Add view toggle event listeners
         this.bindViewToggle();
 
-        // Scroll to bottom
+        // Setup scroll tracking for smart auto-scroll
+        this.setupScrollTracking();
+
+        // Initial scroll to bottom and enable auto-scroll
+        this.autoScrollEnabled = true;
         this.container.scrollTop = this.container.scrollHeight;
 
         // Trigger staggered animations
@@ -190,34 +299,51 @@ const Conversation = {
         let currentSource = null;
         let inSubagent = false;
 
+        // Track previous sender for message grouping
+        let prevRole = null;
+        let prevSource = null;
+
         mergedTimeline.forEach((entry, index) => {
             const { message, source, timestamp } = entry;
             const isSubagent = source !== 'main';
+            const role = message.role;
 
             // Handle subagent context transitions
+            let contextChanged = false;
             if (isSubagent && !inSubagent) {
                 // Starting a subagent section
                 html += this.renderSubagentContextStart(source);
                 inSubagent = true;
                 currentSource = source;
+                contextChanged = true;
             } else if (!isSubagent && inSubagent) {
                 // Ending a subagent section
                 html += this.renderSubagentContextEnd(currentSource);
                 inSubagent = false;
                 currentSource = null;
+                contextChanged = true;
             } else if (isSubagent && currentSource !== source) {
                 // Switching between subagents
                 html += this.renderSubagentContextEnd(currentSource);
                 html += this.renderSubagentContextStart(source);
                 currentSource = source;
+                contextChanged = true;
             }
 
+            // Determine if this is a consecutive message from the same sender
+            // Reset grouping if context changed (agent switch)
+            const isConsecutive = !contextChanged && (prevRole === role && prevSource === source);
+
             // Render the message
-            if (message.role === 'user') {
-                html += this.renderTimelineUserMessage(message, isSubagent, source);
-            } else if (message.role === 'assistant') {
-                html += this.renderTimelineAssistantMessage(message, isSubagent, source);
+            if (role === 'user') {
+                html += this.renderTimelineUserMessage(message, isSubagent, source, isConsecutive);
+            } else if (role === 'assistant') {
+                html += this.renderTimelineAssistantMessage(message, isSubagent, source, isConsecutive);
             }
+
+            // Update tracking for next iteration
+            prevRole = role;
+            prevSource = source;
         });
 
         // Close any open subagent context
@@ -229,8 +355,9 @@ const Conversation = {
     },
 
     renderSubagentContextStart(agentId) {
+        const agentInfo = this.getAgentInfo(agentId);
         return `
-            <div class="subagent-context subagent-context-start" data-agent-id="${agentId}">
+            <div class="subagent-context subagent-context-start" data-agent-id="${agentId}" style="--agent-color: ${agentInfo.color}">
                 <div class="subagent-context-line"></div>
                 <div class="subagent-context-label">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -239,7 +366,7 @@ const Conversation = {
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
-                    Agent ${this.escapeHtml(agentId)} started
+                    ${this.escapeHtml(agentInfo.name)} started
                 </div>
                 <div class="subagent-context-line"></div>
             </div>
@@ -247,21 +374,22 @@ const Conversation = {
     },
 
     renderSubagentContextEnd(agentId) {
+        const agentInfo = this.getAgentInfo(agentId);
         return `
-            <div class="subagent-context subagent-context-end" data-agent-id="${agentId}">
+            <div class="subagent-context subagent-context-end" data-agent-id="${agentId}" style="--agent-color: ${agentInfo.color}">
                 <div class="subagent-context-line"></div>
                 <div class="subagent-context-label end-label">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
-                    Agent ${this.escapeHtml(agentId)} completed
+                    ${this.escapeHtml(agentInfo.name)} completed
                 </div>
                 <div class="subagent-context-line"></div>
             </div>
         `;
     },
 
-    renderTimelineUserMessage(msg, isSubagent, source) {
+    renderTimelineUserMessage(msg, isSubagent, source, isConsecutive = false) {
         const time = this.formatTime(msg.timestamp);
         const text = msg.text || '';
 
@@ -271,27 +399,39 @@ const Conversation = {
         }
 
         const subagentClass = isSubagent ? 'is-subagent subagent-indent' : '';
+        const consecutiveClass = isConsecutive ? 'consecutive' : '';
+
+        // Get agent info for display
+        const agentInfo = isSubagent ? this.getAgentInfo(source) : null;
+
+        // Avatar or spacer depending on consecutive status
+        const avatarHtml = isConsecutive
+            ? '<div class="message-avatar-spacer"></div>'
+            : `<div class="message-avatar user-avatar ${isSubagent ? 'subagent-avatar' : ''}">
+                    <span class="avatar-initial">U</span>
+                </div>`;
+
+        // Inline timestamp for consecutive messages (shown on hover)
+        const inlineTimeHtml = isConsecutive ? `<span class="message-time-inline">${time}</span>` : '';
 
         return `
-            <div class="chat-message transcript-message user-message ${subagentClass}" data-source="${source}">
+            <div class="chat-message transcript-message user-message ${subagentClass} ${consecutiveClass}" data-source="${source}">
+                ${avatarHtml}
                 <div class="message-body">
                     <div class="message-header">
                         <span class="message-domain user">USER</span>
-                        ${isSubagent ? `<span class="subagent-badge">to Agent ${this.escapeHtml(source)}</span>` : ''}
+                        ${isSubagent ? `<span class="subagent-badge" style="--agent-color: ${agentInfo.color}">to ${this.escapeHtml(agentInfo.name)}</span>` : ''}
                         <span class="message-time">${time}</span>
                     </div>
                     <div class="message-content">
-                        ${this.formatTranscriptContent(text)}
+                        ${this.formatTranscriptContent(text)}${inlineTimeHtml}
                     </div>
-                </div>
-                <div class="message-avatar user-avatar ${isSubagent ? 'subagent-avatar' : ''}">
-                    <span class="avatar-initial">U</span>
                 </div>
             </div>
         `;
     },
 
-    renderTimelineAssistantMessage(msg, isSubagent, source) {
+    renderTimelineAssistantMessage(msg, isSubagent, source, isConsecutive = false) {
         const time = this.formatTime(msg.timestamp);
         const text = msg.text || '';
         const toolCalls = msg.tool_calls || [];
@@ -300,10 +440,16 @@ const Conversation = {
         let domain = 'pm';
         let initial = 'AI';
         let color = '#6366f1';
+        let agentName = 'Claude';
 
         if (isSubagent) {
-            initial = source.substring(0, 2).toUpperCase();
-            color = '#a78bfa'; // Subagent color
+            const agentInfo = this.getAgentInfo(source);
+            initial = agentInfo.initial;
+            color = agentInfo.color;
+            agentName = agentInfo.name;
+            if (agentInfo.domain) {
+                domain = agentInfo.domain;
+            }
         }
 
         // Skip empty messages
@@ -328,22 +474,31 @@ const Conversation = {
         }
 
         const subagentClass = isSubagent ? 'is-subagent subagent-indent subagent-message' : '';
+        const consecutiveClass = isConsecutive ? 'consecutive' : '';
 
-        return `
-            <div class="chat-message transcript-message agent-message ${subagentClass}" data-domain="${domain}" data-source="${source}">
-                <div class="message-avatar ${isSubagent ? 'subagent-avatar' : ''}" style="--domain-color: ${color}">
+        // Inline timestamp for consecutive messages (shown on hover)
+        const inlineTimeHtml = isConsecutive ? `<span class="message-time-inline">${time}</span>` : '';
+
+        // Avatar or spacer depending on consecutive status
+        const avatarHtml = isConsecutive
+            ? '<div class="message-avatar-spacer"></div>'
+            : `<div class="message-avatar ${isSubagent ? 'subagent-avatar' : ''}" style="--domain-color: ${color}">
                     <span class="avatar-initial">${initial}</span>
                     <span class="avatar-pulse"></span>
-                </div>
+                </div>`;
+
+        return `
+            <div class="chat-message transcript-message agent-message ${subagentClass} ${consecutiveClass}" data-domain="${domain}" data-source="${source}">
+                ${avatarHtml}
                 <div class="message-body">
                     <div class="message-header">
                         <span class="message-domain" style="--domain-color: ${color}">
-                            ${isSubagent ? `Agent ${this.escapeHtml(source)}` : 'Claude'}
+                            ${isSubagent ? this.escapeHtml(agentName) : 'Claude'}
                         </span>
                         <span class="message-time">${time}</span>
                     </div>
                     <div class="message-content">
-                        ${contentHtml}
+                        ${contentHtml}${inlineTimeHtml}
                     </div>
                 </div>
             </div>
@@ -375,6 +530,9 @@ const Conversation = {
 
         return `
             <div class="chat-message transcript-message user-message">
+                <div class="message-avatar user-avatar">
+                    <span class="avatar-initial">U</span>
+                </div>
                 <div class="message-body">
                     <div class="message-header">
                         <span class="message-domain user">USER</span>
@@ -383,9 +541,6 @@ const Conversation = {
                     <div class="message-content">
                         ${this.formatTranscriptContent(text)}
                     </div>
-                </div>
-                <div class="message-avatar user-avatar">
-                    <span class="avatar-initial">U</span>
                 </div>
             </div>
         `;
@@ -579,11 +734,13 @@ const Conversation = {
             newMessage.classList.add('animate-in', 'new-message');
         }
 
-        // Scroll to bottom smoothly
-        this.container.scrollTo({
-            top: this.container.scrollHeight,
-            behavior: 'smooth'
-        });
+        // Scroll to bottom smoothly only if auto-scroll enabled
+        if (this.autoScrollEnabled) {
+            this.container.scrollTo({
+                top: this.container.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
     },
 
     addTranscriptMessage(message, source) {
@@ -609,40 +766,85 @@ const Conversation = {
 
         // Check if we need to add/close subagent context markers
         if (isSubagent) {
-            // Check if we're already in a subagent context for this agent
-            const lastContext = stream.querySelector('.subagent-context-start[data-agent-id]:last-of-type');
-            const lastContextAgentId = lastContext?.dataset?.agentId;
+            // Get ALL subagent context markers to determine current state
+            const allMarkers = stream.querySelectorAll('.subagent-context[data-agent-id]');
+            let lastMarkerForThisAgent = null;
+            let lastMarkerForAnyAgent = null;
+            let lastOpenAgentId = null;
 
-            // Check if there's an open subagent context that needs closing
-            const hasOpenContext = lastContext && !stream.querySelector(`.subagent-context-end[data-agent-id="${lastContextAgentId}"]`);
-
-            if (!hasOpenContext || lastContextAgentId !== source) {
-                // Close previous if different agent
-                if (hasOpenContext && lastContextAgentId !== source) {
-                    messageHtml += this.renderSubagentContextEnd(lastContextAgentId);
+            // Find the last marker for this agent and the last marker overall
+            allMarkers.forEach(marker => {
+                const agentId = marker.dataset.agentId;
+                if (agentId === source) {
+                    lastMarkerForThisAgent = marker;
                 }
-                // Start new subagent context if not already open for this agent
-                if (!hasOpenContext || lastContextAgentId !== source) {
-                    messageHtml += this.renderSubagentContextStart(source);
-                }
-            }
-        } else {
-            // Check if we need to close any open subagent context
-            const openContexts = stream.querySelectorAll('.subagent-context-start');
-            openContexts.forEach(ctx => {
-                const agentId = ctx.dataset.agentId;
-                const hasEnd = stream.querySelector(`.subagent-context-end[data-agent-id="${agentId}"]`);
-                if (!hasEnd) {
-                    messageHtml += this.renderSubagentContextEnd(agentId);
+                lastMarkerForAnyAgent = marker;
+                // Track if there's currently an open context (a start without a subsequent end)
+                if (marker.classList.contains('subagent-context-start')) {
+                    lastOpenAgentId = agentId;
+                } else if (marker.classList.contains('subagent-context-end')) {
+                    if (lastOpenAgentId === agentId) {
+                        lastOpenAgentId = null;
+                    }
                 }
             });
+
+            // Check if THIS agent's context is currently open
+            const thisAgentIsOpen = lastMarkerForThisAgent &&
+                lastMarkerForThisAgent.classList.contains('subagent-context-start') &&
+                lastOpenAgentId === source;
+
+            // Check if a DIFFERENT agent has an open context that needs closing
+            if (lastOpenAgentId && lastOpenAgentId !== source) {
+                // Close the other agent's context first
+                messageHtml += this.renderSubagentContextEnd(lastOpenAgentId);
+            }
+
+            // Only render start marker if this agent's context is NOT already open
+            if (!thisAgentIsOpen) {
+                messageHtml += this.renderSubagentContextStart(source);
+            }
+        } else {
+            // Main context: close any open subagent contexts
+            const allMarkers = stream.querySelectorAll('.subagent-context[data-agent-id]');
+            let lastOpenAgentId = null;
+
+            allMarkers.forEach(marker => {
+                const agentId = marker.dataset.agentId;
+                if (marker.classList.contains('subagent-context-start')) {
+                    lastOpenAgentId = agentId;
+                } else if (marker.classList.contains('subagent-context-end')) {
+                    if (lastOpenAgentId === agentId) {
+                        lastOpenAgentId = null;
+                    }
+                }
+            });
+
+            if (lastOpenAgentId) {
+                messageHtml += this.renderSubagentContextEnd(lastOpenAgentId);
+            }
         }
 
-        // Render the message
+        // Determine if this is a consecutive message from the same sender
+        const lastMessage = stream.querySelector('.chat-message:last-of-type');
+        let isConsecutive = false;
+
+        if (lastMessage) {
+            const lastRole = lastMessage.classList.contains('user-message') ? 'user' : 'assistant';
+            const lastSource = lastMessage.dataset.source || 'main';
+            isConsecutive = (lastRole === message.role && lastSource === source);
+
+            // Mark previous message as group-start for styling continuity
+            if (isConsecutive && !lastMessage.classList.contains('consecutive')) {
+                lastMessage.classList.add('group-start');
+            }
+        }
+
+        // Render the message with consecutive flag
         if (message.role === 'user') {
-            messageHtml += this.renderTimelineUserMessage(message, isSubagent, source);
+            messageHtml += this.renderTimelineUserMessage(message, isSubagent, source, isConsecutive);
         } else if (message.role === 'assistant') {
-            messageHtml += this.renderTimelineAssistantMessage(message, isSubagent, source);
+            messageHtml += this.renderTimelineAssistantMessage(message, isSubagent, source, isConsecutive);
         }
 
         if (!messageHtml) return;
@@ -657,11 +859,13 @@ const Conversation = {
             }
         });
 
-        // Scroll to bottom smoothly
-        this.container.scrollTo({
-            top: this.container.scrollHeight,
-            behavior: 'smooth'
-        });
+        // Scroll to bottom smoothly only if auto-scroll enabled
+        if (this.autoScrollEnabled) {
+            this.container.scrollTo({
+                top: this.container.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
     },
 
     renderMessage(event, index) {
@@ -724,6 +928,9 @@ const Conversation = {
 
         return `
             <div class="chat-message user-message">
+                <div class="message-avatar user-avatar">
+                    <span class="avatar-initial">U</span>
+                </div>
                 <div class="message-body">
                     <div class="message-header">
                         <span class="message-domain user">USER</span>
@@ -732,9 +939,6 @@ const Conversation = {
                     <div class="message-content">
                         ${this.escapeHtml(content)}
                     </div>
-                </div>
-                <div class="message-avatar user-avatar">
-                    <span class="avatar-initial">U</span>
                 </div>
             </div>
         `;

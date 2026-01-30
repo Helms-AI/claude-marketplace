@@ -248,6 +248,11 @@ def get_session_transcript(session_id):
         for agent_id, msgs in conversation.get('subagents', {}).items()
     }
 
+    # Extract agent type metadata from Task tool calls
+    # Pass subagent IDs so we can match Task calls to agents by order
+    subagent_ids = list(conversation.get('subagents', {}).keys())
+    agent_metadata = transcript_reader.extract_agent_types(conversation['main'], subagent_ids)
+
     response = {
         'session_id': session_id,
         'claude_session_id': conversation.get('session_id'),
@@ -255,7 +260,8 @@ def get_session_transcript(session_id):
         'messages': main_messages,
         'subagents': subagent_messages,
         'message_count': len(main_messages),
-        'subagent_count': len(subagent_messages)
+        'subagent_count': len(subagent_messages),
+        'agent_metadata': agent_metadata
     }
 
     # Optionally include merged timeline
