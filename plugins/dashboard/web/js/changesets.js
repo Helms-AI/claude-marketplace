@@ -1,6 +1,6 @@
 /**
- * Changesets Module
- * Handles changeset list and selection with unified conversation view
+ * Changesets Module - IDE Integration
+ * Handles changeset list and selection with tab-based conversation view
  */
 
 const Changesets = {
@@ -9,8 +9,12 @@ const Changesets = {
         currentChangesetId: null,
         currentSessionId: null, // Claude Code's native session ID (for task matching)
         events: [],
-        transcript: null
+        transcript: null,
+        selectedChangesetId: null
     },
+
+    // Cache for command palette search
+    cache: [],
 
     async init() {
         await this.loadChangesets();
@@ -21,6 +25,11 @@ const Changesets = {
         try {
             const response = await Dashboard.fetchAPI('/api/changesets');
             this.data.changesets = response.changesets || [];
+            // Update cache for command palette search
+            this.cache = this.data.changesets.map(c => ({
+                changeset_id: c.id,
+                ...c
+            }));
         } catch (e) {
             console.error('Error loading changesets:', e);
             this.data.changesets = [];
@@ -146,11 +155,16 @@ const Changesets = {
     async selectChangeset(changesetId) {
         const previousChangesetId = this.data.currentChangesetId;
         this.data.currentChangesetId = changesetId;
+        this.data.selectedChangesetId = changesetId;
 
-        // Update selection UI
+        // Update selection UI in sidebar
         document.querySelectorAll('.changeset-item').forEach(item => {
             item.classList.toggle('active', item.dataset.changesetId === changesetId);
         });
+
+        // Open as a tab in the editor
+        const shortId = changesetId.length > 25 ? changesetId.substring(0, 22) + '...' : changesetId;
+        Dashboard.openTab(`changeset-${changesetId}`, shortId, '📄');
 
         // Unwatch previous changeset if any
         if (previousChangesetId && previousChangesetId !== changesetId) {
@@ -271,6 +285,9 @@ const Changesets = {
 
         const phaseClass = changeset.phase ? `phase-${changeset.phase}` : '';
 
+        // Check if there's collapsible content
+        const hasCollapsibleContent = changeset.original_request || domainsBadges || artifactsList;
+
         header.innerHTML = `
             <div class="header-top-row">
                 <div class="header-identity">
@@ -278,22 +295,51 @@ const Changesets = {
                     <span class="header-phase ${phaseClass}">${changeset.phase || 'active'}</span>
                 </div>
                 <div class="header-actions">
+                    <div class="header-view-toggle">
+                        <button class="view-icon-btn active" data-view="unified" title="Unified view">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="8" y1="6" x2="21" y2="6"></line>
+                                <line x1="8" y1="12" x2="21" y2="12"></line>
+                                <line x1="8" y1="18" x2="21" y2="18"></line>
+                                <circle cx="4" cy="6" r="1.5"></circle>
+                                <circle cx="4" cy="12" r="1.5"></circle>
+                                <circle cx="4" cy="18" r="1.5"></circle>
+                            </svg>
+                        </button>
+                        <button class="view-icon-btn" data-view="transcript" title="Transcript view">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </button>
+                        <button class="view-icon-btn" data-view="events" title="Events view">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                            </svg>
+                        </button>
+                    </div>
                     <div class="header-stats">
                         <span class="header-stat">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                             </svg>
                             ${this.data.events.length} events
                         </span>
                         ${changeset.handoff_count ? `
                             <span class="header-stat">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M5 12h14M12 5l7 7-7 7"></path>
                                 </svg>
                                 ${changeset.handoff_count} handoffs
                             </span>
                         ` : ''}
                     </div>
+                    ${hasCollapsibleContent ? `
+                        <button class="header-collapse-btn" title="Toggle details" aria-expanded="false">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg>
+                        </button>
+                    ` : ''}
                     <button class="delete-changeset-btn" title="Delete changeset" data-changeset-id="${changeset.id}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="3 6 5 6 21 6"></polyline>
@@ -304,23 +350,46 @@ const Changesets = {
                     </button>
                 </div>
             </div>
-            ${changeset.original_request ? `
-                <div class="header-request">
-                    <span class="request-label">REQUEST</span>
-                    <span class="request-text">${this.escapeHtml(changeset.original_request)}</span>
+            ${hasCollapsibleContent ? `
+                <div class="header-collapsible collapsed">
+                    ${changeset.original_request ? `
+                        <div class="header-request">
+                            <span class="request-label">REQUEST</span>
+                            <span class="request-text">${this.escapeHtml(changeset.original_request)}</span>
+                        </div>
+                    ` : ''}
+                    <div class="header-bottom-row">
+                        ${domainsBadges ? `<div class="header-domains">${domainsBadges}</div>` : ''}
+                        ${artifactsList ? `
+                            <div class="header-artifacts">
+                                <span class="artifacts-label">Artifacts:</span>
+                                ${artifactsList}
+                                ${artifacts.length > 3 ? `<span class="header-artifact more">+${artifacts.length - 3}</span>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
             ` : ''}
-            <div class="header-bottom-row">
-                ${domainsBadges ? `<div class="header-domains">${domainsBadges}</div>` : ''}
-                ${artifactsList ? `
-                    <div class="header-artifacts">
-                        <span class="artifacts-label">Artifacts:</span>
-                        ${artifactsList}
-                        ${artifacts.length > 3 ? `<span class="header-artifact more">+${artifacts.length - 3}</span>` : ''}
-                    </div>
-                ` : ''}
-            </div>
         `;
+
+        // Add click handler for collapse button
+        const collapseBtn = header.querySelector('.header-collapse-btn');
+        const collapsibleContent = header.querySelector('.header-collapsible');
+        const topRow = header.querySelector('.header-top-row');
+        if (collapseBtn && collapsibleContent && topRow) {
+            // Set initial collapsed state (for browsers without :has() support)
+            topRow.classList.add('collapsed-sibling');
+
+            collapseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isExpanded = !collapsibleContent.classList.contains('collapsed');
+                collapsibleContent.classList.toggle('collapsed');
+                collapseBtn.setAttribute('aria-expanded', !isExpanded);
+                collapseBtn.classList.toggle('expanded', !isExpanded);
+                // Also toggle class on top row for browsers without :has() support
+                topRow.classList.toggle('collapsed-sibling', isExpanded);
+            });
+        }
 
         // Add click handler for delete button
         const deleteBtn = header.querySelector('.delete-changeset-btn');
@@ -331,6 +400,26 @@ const Changesets = {
                 this.deleteChangeset(changesetId);
             });
         }
+
+        // Add click handlers for view toggle icons
+        const viewBtns = header.querySelectorAll('.view-icon-btn');
+        viewBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const newView = btn.dataset.view;
+                if (newView !== Conversation.viewMode) {
+                    // Update active state on buttons
+                    viewBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    // Change view mode and re-render
+                    Conversation.viewMode = newView;
+                    if (this.data) {
+                        const changeset = this.data.changesets.find(c => c.changeset_id === this.data.currentChangesetId);
+                        Conversation.render(this.data.events, changeset, this.data.transcript);
+                    }
+                }
+            });
+        });
     },
 
     escapeHtml(text) {

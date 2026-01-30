@@ -1,14 +1,14 @@
 /**
- * Skills Module
- * Handles skill list, search, filter, and detail views
- * With domain-grouped layout (Industrial-Editorial aesthetic)
+ * Skills Module - IDE Tree View
+ * Handles skill tree view in sidebar and detail views
  */
 
 const Skills = {
     data: {
         skills: [],
         filteredSkills: [],
-        collapsedDomains: new Set()
+        collapsedDomains: new Set(),
+        selectedSkillId: null
     },
 
     // Known domains in the marketplace ecosystem
@@ -17,11 +17,12 @@ const Skills = {
         'frontend', 'pm', 'security', 'testing', 'user-experience'
     ],
 
+    // Cache for command palette search
+    cache: [],
+
     async init() {
         await this.loadSkills();
-        this.setupSearch();
-        this.setupFilter();
-        this.render();
+        this.renderTree();
     },
 
     async loadSkills() {
@@ -29,7 +30,8 @@ const Skills = {
             const response = await Dashboard.fetchAPI('/api/skills');
             this.data.skills = response.skills || [];
             this.data.filteredSkills = [...this.data.skills];
-            this.populateDomainFilter();
+            this.cache = this.data.skills; // For command palette
+            this.updateCount();
         } catch (e) {
             console.error('Error loading skills:', e);
             this.data.skills = [];
@@ -37,55 +39,15 @@ const Skills = {
         }
     },
 
-    populateDomainFilter() {
-        const select = document.getElementById('skillDomainFilter');
-        const domains = [...new Set(this.data.skills.map(s => s.domain))];
-
-        select.innerHTML = '<option value="">All Domains</option>';
-        domains.forEach(domain => {
-            const option = document.createElement('option');
-            option.value = domain;
-            option.textContent = domain.replace(/-/g, ' ');
-            option.style.textTransform = 'capitalize';
-            select.appendChild(option);
-        });
-    },
-
-    setupSearch() {
-        const input = document.getElementById('skillSearch');
-        input.addEventListener('input', () => {
-            this.filterSkills();
-        });
-    },
-
-    setupFilter() {
-        const select = document.getElementById('skillDomainFilter');
-        select.addEventListener('change', () => {
-            this.filterSkills();
-        });
-    },
-
-    filterSkills() {
-        const searchTerm = document.getElementById('skillSearch').value.toLowerCase();
-        const domainFilter = document.getElementById('skillDomainFilter').value;
-
-        this.data.filteredSkills = this.data.skills.filter(skill => {
-            const matchesSearch = !searchTerm ||
-                skill.name.toLowerCase().includes(searchTerm) ||
-                skill.id.toLowerCase().includes(searchTerm) ||
-                skill.description.toLowerCase().includes(searchTerm);
-
-            const matchesDomain = !domainFilter || skill.domain === domainFilter;
-
-            return matchesSearch && matchesDomain;
-        });
-
-        this.render();
+    updateCount() {
+        const countEl = document.getElementById('skillCount');
+        if (countEl) {
+            countEl.textContent = this.data.skills.length;
+        }
     },
 
     /**
-     * Group skills by domain
-     * Known domains appear alphabetically, External domain appears last
+     * Group skills by domain for tree view
      */
     groupByDomain(skills) {
         const groups = {};
@@ -117,146 +79,234 @@ const Skills = {
         }));
     },
 
-    render() {
-        this.renderStats();
-        this.renderGrid();
-    },
+    /**
+     * Render skill tree in sidebar
+     */
+    renderTree() {
+        const container = document.getElementById('skillsTreeContent');
+        if (!container) return;
 
-    renderStats() {
-        const stats = document.getElementById('skillStats');
-        const totalSkills = this.data.skills.length;
-        const domains = [...new Set(this.data.skills.map(s => s.domain))].length;
-        const invokedSkills = this.data.skills.filter(s => s.invocation_count > 0).length;
-
-        stats.innerHTML = `
-            <div class="stat-item">
-                <span class="stat-value">${totalSkills}</span>
-                <span class="stat-label">Total Skills</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-value">${domains}</span>
-                <span class="stat-label">Domains</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-value">${invokedSkills}</span>
-                <span class="stat-label">Used Skills</span>
-            </div>
-        `;
-    },
-
-    renderGrid() {
-        const grid = document.getElementById('skillGrid');
-
-        if (this.data.filteredSkills.length === 0) {
-            grid.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">&#128269;</div>
-                    <p>No skills found</p>
-                </div>
+        const skills = this.data.filteredSkills;
+        if (skills.length === 0) {
+            container.innerHTML = `
+                <div class="tree-empty">No skills found</div>
             `;
             return;
         }
 
-        const domainGroups = this.groupByDomain(this.data.filteredSkills);
+        const domainGroups = this.groupByDomain(skills);
 
-        grid.innerHTML = domainGroups.map(group => this.renderDomainGroup(group)).join('');
+        container.innerHTML = domainGroups.map(group => this.renderDomainNode(group)).join('');
 
-        // Add click handlers for cards
-        grid.querySelectorAll('.card').forEach(card => {
-            card.addEventListener('click', () => {
-                const skillId = card.dataset.skillId;
-                this.showSkillDetail(skillId);
-            });
-        });
-
-        // Add click handlers for domain headers (collapse/expand)
-        grid.querySelectorAll('.domain-header').forEach(header => {
-            header.addEventListener('click', (e) => {
-                const domainGroup = header.closest('.domain-group');
-                const domain = domainGroup.dataset.domain;
-
-                domainGroup.classList.toggle('collapsed');
-
-                if (domainGroup.classList.contains('collapsed')) {
-                    this.data.collapsedDomains.add(domain);
-                } else {
-                    this.data.collapsedDomains.delete(domain);
-                }
-            });
-        });
+        // Add click handlers
+        this.attachTreeListeners(container);
+        this.updateCount();
     },
 
-    renderDomainGroup(group) {
+    /**
+     * Render a domain group node
+     */
+    renderDomainNode(group) {
         const { domain, items, isExternal } = group;
         const isCollapsed = this.data.collapsedDomains.has(domain);
         const displayName = domain.replace(/-/g, ' ');
         const domainClass = `domain-${domain}`;
 
-        const chevronSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
-
-        const externalNotice = isExternal
-            ? `<div class="external-notice">These skills are not controlled by the Helms AI ecosystem</div>`
-            : '';
-
-        const cards = items.map(skill => this.renderCard(skill)).join('');
+        const skillNodes = items.map(skill => this.renderSkillNode(skill)).join('');
 
         return `
-            <div class="domain-group ${isExternal ? 'domain-external' : ''} ${isCollapsed ? 'collapsed' : ''}" data-domain="${domain}">
-                <div class="domain-header">
-                    <div class="domain-header-left">
-                        <span class="domain-accent ${domainClass}"></span>
-                        <span class="domain-name">${displayName}</span>
-                        <span class="domain-count">${items.length} skill${items.length !== 1 ? 's' : ''}</span>
-                    </div>
-                    <button class="domain-toggle" aria-label="Toggle ${displayName} section">
-                        ${chevronSvg}
-                    </button>
+            <div class="tree-domain-group ${isExternal ? 'external' : ''}" data-domain="${domain}">
+                <div class="tree-node tree-node-domain ${isCollapsed ? 'collapsed' : ''}" data-expanded="${!isCollapsed}">
+                    <span class="tree-chevron">${isCollapsed ? '▸' : '▾'}</span>
+                    <span class="tree-domain-accent ${domainClass}"></span>
+                    <span class="tree-node-label">${displayName}</span>
+                    <span class="tree-node-count">${items.length}</span>
                 </div>
-                <div class="domain-content">
-                    ${externalNotice}
-                    <div class="card-grid">
-                        ${cards}
-                    </div>
+                <div class="tree-children ${isCollapsed ? 'hidden' : ''}">
+                    ${skillNodes}
                 </div>
             </div>
         `;
     },
 
-    renderCard(skill) {
+    /**
+     * Render a single skill node
+     */
+    renderSkillNode(skill) {
+        const domainClass = Dashboard.getDomainClass(skill.domain);
+        const isActive = skill.last_invoked ? 'active' : '';
+        const isSelected = this.data.selectedSkillId === skill.id;
+        const hasHandoffs = skill.handoff_inputs?.length > 0 || skill.handoff_outputs?.length > 0;
+
+        return `
+            <div class="tree-node tree-node-leaf ${isActive} ${isSelected ? 'selected' : ''}"
+                 data-skill-id="${skill.id}"
+                 title="${skill.description || skill.name}">
+                <span class="tree-node-icon ${domainClass}">⚡</span>
+                <span class="tree-node-label">/${skill.id}</span>
+                ${hasHandoffs ? '<span class="tree-node-badge handoff-badge">↔</span>' : ''}
+                ${skill.invocation_count > 0 ? `<span class="tree-node-badge count-badge">${skill.invocation_count}</span>` : ''}
+            </div>
+        `;
+    },
+
+    /**
+     * Attach event listeners to tree nodes
+     */
+    attachTreeListeners(container) {
+        // Domain group toggle
+        container.querySelectorAll('.tree-node-domain').forEach(node => {
+            node.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const group = node.closest('.tree-domain-group');
+                const domain = group.dataset.domain;
+                const children = group.querySelector('.tree-children');
+                const chevron = node.querySelector('.tree-chevron');
+
+                if (this.data.collapsedDomains.has(domain)) {
+                    this.data.collapsedDomains.delete(domain);
+                    node.classList.remove('collapsed');
+                    node.dataset.expanded = 'true';
+                    children.classList.remove('hidden');
+                    chevron.textContent = '▾';
+                } else {
+                    this.data.collapsedDomains.add(domain);
+                    node.classList.add('collapsed');
+                    node.dataset.expanded = 'false';
+                    children.classList.add('hidden');
+                    chevron.textContent = '▸';
+                }
+            });
+        });
+
+        // Skill leaf node click
+        container.querySelectorAll('.tree-node-leaf').forEach(node => {
+            node.addEventListener('click', () => {
+                const skillId = node.dataset.skillId;
+                this.selectSkill(skillId);
+            });
+
+            // Double-click to open in tab
+            node.addEventListener('dblclick', () => {
+                const skillId = node.dataset.skillId;
+                this.openSkillTab(skillId);
+            });
+        });
+    },
+
+    /**
+     * Select a skill in the tree
+     */
+    selectSkill(skillId) {
+        // Update selection state
+        this.data.selectedSkillId = skillId;
+
+        // Update tree UI
+        document.querySelectorAll('#skillsTreeContent .tree-node-leaf').forEach(node => {
+            node.classList.toggle('selected', node.dataset.skillId === skillId);
+        });
+
+        // Show skill detail in modal (single-click)
+        this.showSkillDetail(skillId);
+    },
+
+    /**
+     * Open skill in a new tab
+     */
+    openSkillTab(skillId) {
+        const skill = this.data.skills.find(s => s.id === skillId);
+        if (!skill) return;
+
+        Dashboard.openTab(`skill-${skillId}`, '/' + skill.id, '⚡');
+        this.renderSkillDetailTab(skill);
+    },
+
+    /**
+     * Render skill detail in the editor tab
+     */
+    async renderSkillDetailTab(skill) {
+        const container = document.getElementById('skillDetailView');
+        if (!container) return;
+
+        // Fetch invocations
+        let invocations = [];
+        try {
+            const response = await Dashboard.fetchAPI(`/api/skills/id/${skill.id}/invocations`);
+            invocations = response.invocations || [];
+        } catch (e) {
+            console.error('Error loading skill invocations:', e);
+        }
+
         const domainClass = Dashboard.getDomainClass(skill.domain);
 
-        const agentInfo = skill.backing_agent
-            ? `<div class="card-role">Backed by: ${skill.backing_agent}</div>`
-            : '';
+        const inputsHtml = skill.handoff_inputs?.length > 0
+            ? skill.handoff_inputs.map(s => `<span class="detail-tag">/${s}</span>`).join('')
+            : '<span class="detail-muted">None</span>';
 
-        const handoffs = [];
-        if (skill.handoff_inputs.length > 0) {
-            handoffs.push(`<span class="tool-tag">&#8592; ${skill.handoff_inputs.length} inputs</span>`);
-        }
-        if (skill.handoff_outputs.length > 0) {
-            handoffs.push(`<span class="tool-tag">&#8594; ${skill.handoff_outputs.length} outputs</span>`);
-        }
+        const outputsHtml = skill.handoff_outputs?.length > 0
+            ? skill.handoff_outputs.map(s => `<span class="detail-tag">/${s}</span>`).join('')
+            : '<span class="detail-muted">None</span>';
 
-        const activityHtml = skill.last_invoked
-            ? `<div class="card-activity"><span class="activity-indicator"></span>Invoked ${Dashboard.formatTime(skill.last_invoked)}</div>`
-            : (skill.invocation_count > 0
-                ? `<div class="card-activity">Invocations: ${skill.invocation_count}</div>`
-                : '');
-
-        return `
-            <div class="card" data-skill-id="${skill.id}">
-                <div class="card-header">
-                    <span class="card-title">/${skill.id}</span>
-                    <span class="card-domain ${domainClass}">${skill.domain.replace(/-/g, ' ')}</span>
+        const invocationsHtml = invocations.length > 0
+            ? invocations.slice(0, 10).map(e => `
+                <div class="activity-event">
+                    <span class="event-time">${new Date(e.timestamp).toLocaleString()}</span>
+                    <span class="event-type">${e.content?.tool || e.event_type}</span>
                 </div>
-                ${agentInfo}
-                ${skill.description ? `<div class="card-role">${skill.description.substring(0, 100)}${skill.description.length > 100 ? '...' : ''}</div>` : ''}
-                <div class="card-tools">${handoffs.join('')}</div>
-                ${activityHtml}
+            `).join('')
+            : '<p class="detail-muted">No invocations recorded</p>';
+
+        container.innerHTML = `
+            <div class="detail-header">
+                <div class="detail-title-row">
+                    <h2 class="detail-title">/${skill.id}</h2>
+                    <span class="detail-domain ${domainClass}">${skill.domain.replace(/-/g, ' ')}</span>
+                </div>
+                <p class="detail-subtitle">${skill.name}</p>
+            </div>
+
+            ${skill.description ? `
+            <div class="detail-section">
+                <h4>Description</h4>
+                <p>${skill.description}</p>
+            </div>
+            ` : ''}
+
+            ${skill.backing_agent ? `
+            <div class="detail-section">
+                <h4>Backing Agent</h4>
+                <p>${skill.backing_agent}</p>
+            </div>
+            ` : ''}
+
+            <div class="detail-section">
+                <h4>Receives Handoffs From</h4>
+                <div class="detail-tags">${inputsHtml}</div>
+            </div>
+
+            <div class="detail-section">
+                <h4>Hands Off To</h4>
+                <div class="detail-tags">${outputsHtml}</div>
+            </div>
+
+            <div class="detail-section">
+                <h4>Invocation Count</h4>
+                <p class="detail-stat">${skill.invocation_count || 0}</p>
+            </div>
+
+            <div class="detail-section">
+                <h4>Recent Invocations</h4>
+                <div class="detail-activity">${invocationsHtml}</div>
             </div>
         `;
+
+        // Show the skill detail tab
+        document.getElementById('skillDetailTab').classList.add('active');
     },
 
+    /**
+     * Show skill in modal (single-click quick view)
+     */
     async showSkillDetail(skillId) {
         const skill = this.data.skills.find(s => s.id === skillId);
         if (!skill) return;
@@ -272,11 +322,11 @@ const Skills = {
 
         const domainClass = Dashboard.getDomainClass(skill.domain);
 
-        const inputsHtml = skill.handoff_inputs.length > 0
+        const inputsHtml = skill.handoff_inputs?.length > 0
             ? skill.handoff_inputs.map(s => `<span class="tool-tag">/${s}</span>`).join('')
             : '<span class="text-muted">None</span>';
 
-        const outputsHtml = skill.handoff_outputs.length > 0
+        const outputsHtml = skill.handoff_outputs?.length > 0
             ? skill.handoff_outputs.map(s => `<span class="tool-tag">/${s}</span>`).join('')
             : '<span class="text-muted">None</span>';
 
@@ -324,7 +374,7 @@ const Skills = {
 
             <div class="modal-section">
                 <h4>Invocation Count</h4>
-                <p>${skill.invocation_count}</p>
+                <p>${skill.invocation_count || 0}</p>
             </div>
 
             <div class="modal-section">
@@ -336,12 +386,32 @@ const Skills = {
         Dashboard.openModal('skillModal', content);
     },
 
+    /**
+     * Filter skills based on search query
+     */
+    filter(query) {
+        const searchTerm = query.toLowerCase();
+
+        this.data.filteredSkills = this.data.skills.filter(skill => {
+            return !searchTerm ||
+                skill.name.toLowerCase().includes(searchTerm) ||
+                skill.id.toLowerCase().includes(searchTerm) ||
+                (skill.description || '').toLowerCase().includes(searchTerm) ||
+                skill.domain.toLowerCase().includes(searchTerm);
+        });
+
+        this.renderTree();
+    },
+
+    /**
+     * Update skill activity (called from SSE events)
+     */
     updateActivity(skillId) {
         const skill = this.data.skills.find(s => s.id === skillId);
         if (skill) {
             skill.last_invoked = new Date().toISOString();
-            skill.invocation_count++;
-            this.render();
+            skill.invocation_count = (skill.invocation_count || 0) + 1;
+            this.renderTree();
         }
     }
 };

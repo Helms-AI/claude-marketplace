@@ -1,7 +1,6 @@
 /**
- * Agents Module
- * Handles agent list, search, filter, and detail views
- * With domain-grouped layout (Industrial-Editorial aesthetic)
+ * Agents Module - IDE Tree View
+ * Handles agent tree view in sidebar and detail views
  */
 
 const Agents = {
@@ -9,7 +8,8 @@ const Agents = {
         agents: [],
         domains: [],
         filteredAgents: [],
-        collapsedDomains: new Set()
+        collapsedDomains: new Set(),
+        selectedAgentId: null
     },
 
     // Known domains in the marketplace ecosystem
@@ -18,12 +18,13 @@ const Agents = {
         'frontend', 'pm', 'security', 'testing', 'user-experience'
     ],
 
+    // Cache for command palette search
+    cache: [],
+
     async init() {
         await this.loadAgents();
         await this.loadDomains();
-        this.setupSearch();
-        this.setupFilter();
-        this.render();
+        this.renderTree();
     },
 
     async loadAgents() {
@@ -31,6 +32,8 @@ const Agents = {
             const response = await Dashboard.fetchAPI('/api/agents');
             this.data.agents = response.agents || [];
             this.data.filteredAgents = [...this.data.agents];
+            this.cache = this.data.agents; // For command palette
+            this.updateCount();
         } catch (e) {
             console.error('Error loading agents:', e);
             this.data.agents = [];
@@ -42,60 +45,20 @@ const Agents = {
         try {
             const response = await Dashboard.fetchAPI('/api/domains');
             this.data.domains = response.domains || [];
-            this.populateDomainFilter();
         } catch (e) {
             console.error('Error loading domains:', e);
         }
     },
 
-    populateDomainFilter() {
-        const select = document.getElementById('domainFilter');
-        select.innerHTML = '<option value="">All Domains</option>';
-
-        this.data.domains.forEach(domain => {
-            const option = document.createElement('option');
-            option.value = domain.name;
-            option.textContent = domain.name.replace(/-/g, ' ');
-            option.style.textTransform = 'capitalize';
-            select.appendChild(option);
-        });
-    },
-
-    setupSearch() {
-        const input = document.getElementById('agentSearch');
-        input.addEventListener('input', () => {
-            this.filterAgents();
-        });
-    },
-
-    setupFilter() {
-        const select = document.getElementById('domainFilter');
-        select.addEventListener('change', () => {
-            this.filterAgents();
-        });
-    },
-
-    filterAgents() {
-        const searchTerm = document.getElementById('agentSearch').value.toLowerCase();
-        const domainFilter = document.getElementById('domainFilter').value;
-
-        this.data.filteredAgents = this.data.agents.filter(agent => {
-            const matchesSearch = !searchTerm ||
-                agent.name.toLowerCase().includes(searchTerm) ||
-                agent.role.toLowerCase().includes(searchTerm) ||
-                agent.id.toLowerCase().includes(searchTerm);
-
-            const matchesDomain = !domainFilter || agent.domain === domainFilter;
-
-            return matchesSearch && matchesDomain;
-        });
-
-        this.render();
+    updateCount() {
+        const countEl = document.getElementById('agentCount');
+        if (countEl) {
+            countEl.textContent = this.data.agents.length;
+        }
     },
 
     /**
-     * Group agents by domain
-     * Known domains appear alphabetically, External domain appears last
+     * Group agents by domain for tree view
      */
     groupByDomain(agents) {
         const groups = {};
@@ -127,135 +90,216 @@ const Agents = {
         }));
     },
 
-    render() {
-        this.renderStats();
-        this.renderGrid();
-    },
+    /**
+     * Render agent tree in sidebar
+     */
+    renderTree() {
+        const container = document.getElementById('agentsTreeContent');
+        if (!container) return;
 
-    renderStats() {
-        const stats = document.getElementById('agentStats');
-        const totalAgents = this.data.agents.length;
-        const totalDomains = this.data.domains.length;
-        const activeAgents = this.data.agents.filter(a => a.last_active).length;
-
-        stats.innerHTML = `
-            <div class="stat-item">
-                <span class="stat-value">${totalAgents}</span>
-                <span class="stat-label">Total Agents</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-value">${totalDomains}</span>
-                <span class="stat-label">Domains</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-value">${activeAgents}</span>
-                <span class="stat-label">Recently Active</span>
-            </div>
-        `;
-    },
-
-    renderGrid() {
-        const grid = document.getElementById('agentGrid');
-
-        if (this.data.filteredAgents.length === 0) {
-            grid.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">&#128269;</div>
-                    <p>No agents found</p>
-                </div>
+        const agents = this.data.filteredAgents;
+        if (agents.length === 0) {
+            container.innerHTML = `
+                <div class="tree-empty">No agents found</div>
             `;
             return;
         }
 
-        const domainGroups = this.groupByDomain(this.data.filteredAgents);
+        const domainGroups = this.groupByDomain(agents);
 
-        grid.innerHTML = domainGroups.map(group => this.renderDomainGroup(group)).join('');
+        container.innerHTML = domainGroups.map(group => this.renderDomainNode(group)).join('');
 
-        // Add click handlers for cards
-        grid.querySelectorAll('.card').forEach(card => {
-            card.addEventListener('click', () => {
-                const agentId = card.dataset.agentId;
-                this.showAgentDetail(agentId);
-            });
-        });
-
-        // Add click handlers for domain headers (collapse/expand)
-        grid.querySelectorAll('.domain-header').forEach(header => {
-            header.addEventListener('click', (e) => {
-                const domainGroup = header.closest('.domain-group');
-                const domain = domainGroup.dataset.domain;
-
-                domainGroup.classList.toggle('collapsed');
-
-                if (domainGroup.classList.contains('collapsed')) {
-                    this.data.collapsedDomains.add(domain);
-                } else {
-                    this.data.collapsedDomains.delete(domain);
-                }
-            });
-        });
+        // Add click handlers
+        this.attachTreeListeners(container);
+        this.updateCount();
     },
 
-    renderDomainGroup(group) {
+    /**
+     * Render a domain group node
+     */
+    renderDomainNode(group) {
         const { domain, items, isExternal } = group;
         const isCollapsed = this.data.collapsedDomains.has(domain);
         const displayName = domain.replace(/-/g, ' ');
         const domainClass = `domain-${domain}`;
 
-        const chevronSvg = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>`;
-
-        const externalNotice = isExternal
-            ? `<div class="external-notice">These agents are not controlled by the Helms AI ecosystem</div>`
-            : '';
-
-        const cards = items.map(agent => this.renderCard(agent)).join('');
+        const agentNodes = items.map(agent => this.renderAgentNode(agent)).join('');
 
         return `
-            <div class="domain-group ${isExternal ? 'domain-external' : ''} ${isCollapsed ? 'collapsed' : ''}" data-domain="${domain}">
-                <div class="domain-header">
-                    <div class="domain-header-left">
-                        <span class="domain-accent ${domainClass}"></span>
-                        <span class="domain-name">${displayName}</span>
-                        <span class="domain-count">${items.length} agent${items.length !== 1 ? 's' : ''}</span>
-                    </div>
-                    <button class="domain-toggle" aria-label="Toggle ${displayName} section">
-                        ${chevronSvg}
-                    </button>
+            <div class="tree-domain-group ${isExternal ? 'external' : ''}" data-domain="${domain}">
+                <div class="tree-node tree-node-domain ${isCollapsed ? 'collapsed' : ''}" data-expanded="${!isCollapsed}">
+                    <span class="tree-chevron">${isCollapsed ? '▸' : '▾'}</span>
+                    <span class="tree-domain-accent ${domainClass}"></span>
+                    <span class="tree-node-label">${displayName}</span>
+                    <span class="tree-node-count">${items.length}</span>
                 </div>
-                <div class="domain-content">
-                    ${externalNotice}
-                    <div class="card-grid">
-                        ${cards}
-                    </div>
+                <div class="tree-children ${isCollapsed ? 'hidden' : ''}">
+                    ${agentNodes}
                 </div>
             </div>
         `;
     },
 
-    renderCard(agent) {
+    /**
+     * Render a single agent node
+     */
+    renderAgentNode(agent) {
         const domainClass = Dashboard.getDomainClass(agent.domain);
-        const tools = agent.tools.slice(0, 4).map(t =>
-            `<span class="tool-tag">${t}</span>`
-        ).join('');
-        const moreTools = agent.tools.length > 4 ? `<span class="tool-tag">+${agent.tools.length - 4}</span>` : '';
-
-        const activityHtml = agent.last_active
-            ? `<div class="card-activity"><span class="activity-indicator"></span>Active ${Dashboard.formatTime(agent.last_active)}</div>`
-            : '';
+        const isActive = agent.last_active ? 'active' : '';
+        const isSelected = this.data.selectedAgentId === agent.id;
 
         return `
-            <div class="card" data-agent-id="${agent.id}">
-                <div class="card-header">
-                    <span class="card-title">${agent.name}</span>
-                    <span class="card-domain ${domainClass}">${agent.domain.replace(/-/g, ' ')}</span>
-                </div>
-                <div class="card-role">${agent.role}</div>
-                <div class="card-tools">${tools}${moreTools}</div>
-                ${activityHtml}
+            <div class="tree-node tree-node-leaf ${isActive} ${isSelected ? 'selected' : ''}"
+                 data-agent-id="${agent.id}"
+                 title="${agent.role}">
+                <span class="tree-node-icon ${domainClass}">●</span>
+                <span class="tree-node-label">${agent.name}</span>
+                ${agent.last_active ? '<span class="tree-node-badge active-badge">●</span>' : ''}
             </div>
         `;
     },
 
+    /**
+     * Attach event listeners to tree nodes
+     */
+    attachTreeListeners(container) {
+        // Domain group toggle
+        container.querySelectorAll('.tree-node-domain').forEach(node => {
+            node.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const group = node.closest('.tree-domain-group');
+                const domain = group.dataset.domain;
+                const children = group.querySelector('.tree-children');
+                const chevron = node.querySelector('.tree-chevron');
+
+                if (this.data.collapsedDomains.has(domain)) {
+                    this.data.collapsedDomains.delete(domain);
+                    node.classList.remove('collapsed');
+                    node.dataset.expanded = 'true';
+                    children.classList.remove('hidden');
+                    chevron.textContent = '▾';
+                } else {
+                    this.data.collapsedDomains.add(domain);
+                    node.classList.add('collapsed');
+                    node.dataset.expanded = 'false';
+                    children.classList.add('hidden');
+                    chevron.textContent = '▸';
+                }
+            });
+        });
+
+        // Agent leaf node click
+        container.querySelectorAll('.tree-node-leaf').forEach(node => {
+            node.addEventListener('click', () => {
+                const agentId = node.dataset.agentId;
+                this.selectAgent(agentId);
+            });
+
+            // Double-click to open in tab
+            node.addEventListener('dblclick', () => {
+                const agentId = node.dataset.agentId;
+                this.openAgentTab(agentId);
+            });
+        });
+    },
+
+    /**
+     * Select an agent in the tree
+     */
+    selectAgent(agentId) {
+        // Update selection state
+        this.data.selectedAgentId = agentId;
+
+        // Update tree UI
+        document.querySelectorAll('#agentsTreeContent .tree-node-leaf').forEach(node => {
+            node.classList.toggle('selected', node.dataset.agentId === agentId);
+        });
+
+        // Show agent detail in modal (single-click)
+        this.showAgentDetail(agentId);
+    },
+
+    /**
+     * Open agent in a new tab
+     */
+    openAgentTab(agentId) {
+        const agent = this.data.agents.find(a => a.id === agentId);
+        if (!agent) return;
+
+        Dashboard.openTab(`agent-${agentId}`, agent.name, '🤖');
+        this.renderAgentDetailTab(agent);
+    },
+
+    /**
+     * Render agent detail in the editor tab
+     */
+    async renderAgentDetailTab(agent) {
+        const container = document.getElementById('agentDetailView');
+        if (!container) return;
+
+        // Fetch activity
+        let activity = [];
+        try {
+            const response = await Dashboard.fetchAPI(`/api/agents/id/${agent.id}/activity`);
+            activity = response.events || [];
+        } catch (e) {
+            console.error('Error loading agent activity:', e);
+        }
+
+        const domainClass = Dashboard.getDomainClass(agent.domain);
+        const tools = agent.tools.map(t => `<span class="detail-tag">${t}</span>`).join('');
+        const phrases = agent.key_phrases.map(p => `<div class="detail-phrase">"${p}"</div>`).join('');
+
+        const activityHtml = activity.length > 0
+            ? activity.slice(0, 10).map(e => `
+                <div class="activity-event ${e.event_type}">
+                    <span class="event-time">${new Date(e.timestamp).toLocaleString()}</span>
+                    <span class="event-type">${e.event_type.replace(/_/g, ' ')}</span>
+                </div>
+            `).join('')
+            : '<p class="detail-muted">No recent activity</p>';
+
+        container.innerHTML = `
+            <div class="detail-header">
+                <div class="detail-title-row">
+                    <h2 class="detail-title">${agent.name}</h2>
+                    <span class="detail-domain ${domainClass}">${agent.domain.replace(/-/g, ' ')}</span>
+                </div>
+                <p class="detail-subtitle">${agent.role}</p>
+            </div>
+
+            ${agent.description ? `
+            <div class="detail-section">
+                <h4>Description</h4>
+                <p>${agent.description}</p>
+            </div>
+            ` : ''}
+
+            <div class="detail-section">
+                <h4>Tools</h4>
+                <div class="detail-tags">${tools || '<span class="detail-muted">No tools</span>'}</div>
+            </div>
+
+            ${agent.key_phrases.length > 0 ? `
+            <div class="detail-section">
+                <h4>Key Phrases</h4>
+                <div class="detail-phrases">${phrases}</div>
+            </div>
+            ` : ''}
+
+            <div class="detail-section">
+                <h4>Recent Activity</h4>
+                <div class="detail-activity">${activityHtml}</div>
+            </div>
+        `;
+
+        // Show the agent detail tab
+        document.getElementById('agentDetailTab').classList.add('active');
+    },
+
+    /**
+     * Show agent in modal (single-click quick view)
+     */
     async showAgentDetail(agentId) {
         const agent = this.data.agents.find(a => a.id === agentId);
         if (!agent) return;
@@ -319,11 +363,31 @@ const Agents = {
         Dashboard.openModal('agentModal', content);
     },
 
+    /**
+     * Filter agents based on search query
+     */
+    filter(query) {
+        const searchTerm = query.toLowerCase();
+
+        this.data.filteredAgents = this.data.agents.filter(agent => {
+            return !searchTerm ||
+                agent.name.toLowerCase().includes(searchTerm) ||
+                agent.role.toLowerCase().includes(searchTerm) ||
+                agent.id.toLowerCase().includes(searchTerm) ||
+                agent.domain.toLowerCase().includes(searchTerm);
+        });
+
+        this.renderTree();
+    },
+
+    /**
+     * Update agent activity (called from SSE events)
+     */
     updateActivity(agentId) {
         const agent = this.data.agents.find(a => a.id === agentId);
         if (agent) {
             agent.last_active = new Date().toISOString();
-            this.render();
+            this.renderTree();
         }
     }
 };

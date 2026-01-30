@@ -266,6 +266,67 @@ const Tasks = {
         });
 
         content.innerHTML = sortedTasks.map(task => this.renderTask(task)).join('');
+
+        // Also render into bottom panel tasks list
+        this.renderPanelTasks(sortedTasks, completed, total, progress);
+    },
+
+    /**
+     * Render tasks into the bottom panel tasks tab
+     * @param {Array} sortedTasks - Sorted task list
+     * @param {number} completed - Completed count
+     * @param {number} total - Total count
+     * @param {number} progress - Progress percentage
+     */
+    renderPanelTasks(sortedTasks, completed, total, progress) {
+        const panelList = document.getElementById('tasksList');
+        if (!panelList) return;
+
+        if (sortedTasks.length === 0) {
+            panelList.innerHTML = `
+                <div class="panel-empty">
+                    <span class="empty-icon">☐</span>
+                    <span>No tasks in this session</span>
+                </div>
+            `;
+            return;
+        }
+
+        panelList.innerHTML = `
+            <div class="panel-tasks-header">
+                <span class="panel-tasks-count">${completed}/${total} tasks completed</span>
+                <div class="panel-tasks-progress">
+                    <div class="panel-tasks-progress-bar" style="width: ${progress}%"></div>
+                </div>
+            </div>
+            <div class="panel-tasks-list">
+                ${sortedTasks.map(task => this.renderPanelTask(task)).join('')}
+            </div>
+        `;
+    },
+
+    /**
+     * Render a single task for the bottom panel
+     * @param {Object} task - Task object
+     * @returns {string} HTML string
+     */
+    renderPanelTask(task) {
+        const statusIcon = {
+            'pending': '○',
+            'in_progress': '◐',
+            'completed': '●'
+        };
+        const statusClass = `panel-task-${task.status}`;
+
+        return `
+            <div class="panel-task-item ${statusClass}">
+                <span class="panel-task-icon">${statusIcon[task.status] || '○'}</span>
+                <span class="panel-task-subject">${this.escapeHtml(task.subject)}</span>
+                ${task.status === 'in_progress' && task.activeForm ?
+                    `<span class="panel-task-active">${this.escapeHtml(task.activeForm)}</span>` : ''
+                }
+            </div>
+        `;
     },
 
     /**

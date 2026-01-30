@@ -1,7 +1,7 @@
 {
   "name": "dashboard",
   "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration",
-  "version": "2.1.1",
+  "version": "2.2.1",
   "skills": ["./skills/"],
   "mcpServers": {
     "dashboard": {

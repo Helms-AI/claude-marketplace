@@ -224,39 +224,8 @@ const Conversation = {
     },
 
     renderViewToggle(hasEvents, hasTranscript) {
-        if (!hasEvents && !hasTranscript) return '';
-
-        return `
-            <div class="view-toggle">
-                <button class="toggle-btn ${this.viewMode === 'unified' ? 'active' : ''}" data-view="unified" title="Show unified timeline">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="8" y1="6" x2="21" y2="6"></line>
-                        <line x1="8" y1="12" x2="21" y2="12"></line>
-                        <line x1="8" y1="18" x2="21" y2="18"></line>
-                        <circle cx="4" cy="6" r="1"></circle>
-                        <circle cx="4" cy="12" r="1"></circle>
-                        <circle cx="4" cy="18" r="1"></circle>
-                    </svg>
-                    Unified
-                </button>
-                ${hasTranscript ? `
-                    <button class="toggle-btn ${this.viewMode === 'transcript' ? 'active' : ''}" data-view="transcript" title="Show full transcript">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                        Transcript
-                    </button>
-                ` : ''}
-                ${hasEvents ? `
-                    <button class="toggle-btn ${this.viewMode === 'events' ? 'active' : ''}" data-view="events" title="Show metadata events">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                        </svg>
-                        Events
-                    </button>
-                ` : ''}
-            </div>
-        `;
+        // View toggle moved to header - return empty
+        return '';
     },
 
     bindViewToggle() {
@@ -698,19 +667,43 @@ const Conversation = {
     formatTranscriptContent(text) {
         if (!text) return '';
 
-        // Escape HTML first
-        let escaped = this.escapeHtml(text);
+        // Pre-process: Remove/format Claude Code system tags before markdown parsing
+        let processed = text;
 
-        // Convert markdown-style code blocks to pre
-        escaped = escaped.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="code-block"><code>$2</code></pre>');
+        // Remove system reminder tags (hide them completely)
+        processed = processed.replace(/<system-reminder>[\s\S]*?<\/system-reminder>/g, '');
 
-        // Convert inline code
-        escaped = escaped.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+        // Handle command invocation tags - extract and format
+        processed = processed.replace(/<command-message>([\s\S]*?)<\/command-message>/g, '$1');
+        processed = processed.replace(/<command-name>([\s\S]*?)<\/command-name>/g, '**/$1**');
+        processed = processed.replace(/<command-args>([\s\S]*?)<\/command-args>/g, '\n\n> $1');
 
-        // Convert newlines to br
-        escaped = escaped.replace(/\n/g, '<br>');
+        // Handle commentary tags (show as blockquote)
+        processed = processed.replace(/<commentary>([\s\S]*?)<\/commentary>/g, '\n\n> *$1*\n\n');
 
-        return escaped;
+        // Handle example tags (show as code block)
+        processed = processed.replace(/<example>([\s\S]*?)<\/example>/g, '\n\n```\n$1\n```\n\n');
+
+        // Use marked library for GitHub-flavored markdown
+        if (typeof marked !== 'undefined') {
+            // Configure marked for GitHub-flavored markdown
+            marked.setOptions({
+                gfm: true,
+                breaks: true,
+                headerIds: false,
+                mangle: false
+            });
+
+            try {
+                return marked.parse(processed);
+            } catch (e) {
+                console.warn('Markdown parsing failed, falling back to escaped text:', e);
+                return this.escapeHtml(processed).replace(/\n/g, '<br>');
+            }
+        }
+
+        // Fallback if marked is not loaded
+        return this.escapeHtml(processed).replace(/\n/g, '<br>');
     },
 
     addEvent(event) {
