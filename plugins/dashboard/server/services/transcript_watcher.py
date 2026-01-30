@@ -2,6 +2,7 @@
 
 import json
 import os
+import sys
 import threading
 import time
 from datetime import datetime
@@ -19,7 +20,8 @@ class TranscriptWatcher:
         self,
         transcript_reader,
         broadcast_callback: Callable[[dict, str], None],
-        poll_interval: float = 1.0
+        poll_interval: float = 0.5,
+        debug: bool = False
     ):
         """Initialize the transcript watcher.
 
@@ -27,11 +29,13 @@ class TranscriptWatcher:
             transcript_reader: TranscriptReader instance for parsing messages.
             broadcast_callback: Function to call when new messages are found.
                                Signature: callback(data: dict, event_type: str)
-            poll_interval: Time between file checks in seconds (default 1.0).
+            poll_interval: Time between file checks in seconds (default 0.5).
+            debug: Enable debug logging.
         """
         self.transcript_reader = transcript_reader
         self.broadcast_callback = broadcast_callback
         self.poll_interval = poll_interval
+        self.debug = debug
 
         # Map of session_id -> watch info
         # watch info: {
@@ -46,6 +50,12 @@ class TranscriptWatcher:
         self._lock = threading.Lock()
         self._running = False
         self._thread: Optional[threading.Thread] = None
+        self._broadcast_count = 0
+
+    def _log(self, msg: str) -> None:
+        """Log a debug message if debug mode is enabled."""
+        if self.debug:
+            print(f"[TranscriptWatcher] {msg}", file=sys.stderr, flush=True)
 
     def watch_session(
         self,
@@ -63,16 +73,21 @@ class TranscriptWatcher:
         Returns:
             True if watch was started, False if transcript not found.
         """
+        self._log(f"watch_session called: session_id={session_id}, claude_session_id={claude_session_id}")
+
         transcripts_dir = self.transcript_reader.get_project_transcripts_dir(project_path)
         if not transcripts_dir:
+            self._log(f"No transcripts dir found for project: {project_path}")
             return False
 
         main_path = os.path.join(transcripts_dir, f"{claude_session_id}.jsonl")
         if not os.path.isfile(main_path):
+            self._log(f"Transcript file not found: {main_path}")
             return False
 
         # Get current file positions (end of file)
         main_position = os.path.getsize(main_path)
+        self._log(f"Watching transcript: {main_path} from position {main_position}")
 
         # Check for subagent transcripts
         subagent_paths = {}
@@ -85,6 +100,7 @@ class TranscriptWatcher:
                     agent_path = os.path.join(subagents_dir, filename)
                     subagent_paths[agent_id] = agent_path
                     subagent_positions[agent_id] = os.path.getsize(agent_path)
+                    self._log(f"Found subagent transcript: {agent_id}")
 
         with self._lock:
             self._watches[session_id] = {
@@ -96,6 +112,7 @@ class TranscriptWatcher:
                 'subagent_paths': subagent_paths,
                 'subagent_positions': subagent_positions
             }
+            self._log(f"Now watching {len(self._watches)} session(s)")
 
         return True
 
@@ -151,16 +168,16 @@ class TranscriptWatcher:
             if os.path.isfile(main_path):
                 current_size = os.path.getsize(main_path)
                 if current_size > watch_info['main_position']:
+                    self._log(f"File changed: {main_path} ({watch_info['main_position']} -> {current_size})")
                     new_lines = self._read_new_lines(
                         main_path,
                         watch_info['main_position']
                     )
+                    self._log(f"Read {len(new_lines)} new lines")
                     for line in new_lines:
                         msg = self._parse_and_broadcast(
                             line, session_id, 'main'
                         )
-                        if msg:
-                            pass  # Already broadcast
 
                     # Update position
                     with self._lock:
@@ -247,15 +264,20 @@ class TranscriptWatcher:
 
             # Only broadcast user/assistant messages
             if msg_type not in ('user', 'assistant'):
+                self._log(f"Skipping message type: {msg_type}")
                 return None
 
             # Parse the message using transcript reader's parser
             message = self.transcript_reader._parse_entry(entry)
             if not message:
+                self._log("Failed to parse entry")
                 return None
 
             # Convert to dict and broadcast
             msg_dict = self.transcript_reader.to_dict(message)
+
+            self._broadcast_count += 1
+            self._log(f"Broadcasting message #{self._broadcast_count}: role={msg_dict.get('role')} source={source}")
 
             self.broadcast_callback({
                 'session_id': session_id,
@@ -266,10 +288,11 @@ class TranscriptWatcher:
 
             return msg_dict
 
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            self._log(f"JSON decode error: {e}")
             return None
         except Exception as e:
-            print(f"Error parsing transcript line: {e}")
+            self._log(f"Error parsing transcript line: {e}")
             return None
 
     def get_watched_sessions(self) -> list[str]:

@@ -2,6 +2,7 @@
 
 import json
 import queue
+import sys
 import time
 from threading import Lock
 from typing import Callable, Optional
@@ -10,11 +11,22 @@ from typing import Callable, Optional
 class SSEManager:
     """Manages Server-Sent Events connections and broadcasting."""
 
-    def __init__(self):
-        """Initialize the SSE manager."""
+    def __init__(self, debug: bool = False):
+        """Initialize the SSE manager.
+
+        Args:
+            debug: Enable debug logging.
+        """
         self.clients: list[queue.Queue] = []
         self.lock = Lock()
         self.event_listener: Optional[Callable] = None
+        self.debug = debug
+        self._broadcast_count = 0
+
+    def _log(self, msg: str) -> None:
+        """Log a debug message if debug mode is enabled."""
+        if self.debug:
+            print(f"[SSE] {msg}", file=sys.stderr, flush=True)
 
     def register_client(self) -> queue.Queue:
         """Register a new SSE client.
@@ -25,6 +37,8 @@ class SSEManager:
         client_queue = queue.Queue(maxsize=100)
         with self.lock:
             self.clients.append(client_queue)
+            client_count = len(self.clients)
+        self._log(f"Client registered. Total clients: {client_count}")
         return client_queue
 
     def unregister_client(self, client_queue: queue.Queue) -> None:
@@ -36,13 +50,17 @@ class SSEManager:
         with self.lock:
             if client_queue in self.clients:
                 self.clients.remove(client_queue)
+                self._log(f"Client unregistered. Total clients: {len(self.clients)}")
 
-    def broadcast(self, event_data: dict, event_type: str = 'message') -> None:
+    def broadcast(self, event_data: dict, event_type: str = 'message') -> int:
         """Broadcast an event to all connected clients.
 
         Args:
             event_data: The event data to broadcast.
             event_type: The event type.
+
+        Returns:
+            Number of clients the message was sent to.
         """
         message = {
             'type': event_type,
@@ -50,16 +68,23 @@ class SSEManager:
             'timestamp': time.time()
         }
 
+        sent_count = 0
         with self.lock:
             dead_clients = []
             for client_queue in self.clients:
                 try:
                     client_queue.put_nowait(message)
+                    sent_count += 1
                 except queue.Full:
                     dead_clients.append(client_queue)
 
             for client in dead_clients:
                 self.clients.remove(client)
+
+            self._broadcast_count += 1
+
+        self._log(f"Broadcast #{self._broadcast_count} type={event_type} to {sent_count} clients")
+        return sent_count
 
     def get_client_count(self) -> int:
         """Get the number of connected clients.
@@ -109,7 +134,7 @@ class SSEManager:
                 try:
                     # Wait for events with shorter timeout for more frequent heartbeats
                     # This helps keep the connection alive in browsers
-                    message = client_queue.get(timeout=5.0)
+                    message = client_queue.get(timeout=3.0)
                     yield self._format_sse(message)
                 except queue.Empty:
                     # Send heartbeat to keep connection alive
@@ -119,10 +144,9 @@ class SSEManager:
                     })
 
         except GeneratorExit:
-            pass
-        except Exception:
-            # Connection closed
-            pass
+            self._log("Stream generator exit")
+        except Exception as e:
+            self._log(f"Stream error: {e}")
 
     @staticmethod
     def _format_sse(data: dict) -> str:

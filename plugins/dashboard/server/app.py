@@ -182,22 +182,28 @@ def create_app(local_only: bool = True) -> Flask:
     # Discover project paths for sessions
     project_paths = get_project_paths()
 
+    # Check for debug mode from environment
+    debug_mode = os.environ.get('DASHBOARD_DEBUG', '').lower() in ('1', 'true', 'yes')
+
     # Initialize services with multiple plugin paths
     agent_registry = AgentRegistry(plugin_paths)
     skill_registry = SkillRegistry(plugin_paths)
     event_store = EventStore()
     session_tracker = SessionTracker(project_paths, event_store=event_store)
-    sse_manager = SSEManager()
+    sse_manager = SSEManager(debug=debug_mode)
     transcript_reader = TranscriptReader()
 
     # Initialize transcript watcher with SSE broadcast callback
     def transcript_broadcast(data: dict, event_type: str):
-        sse_manager.broadcast(data, event_type=event_type)
+        sent = sse_manager.broadcast(data, event_type=event_type)
+        if debug_mode:
+            print(f"[Dashboard] Broadcast {event_type} to {sent} clients", flush=True)
 
     transcript_watcher = TranscriptWatcher(
         transcript_reader,
         broadcast_callback=transcript_broadcast,
-        poll_interval=1.0
+        poll_interval=0.5,
+        debug=debug_mode
     )
     transcript_watcher.start()
 
@@ -272,15 +278,21 @@ def create_app(local_only: bool = True) -> Flask:
             finally:
                 sse_manager.unregister_client(client_queue)
 
-        return Response(
+        response = Response(
             generate(),
             mimetype='text/event-stream',
             headers={
-                'Cache-Control': 'no-cache',
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0',
                 'Connection': 'keep-alive',
-                'X-Accel-Buffering': 'no'
+                'X-Accel-Buffering': 'no',
+                'Access-Control-Allow-Origin': '*'
             }
         )
+        # Disable response buffering for streaming
+        response.implicit_sequence_conversion = False
+        return response
 
     # Auth token endpoint (local only)
     @app.route('/api/auth/token')
@@ -309,14 +321,21 @@ def create_app(local_only: bool = True) -> Flask:
         """Start watching a session's transcript for real-time updates."""
         session = session_tracker.get_session(session_id)
         if not session:
+            if debug_mode:
+                print(f"[Watch] Session not found: {session_id}", flush=True)
             return jsonify({'error': 'Session not found'}), 404
 
         project_path = session.project_path
         if not project_path:
+            if debug_mode:
+                print(f"[Watch] No project path for session: {session_id}", flush=True)
             return jsonify({'error': 'No project path for session'}), 400
 
         # Get Claude session ID
         claude_session_id = getattr(session, 'claude_session_id', None)
+        if debug_mode:
+            print(f"[Watch] Session {session_id}: claude_session_id={claude_session_id}", flush=True)
+
         if not claude_session_id:
             # Try to find by timestamp
             transcript_path = transcript_reader.find_transcript_by_timestamp(
@@ -328,8 +347,12 @@ def create_app(local_only: bool = True) -> Flask:
                 import os
                 filename = os.path.basename(transcript_path)
                 claude_session_id = filename[:-6] if filename.endswith('.jsonl') else filename
+                if debug_mode:
+                    print(f"[Watch] Found transcript by timestamp: {claude_session_id}", flush=True)
 
         if not claude_session_id:
+            if debug_mode:
+                print(f"[Watch] Could not find transcript for session: {session_id}", flush=True)
             return jsonify({'error': 'Could not find transcript'}), 404
 
         success = transcript_watcher.watch_session(
@@ -337,12 +360,17 @@ def create_app(local_only: bool = True) -> Flask:
         )
 
         if success:
+            if debug_mode:
+                print(f"[Watch] Now watching session {session_id} (transcript: {claude_session_id})", flush=True)
             return jsonify({
                 'status': 'watching',
                 'session_id': session_id,
-                'claude_session_id': claude_session_id
+                'claude_session_id': claude_session_id,
+                'sse_clients': sse_manager.get_client_count()
             })
         else:
+            if debug_mode:
+                print(f"[Watch] Failed to start watching session: {session_id}", flush=True)
             return jsonify({'error': 'Failed to start watching'}), 500
 
     @app.route('/api/sessions/<session_id>/unwatch', methods=['POST'])
@@ -352,6 +380,19 @@ def create_app(local_only: bool = True) -> Flask:
         return jsonify({
             'status': 'unwatched' if removed else 'not_watching',
             'session_id': session_id
+        })
+
+    # Debug endpoint to check watcher and SSE status
+    @app.route('/api/debug/sse-status')
+    def sse_status():
+        """Get SSE and transcript watcher status for debugging."""
+        watched_sessions = transcript_watcher.get_watched_sessions()
+        return jsonify({
+            'sse_clients': sse_manager.get_client_count(),
+            'watched_sessions': watched_sessions,
+            'watched_count': len(watched_sessions),
+            'watcher_running': transcript_watcher._running,
+            'debug_mode': debug_mode
         })
 
     # Version endpoint - reads from plugin.json
