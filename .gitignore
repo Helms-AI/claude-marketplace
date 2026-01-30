@@ -27,3 +27,5 @@ npm-debug.log*
 
 # TypeScript
 *.tsbuildinfo
+
+.playwright-mcp
