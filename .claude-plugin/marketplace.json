@@ -8,8 +8,8 @@
     {
       "name": "pm",
       "source": "./plugins/pm",
-      "description": "Project Manager broker for cross-domain orchestration. Routes requests to specialized domain plugins, manages workflow handoffs, tracks decisions/artifacts, and resolves conflicts between domains.",
-      "version": "1.0.3",
+      "description": "Project Manager broker for cross-domain orchestration. Routes requests to specialized domain plugins, manages workflow changesets, tracks decisions/artifacts, and resolves conflicts between domains.",
+      "version": "1.1.0",
       "author": {
         "name": "Platform Team"
       },
@@ -18,7 +18,7 @@
         "orchestration",
         "project-management",
         "workflow",
-        "handoffs",
+        "changesets",
         "cross-domain",
         "routing",
         "conflict-resolution",
@@ -284,8 +284,8 @@
     {
       "name": "dashboard",
       "source": "./plugins/dashboard",
-      "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, sessions, and cross-domain orchestration. Features agent explorer with domain-grouped layout, skill browser with collapsible sections, session viewer with live event streaming, inline subagent conversations, D3.js domain interaction graph, and handoff timeline visualization.",
-      "version": "1.7.0",
+      "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration. Features agent explorer with domain-grouped layout, skill browser with collapsible sections, changeset viewer with live event streaming, inline subagent conversations, D3.js domain interaction graph, and handoff timeline visualization.",
+      "version": "2.1.1",
       "author": {
         "name": "Platform Team"
       },
@@ -296,7 +296,7 @@
         "monitoring",
         "agents",
         "skills",
-        "sessions",
+        "changesets",
         "real-time",
         "sse",
         "d3js",

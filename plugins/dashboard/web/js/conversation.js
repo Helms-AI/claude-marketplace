@@ -267,9 +267,9 @@ const Conversation = {
                 if (newView !== this.viewMode) {
                     this.viewMode = newView;
                     // Re-render with current data
-                    if (Sessions && Sessions.data) {
-                        const session = Sessions.data.sessions.find(s => s.id === Sessions.data.currentSessionId);
-                        this.render(Sessions.data.events, session, Sessions.data.transcript);
+                    if (Changesets && Changesets.data) {
+                        const changeset = Changesets.data.changesets.find(c => c.changeset_id === Changesets.data.currentChangesetId);
+                        this.render(Changesets.data.events, changeset, Changesets.data.transcript);
                     }
                 }
             });

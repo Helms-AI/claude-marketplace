@@ -30,4 +30,4 @@ npm-debug.log*
 
 .playwright-mcp
 
-.claude/handoffs/
+.claude

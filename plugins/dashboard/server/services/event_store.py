@@ -20,7 +20,7 @@ class EventStore:
         """
         self.max_events = max_events
         self.events: list[ConversationEvent] = []
-        self.events_by_session: dict[str, list[ConversationEvent]] = defaultdict(list)
+        self.events_by_changeset: dict[str, list[ConversationEvent]] = defaultdict(list)
         self.events_by_agent: dict[str, list[ConversationEvent]] = defaultdict(list)
         self.events_by_skill: dict[str, list[ConversationEvent]] = defaultdict(list)
         self.lock = Lock()
@@ -34,7 +34,7 @@ class EventStore:
         """
         with self.lock:
             self.events.append(event)
-            self.events_by_session[event.session_id].append(event)
+            self.events_by_changeset[event.changeset_id].append(event)
 
             if event.agent_id:
                 self.events_by_agent[event.agent_id].append(event)
@@ -50,8 +50,8 @@ class EventStore:
 
                 # Clean up indexes
                 for event in to_remove:
-                    if event in self.events_by_session[event.session_id]:
-                        self.events_by_session[event.session_id].remove(event)
+                    if event in self.events_by_changeset[event.changeset_id]:
+                        self.events_by_changeset[event.changeset_id].remove(event)
                     if event.agent_id and event in self.events_by_agent[event.agent_id]:
                         self.events_by_agent[event.agent_id].remove(event)
                     if event.skill_id and event in self.events_by_skill[event.skill_id]:
@@ -67,7 +67,7 @@ class EventStore:
     def create_event(
         self,
         event_type: EventType,
-        session_id: str,
+        changeset_id: str,
         domain: str,
         agent_id: Optional[str] = None,
         skill_id: Optional[str] = None,
@@ -77,7 +77,7 @@ class EventStore:
 
         Args:
             event_type: The type of event.
-            session_id: The session ID.
+            changeset_id: The changeset ID.
             domain: The domain.
             agent_id: Optional agent ID.
             skill_id: Optional skill ID.
@@ -89,7 +89,7 @@ class EventStore:
         event = ConversationEvent(
             id=str(uuid.uuid4()),
             timestamp=datetime.now(),
-            session_id=session_id,
+            changeset_id=changeset_id,
             event_type=event_type,
             domain=domain,
             agent_id=agent_id,
@@ -111,17 +111,17 @@ class EventStore:
         with self.lock:
             return list(reversed(self.events[-limit:]))
 
-    def get_by_session(self, session_id: str) -> list[ConversationEvent]:
-        """Get all events for a session.
+    def get_by_changeset(self, changeset_id: str) -> list[ConversationEvent]:
+        """Get all events for a changeset.
 
         Args:
-            session_id: The session ID.
+            changeset_id: The changeset ID.
 
         Returns:
-            List of events for the session.
+            List of events for the changeset.
         """
         with self.lock:
-            return list(self.events_by_session.get(session_id, []))
+            return list(self.events_by_changeset.get(changeset_id, []))
 
     def get_by_agent(self, agent_id: str, limit: int = 100) -> list[ConversationEvent]:
         """Get recent events for an agent.
@@ -151,14 +151,14 @@ class EventStore:
             events = self.events_by_skill.get(skill_id, [])
             return list(reversed(events[-limit:]))
 
-    def get_sessions(self) -> list[str]:
-        """Get all session IDs.
+    def get_changesets(self) -> list[str]:
+        """Get all changeset IDs.
 
         Returns:
-            List of session IDs.
+            List of changeset IDs.
         """
         with self.lock:
-            return list(self.events_by_session.keys())
+            return list(self.events_by_changeset.keys())
 
     def add_listener(self, listener: callable) -> None:
         """Add an event listener.
@@ -189,7 +189,7 @@ class EventStore:
         return {
             'id': event.id,
             'timestamp': event.timestamp.isoformat(),
-            'session_id': event.session_id,
+            'changeset_id': event.changeset_id,
             'event_type': event.event_type.value,
             'domain': event.domain,
             'agent_id': event.agent_id,

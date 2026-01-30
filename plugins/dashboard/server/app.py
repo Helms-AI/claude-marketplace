@@ -21,42 +21,42 @@ from .auth import AuthManager
 from .sse import SSEManager
 from .services.agent_registry import AgentRegistry
 from .services.skill_registry import SkillRegistry
-from .services.session_tracker import SessionTracker
+from .services.changeset_tracker import ChangesetTracker
 from .services.event_store import EventStore
 from .services.file_watcher import FileWatcher
-from .services.session_watcher import SessionWatcher, SessionFileEvent
-from .routes import agents_bp, skills_bp, sessions_bp, events_bp, stream_bp, capabilities_bp
+from .services.changeset_watcher import ChangesetWatcher, ChangesetFileEvent
+from .routes import agents_bp, skills_bp, changesets_bp, events_bp, stream_bp, capabilities_bp
 from .services.transcript_reader import TranscriptReader
 from .services.transcript_watcher import TranscriptWatcher
 
 
-def get_session_snapshot(session) -> dict:
-    """Extract comparable fields from a session for change detection.
+def get_changeset_snapshot(changeset) -> dict:
+    """Extract comparable fields from a changeset for change detection.
 
     Args:
-        session: SessionInfo object.
+        changeset: ChangesetInfo object.
 
     Returns:
         Dictionary of snapshot fields for comparison.
     """
     return {
-        'id': session.id,
-        'phase': session.phase,
-        'event_count': len(session.events),
-        'handoff_count': session.handoff_count or len(session.handoffs),
-        'domains_involved': tuple(sorted(session.domains_involved or [])),
-        'current_domain': session.current_domain,
-        'current_agent': session.current_agent,
-        'artifacts': tuple(sorted(session.artifacts or []))
+        'id': changeset.changeset_id,
+        'phase': changeset.phase,
+        'event_count': len(changeset.events),
+        'handoff_count': changeset.handoff_count or len(changeset.handoffs),
+        'domains_involved': tuple(sorted(changeset.domains_involved or [])),
+        'current_domain': changeset.current_domain,
+        'current_agent': changeset.current_agent,
+        'artifacts': tuple(sorted(changeset.artifacts or []))
     }
 
 
-def diff_sessions(old_snapshot: dict, new_snapshot: dict) -> dict:
-    """Compare two session snapshots and return changed fields.
+def diff_changesets(old_snapshot: dict, new_snapshot: dict) -> dict:
+    """Compare two changeset snapshots and return changed fields.
 
     Args:
-        old_snapshot: Previous session state.
-        new_snapshot: Current session state.
+        old_snapshot: Previous changeset state.
+        new_snapshot: Current changeset state.
 
     Returns:
         Dictionary of fields that changed with their new values.
@@ -74,64 +74,73 @@ def diff_sessions(old_snapshot: dict, new_snapshot: dict) -> dict:
     return changes
 
 
-def start_session_scanner(session_tracker, sse_manager, interval: float = 3.0):
-    """Background thread that scans for new sessions and broadcasts via SSE.
+def start_changeset_scanner(changeset_tracker, sse_manager, changeset_watcher=None, interval: float = 3.0):
+    """Background thread that scans for new changesets and broadcasts via SSE.
 
     Args:
-        session_tracker: SessionTracker instance to scan.
+        changeset_tracker: ChangesetTracker instance to scan.
         sse_manager: SSEManager instance for broadcasting.
+        changeset_watcher: Optional ChangesetWatcher to update with new project paths.
         interval: Scan interval in seconds (default 3.0).
 
     Returns:
         The started background thread.
     """
-    # Build initial snapshots for all sessions
-    initial_sessions = session_tracker.get_all_sessions()
-    last_session_snapshots = {s.id: get_session_snapshot(s) for s in initial_sessions}
+    # Build initial snapshots for all changesets
+    initial_changesets = changeset_tracker.get_all_changesets()
+    last_changeset_snapshots = {c.changeset_id: get_changeset_snapshot(c) for c in initial_changesets}
 
     def scan_loop():
-        nonlocal last_session_snapshots
+        nonlocal last_changeset_snapshots
         while not _shutdown_event.is_set():
             time.sleep(interval)
             if _shutdown_event.is_set():
                 break
 
-            session_tracker.scan()
-            current_sessions = session_tracker.get_all_sessions()
-            current_snapshots = {s.id: get_session_snapshot(s) for s in current_sessions}
+            # Re-discover project paths (new projects may have been created)
+            new_project_paths = get_project_paths()
+            for path in new_project_paths:
+                if path not in changeset_tracker.project_paths:
+                    changeset_tracker.project_paths.append(path)
+                    if changeset_watcher:
+                        changeset_watcher.add_project_path(path)
 
-            # Detect new sessions
-            new_ids = set(current_snapshots.keys()) - set(last_session_snapshots.keys())
-            for session_id in new_ids:
-                session = next((s for s in current_sessions if s.id == session_id), None)
-                if session:
+            changeset_tracker.scan()
+            current_changesets = changeset_tracker.get_all_changesets()
+            current_snapshots = {c.changeset_id: get_changeset_snapshot(c) for c in current_changesets}
+
+            # Detect new changesets
+            new_ids = set(current_snapshots.keys()) - set(last_changeset_snapshots.keys())
+            for changeset_id in new_ids:
+                changeset = next((c for c in current_changesets if c.changeset_id == changeset_id), None)
+                if changeset:
                     sse_manager.broadcast({
-                        'session_id': session.id,
-                        'started_at': session.started_at.isoformat(),
-                        'phase': session.phase,
-                        'domains_involved': session.domains_involved
-                    }, event_type='session_created')
+                        'changeset_id': changeset.changeset_id,
+                        'started_at': changeset.started_at.isoformat(),
+                        'phase': changeset.phase,
+                        'domains_involved': changeset.domains_involved
+                    }, event_type='changeset_created')
 
-            # Detect updated sessions (existing sessions with changed content)
-            existing_ids = set(current_snapshots.keys()) & set(last_session_snapshots.keys())
-            for session_id in existing_ids:
-                old_snap = last_session_snapshots[session_id]
-                new_snap = current_snapshots[session_id]
-                changes = diff_sessions(old_snap, new_snap)
+            # Detect updated changesets (existing changesets with changed content)
+            existing_ids = set(current_snapshots.keys()) & set(last_changeset_snapshots.keys())
+            for changeset_id in existing_ids:
+                old_snap = last_changeset_snapshots[changeset_id]
+                new_snap = current_snapshots[changeset_id]
+                changes = diff_changesets(old_snap, new_snap)
 
                 if changes:
-                    session = next((s for s in current_sessions if s.id == session_id), None)
-                    if session:
-                        # Build full session dict for reconciliation
-                        full_session = session_tracker.to_dict(session)
+                    changeset = next((c for c in current_changesets if c.changeset_id == changeset_id), None)
+                    if changeset:
+                        # Build full changeset dict for reconciliation
+                        full_changeset = changeset_tracker.to_dict(changeset)
                         sse_manager.broadcast({
-                            'session_id': session_id,
+                            'changeset_id': changeset_id,
                             'changes': changes,
-                            'full_session': full_session
-                        }, event_type='session_updated')
+                            'full_changeset': full_changeset
+                        }, event_type='changeset_updated')
 
             # Update snapshots for next iteration
-            last_session_snapshots = current_snapshots
+            last_changeset_snapshots = current_snapshots
 
     thread = threading.Thread(target=scan_loop, daemon=True)
     thread.start()
@@ -139,7 +148,7 @@ def start_session_scanner(session_tracker, sse_manager, interval: float = 3.0):
 
 
 def get_project_paths() -> list[str]:
-    """Discover project directories that have .claude/handoffs/.
+    """Discover project directories that have .claude/changesets/.
 
     Scans for projects in:
     1. Current working directory
@@ -147,18 +156,18 @@ def get_project_paths() -> list[str]:
     3. Common project locations (~/GitHub, ~/Projects, ~/code)
 
     Returns:
-        List of project paths that have .claude/handoffs/ directories.
+        List of project paths that have .claude/changesets/ directories.
     """
     paths = []
     checked = set()
 
     def check_and_add(path: str) -> None:
-        """Check if path has .claude/handoffs/ and add if so."""
+        """Check if path has .claude/changesets/ and add if so."""
         if path in checked:
             return
         checked.add(path)
-        handoffs_dir = os.path.join(path, '.claude', 'handoffs')
-        if os.path.isdir(handoffs_dir):
+        changesets_dir = os.path.join(path, '.claude', 'changesets')
+        if os.path.isdir(changesets_dir):
             paths.append(path)
 
     # 1. Current working directory
@@ -244,14 +253,14 @@ def create_app(local_only: bool = True) -> Flask:
     # Create Flask app
     app = Flask(__name__, static_folder=web_dir)
 
-    # Discover project paths for sessions
-    # By default, only show sessions from the current working directory
+    # Discover project paths for changesets
+    # By default, only show changesets from the current working directory
     # This scopes the dashboard to the current Claude Code terminal session
     cwd = os.getcwd()
-    cwd_handoffs = os.path.join(cwd, '.claude', 'handoffs')
+    cwd_changesets = os.path.join(cwd, '.claude', 'changesets')
 
-    if os.path.isdir(cwd_handoffs):
-        # Primary: current working directory has handoffs
+    if os.path.isdir(cwd_changesets):
+        # Primary: current working directory has changesets
         project_paths = [cwd]
     else:
         # Fallback: discover from common locations
@@ -264,7 +273,7 @@ def create_app(local_only: bool = True) -> Flask:
     agent_registry = AgentRegistry(plugin_paths)
     skill_registry = SkillRegistry(plugin_paths)
     event_store = EventStore()
-    session_tracker = SessionTracker(project_paths, event_store=event_store)
+    changeset_tracker = ChangesetTracker(project_paths, event_store=event_store)
     sse_manager = SSEManager(debug=debug_mode)
     transcript_reader = TranscriptReader()
 
@@ -296,62 +305,65 @@ def create_app(local_only: bool = True) -> Flask:
     print(f"Found {len(agent_registry.get_all())} agents across {len(agent_registry.get_all_domains())} domains")
     print(f"Found {len(skill_registry.get_all())} skills")
 
-    # Scan sessions
-    print(f"Scanning project paths for sessions: {project_paths}")
-    session_tracker.scan()
-    print(f"Found {len(session_tracker.get_all_sessions())} sessions")
+    # Scan changesets
+    print(f"Scanning project paths for changesets: {project_paths}")
+    changeset_tracker.scan()
+    print(f"Found {len(changeset_tracker.get_all_changesets())} changesets")
 
-    # Start background session scanner for periodic reconciliation (fallback)
-    scanner_thread = start_session_scanner(session_tracker, sse_manager, interval=5.0)
-    print("Started session scanner (5s interval for reconciliation)")
-
-    # Start instant session watcher for real-time detection
-    def on_session_file_event(event: SessionFileEvent):
-        """Handle session file events for instant SSE broadcast."""
+    # Start instant changeset watcher for real-time detection (create before scanner)
+    def on_changeset_file_event(event: ChangesetFileEvent):
+        """Handle changeset file events for instant SSE broadcast."""
         if debug_mode:
-            print(f"[SessionWatcher] {event.event_type}: {event.session_id}", flush=True)
+            print(f"[ChangesetWatcher] {event.event_type}: {event.changeset_id}", flush=True)
 
         if event.event_type == 'created':
-            # Rescan to pick up the new session
-            session_tracker.scan()
-            session = session_tracker.get_session(event.session_id)
-            if session:
+            # Rescan to pick up the new changeset
+            changeset_tracker.scan()
+            changeset = changeset_tracker.get_changeset(event.changeset_id)
+            if changeset:
                 sse_manager.broadcast({
-                    'session_id': session.id,
-                    'started_at': session.started_at.isoformat(),
-                    'phase': session.phase,
-                    'domains_involved': session.domains_involved,
-                    'full_session': session_tracker.to_dict(session)
-                }, event_type='session_created')
+                    'changeset_id': changeset.changeset_id,
+                    'started_at': changeset.started_at.isoformat(),
+                    'phase': changeset.phase,
+                    'domains_involved': changeset.domains_involved,
+                    'full_changeset': changeset_tracker.to_dict(changeset)
+                }, event_type='changeset_created')
 
         elif event.event_type == 'modified':
-            # Rescan and get updated session
-            session_tracker.scan()
-            session = session_tracker.get_session(event.session_id)
-            if session:
-                full_session = session_tracker.to_dict(session)
+            # Rescan and get updated changeset
+            changeset_tracker.scan()
+            changeset = changeset_tracker.get_changeset(event.changeset_id)
+            if changeset:
+                full_changeset = changeset_tracker.to_dict(changeset)
                 sse_manager.broadcast({
-                    'session_id': event.session_id,
+                    'changeset_id': event.changeset_id,
                     'changes': {'modified': True},
-                    'full_session': full_session
-                }, event_type='session_updated')
+                    'full_changeset': full_changeset
+                }, event_type='changeset_updated')
 
         elif event.event_type == 'deleted':
             # Remove from tracker
-            with session_tracker.lock:
-                if event.session_id in session_tracker.sessions:
-                    del session_tracker.sessions[event.session_id]
+            with changeset_tracker.lock:
+                if event.changeset_id in changeset_tracker.changesets:
+                    del changeset_tracker.changesets[event.changeset_id]
             sse_manager.broadcast({
-                'session_id': event.session_id
-            }, event_type='session_deleted')
+                'changeset_id': event.changeset_id
+            }, event_type='changeset_deleted')
 
-    session_watcher = SessionWatcher(
+    changeset_watcher = ChangesetWatcher(
         project_paths=project_paths,
-        on_session_event=on_session_file_event,
+        on_changeset_event=on_changeset_file_event,
         poll_interval=0.5  # Fast polling for near-instant detection
     )
-    session_watcher.start()
-    print(f"Started instant session watcher (0.5s polling) for {project_paths}")
+    changeset_watcher.start()
+    print(f"Started instant changeset watcher (0.5s polling) for {project_paths}")
+
+    # Start background changeset scanner for periodic reconciliation (fallback)
+    # This also re-discovers new project paths that may have been created
+    scanner_thread = start_changeset_scanner(
+        changeset_tracker, sse_manager, changeset_watcher=changeset_watcher, interval=5.0
+    )
+    print("Started changeset scanner (5s interval for reconciliation)")
 
     # Initialize auth
     auth_manager.initialize(local_only=local_only)
@@ -363,11 +375,11 @@ def create_app(local_only: bool = True) -> Flask:
     # Store services in app config
     app.config['agent_registry'] = agent_registry
     app.config['skill_registry'] = skill_registry
-    app.config['session_tracker'] = session_tracker
+    app.config['changeset_tracker'] = changeset_tracker
     app.config['event_store'] = event_store
     app.config['sse_manager'] = sse_manager
     app.config['auth_manager'] = auth_manager
-    app.config['session_watcher'] = session_watcher
+    app.config['changeset_watcher'] = changeset_watcher
     app.config['transcript_reader'] = transcript_reader
     app.config['transcript_watcher'] = transcript_watcher
     app.config['plugin_paths'] = plugin_paths
@@ -376,7 +388,7 @@ def create_app(local_only: bool = True) -> Flask:
     # Register blueprints
     app.register_blueprint(agents_bp)
     app.register_blueprint(skills_bp)
-    app.register_blueprint(sessions_bp)
+    app.register_blueprint(changesets_bp)
     app.register_blueprint(events_bp)
     app.register_blueprint(stream_bp)
     app.register_blueprint(capabilities_bp)
@@ -430,91 +442,91 @@ def create_app(local_only: bool = True) -> Flask:
     def rescan_plugins():
         agent_registry.scan()
         skill_registry.scan()
-        session_tracker.scan()
+        changeset_tracker.scan()
         return {
             'status': 'ok',
             'agents': len(agent_registry.get_all()),
             'skills': len(skill_registry.get_all()),
             'domains': len(agent_registry.get_all_domains()),
-            'sessions': len(session_tracker.get_all_sessions())
+            'changesets': len(changeset_tracker.get_all_changesets())
         }
 
     # Transcript watch endpoints for real-time updates
-    @app.route('/api/sessions/<session_id>/watch', methods=['POST'])
-    def watch_session_transcript(session_id):
-        """Start watching a session's transcript for real-time updates."""
-        session = session_tracker.get_session(session_id)
-        if not session:
+    @app.route('/api/changesets/<changeset_id>/watch', methods=['POST'])
+    def watch_changeset_transcript(changeset_id):
+        """Start watching a changeset's transcript for real-time updates."""
+        changeset = changeset_tracker.get_changeset(changeset_id)
+        if not changeset:
             if debug_mode:
-                print(f"[Watch] Session not found: {session_id}", flush=True)
-            return jsonify({'error': 'Session not found'}), 404
+                print(f"[Watch] Changeset not found: {changeset_id}", flush=True)
+            return jsonify({'error': 'Changeset not found'}), 404
 
-        project_path = session.project_path
+        project_path = changeset.project_path
         if not project_path:
             if debug_mode:
-                print(f"[Watch] No project path for session: {session_id}", flush=True)
-            return jsonify({'error': 'No project path for session'}), 400
+                print(f"[Watch] No project path for changeset: {changeset_id}", flush=True)
+            return jsonify({'error': 'No project path for changeset'}), 400
 
-        # Get Claude session ID
-        claude_session_id = getattr(session, 'claude_session_id', None)
+        # Get Claude session ID (Claude Code's native session ID)
+        session_id = getattr(changeset, 'session_id', None)
         if debug_mode:
-            print(f"[Watch] Session {session_id}: claude_session_id={claude_session_id}", flush=True)
+            print(f"[Watch] Changeset {changeset_id}: session_id={session_id}", flush=True)
 
-        if not claude_session_id:
+        if not session_id:
             # Try to find by timestamp
             transcript_path = transcript_reader.find_transcript_by_timestamp(
                 project_path,
-                session.started_at,
+                changeset.started_at,
                 tolerance_seconds=600
             )
             if transcript_path:
                 import os
                 filename = os.path.basename(transcript_path)
-                claude_session_id = filename[:-6] if filename.endswith('.jsonl') else filename
+                session_id = filename[:-6] if filename.endswith('.jsonl') else filename
                 if debug_mode:
-                    print(f"[Watch] Found transcript by timestamp: {claude_session_id}", flush=True)
+                    print(f"[Watch] Found transcript by timestamp: {session_id}", flush=True)
 
-        if not claude_session_id:
+        if not session_id:
             if debug_mode:
-                print(f"[Watch] Could not find transcript for session: {session_id}", flush=True)
+                print(f"[Watch] Could not find transcript for changeset: {changeset_id}", flush=True)
             return jsonify({'error': 'Could not find transcript'}), 404
 
-        success = transcript_watcher.watch_session(
-            session_id, project_path, claude_session_id
+        success = transcript_watcher.watch_changeset(
+            changeset_id, project_path, session_id
         )
 
         if success:
             if debug_mode:
-                print(f"[Watch] Now watching session {session_id} (transcript: {claude_session_id})", flush=True)
+                print(f"[Watch] Now watching changeset {changeset_id} (transcript: {session_id})", flush=True)
             return jsonify({
                 'status': 'watching',
-                'session_id': session_id,
-                'claude_session_id': claude_session_id,
+                'changeset_id': changeset_id,
+                'session_id': session_id,  # Claude Code's native session ID
                 'sse_clients': sse_manager.get_client_count()
             })
         else:
             if debug_mode:
-                print(f"[Watch] Failed to start watching session: {session_id}", flush=True)
+                print(f"[Watch] Failed to start watching changeset: {changeset_id}", flush=True)
             return jsonify({'error': 'Failed to start watching'}), 500
 
-    @app.route('/api/sessions/<session_id>/unwatch', methods=['POST'])
-    def unwatch_session_transcript(session_id):
-        """Stop watching a session's transcript."""
-        removed = transcript_watcher.unwatch_session(session_id)
+    @app.route('/api/changesets/<changeset_id>/unwatch', methods=['POST'])
+    def unwatch_changeset_transcript(changeset_id):
+        """Stop watching a changeset's transcript."""
+        removed = transcript_watcher.unwatch_changeset(changeset_id)
         return jsonify({
             'status': 'unwatched' if removed else 'not_watching',
-            'session_id': session_id
+            'changeset_id': changeset_id
         })
 
     # Debug endpoint to check watcher and SSE status
     @app.route('/api/debug/sse-status')
     def sse_status():
         """Get SSE and transcript watcher status for debugging."""
-        watched_sessions = transcript_watcher.get_watched_sessions()
+        watched_changesets = transcript_watcher.get_watched_changesets()
         return jsonify({
             'sse_clients': sse_manager.get_client_count(),
-            'watched_sessions': watched_sessions,
-            'watched_count': len(watched_sessions),
+            'watched_changesets': watched_changesets,
+            'watched_count': len(watched_changesets),
             'watcher_running': transcript_watcher._running,
             'debug_mode': debug_mode
         })
@@ -631,19 +643,19 @@ def create_app(local_only: bool = True) -> Flask:
     def get_discovered_projects():
         """Return information about discovered project paths for debugging."""
         paths = app.config.get('project_paths', [])
-        sessions_by_project = {}
+        changesets_by_project = {}
         for p in paths:
-            handoffs_dir = os.path.join(p, '.claude', 'handoffs')
-            if os.path.isdir(handoffs_dir):
+            changesets_dir = os.path.join(p, '.claude', 'changesets')
+            if os.path.isdir(changesets_dir):
                 try:
-                    sessions_by_project[p] = os.listdir(handoffs_dir)
+                    changesets_by_project[p] = os.listdir(changesets_dir)
                 except Exception as e:
-                    sessions_by_project[p] = f"Error: {str(e)}"
+                    changesets_by_project[p] = f"Error: {str(e)}"
 
         return jsonify({
             'project_paths': paths,
-            'sessions_by_project': sessions_by_project,
-            'total_sessions': len(session_tracker.get_all_sessions())
+            'changesets_by_project': changesets_by_project,
+            'total_changesets': len(changeset_tracker.get_all_changesets())
         })
 
     # Server control endpoints

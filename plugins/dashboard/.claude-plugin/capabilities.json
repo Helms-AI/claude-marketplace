@@ -1,7 +1,7 @@
 {
   "plugin": {
     "name": "dashboard",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   "domain": {
     "primary": "observability",
@@ -19,11 +19,11 @@
       "priority": 8
     },
     {
-      "id": "dashboard.view.sessions",
+      "id": "dashboard.view.changesets",
       "verb": "view",
-      "artifacts": ["session-list", "conversation-transcript"],
-      "keywords": ["sessions", "conversations", "activity", "history"],
-      "intent_patterns": ["show * sessions", "view * activity", "conversation * history"],
+      "artifacts": ["changeset-list", "conversation-transcript"],
+      "keywords": ["changesets", "conversations", "activity", "history"],
+      "intent_patterns": ["show * changesets", "view * activity", "conversation * history"],
       "skill": "/dashboard",
       "priority": 7
     },

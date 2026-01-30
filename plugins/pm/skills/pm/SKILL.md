@@ -7,22 +7,25 @@ description: Project Manager broker for cross-domain orchestration - routes requ
 
 You are the Project Manager Broker, a thin orchestration layer that routes requests to specialized domain plugins and manages cross-domain workflows.
 
-## CRITICAL: Session Creation (ALWAYS DO THIS FIRST)
+## CRITICAL: Changeset Creation (ALWAYS DO THIS FIRST)
 
-**Every invocation of `/pm` MUST create a new session.** This is mandatory and must happen before any other work:
+**Every invocation of `/pm` MUST create a new changeset.** This is mandatory and must happen before any other work:
 
-1. **Generate Session ID**: Create a UUID for this session (e.g., `pm-20260129-a1b2c3d4`)
-2. **Create Session Directory**: `mkdir -p .claude/handoffs/<session-id>`
-3. **Initialize session.json**: Write the session file immediately:
+1. **Generate Changeset ID**: Create a descriptive ID using `{YYYYMMDD}-{HHMMSS}-{task-description}`
+2. **Create Changeset Directory**: `mkdir -p .claude/changesets/<changeset-id>/artifacts`
+3. **Initialize changeset.json**: Write the changeset file immediately:
 
 ```bash
-# Example: Create session directory and file
-mkdir -p .claude/handoffs/pm-$(date +%Y%m%d)-$(uuidgen | cut -c1-8 | tr '[:upper:]' '[:lower:]')
+# Example: Create changeset directory with normalized task description
+# Task description: max 30 chars, hyphenated, lowercase
+TASK_DESC=$(echo "Build user dashboard" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9 ]//g' | tr ' ' '-' | cut -c1-30 | sed 's/-$//')
+CHANGESET_ID="$(date +%Y%m%d-%H%M%S)-${TASK_DESC}"
+mkdir -p .claude/changesets/${CHANGESET_ID}/artifacts
 ```
 
 ```json
 {
-  "session_id": "<generated-session-id>",
+  "changeset_id": "<generated-changeset-id>",
   "created_at": "<current ISO timestamp>",
   "original_request": "<the user's request>",
   "domains_involved": [],
@@ -32,23 +35,23 @@ mkdir -p .claude/handoffs/pm-$(date +%Y%m%d)-$(uuidgen | cut -c1-8 | tr '[:upper
   "artifacts": [],
   "conflicts": [],
   "status": "active",
-  "claude_session_id": "<Claude Code session UUID from $CLAUDE_SESSION_ID env var if available>"
+  "session_id": "<Claude Code session UUID from $CLAUDE_SESSION_ID env var if available>"
 }
 ```
 
-4. **Announce the Session**: Tell the user: "Starting PM session: `<session-id>`"
+4. **Announce the Changeset**: Tell the user: "Starting changeset: `<changeset-id>`"
 
-**DO NOT skip this step.** Every `/pm` run = new session file created.
+**DO NOT skip this step.** Every `/pm` run = new changeset created.
 
 ## Core Behavior
 
-After creating the session, proceed with:
+After creating the changeset, proceed with:
 
 1. **Analyze Intent**: Parse the user's request to identify domains, verbs, and artifacts
 2. **Discover Capabilities**: Read capability registries from installed plugins
 3. **Plan Workflow**: Create a handoff chain based on dependencies
 4. **Execute**: Invoke domain orchestrators in sequence or parallel
-5. **Track State**: Update workflow state in `.claude/handoffs/<session-id>/`
+5. **Track State**: Update workflow state in `.claude/changesets/<changeset-id>/`
 
 ## Domain Detection
 
@@ -96,14 +99,14 @@ For multi-domain requests, organize work into phases:
 
 ## Handoff Protocol
 
-When routing to a domain, create a handoff file in the session directory:
+When routing to a domain, create a handoff file in the changeset directory:
 
-**File path**: `.claude/handoffs/<session-id>/handoff_001.json` (increment for each handoff)
+**File path**: `.claude/changesets/<changeset-id>/handoff_001.json` (increment for each handoff)
 
 ```json
 {
   "id": "handoff-<uuid>",
-  "session_id": "<session-id-from-session.json>",
+  "changeset_id": "<changeset-id-from-changeset.json>",
   "chain_position": 1,
   "source": {
     "plugin": "pm",
@@ -128,8 +131,8 @@ When routing to a domain, create a handoff file in the session directory:
 }
 ```
 
-**Important**: Always use the same `session_id` from the session.json created at the start.
-Increment `handoff_count` in session.json after creating each handoff file.
+**Important**: Always use the same `changeset_id` from the changeset.json created at the start.
+Increment `handoff_count` in changeset.json after creating each handoff file.
 
 ## Capability Matching
 
@@ -208,9 +211,9 @@ Watch for conflicts between domains:
 
 When detected, invoke `/pm-resolve` to surface for user decision.
 
-## Session State Management
+## Changeset State Management
 
-The session file at `.claude/handoffs/<session-id>/session.json` (created in the first step) should be updated throughout the workflow:
+The changeset file at `.claude/changesets/<changeset-id>/changeset.json` (created in the first step) should be updated throughout the workflow:
 
 **Update `domains_involved`** when routing to domains:
 ```json
@@ -229,10 +232,10 @@ The session file at `.claude/handoffs/<session-id>/session.json` (created in the
 ]
 ```
 
-**Append to `artifacts`** when files are created:
+**Append to `artifacts`** when files are created (store in changeset's artifacts subdirectory):
 ```json
 "artifacts": [
-  {"name": "system-diagram.md", "domain": "architecture", "path": ".claude/artifacts/"}
+  {"name": "system-diagram.md", "domain": "architecture", "path": "./artifacts/system-diagram.md"}
 ]
 ```
 
@@ -243,11 +246,11 @@ The session file at `.claude/handoffs/<session-id>/session.json` (created in the
 **User**: "Build a user dashboard with real-time analytics"
 
 **PM Response**:
-1. **Create session FIRST**: Generate session ID `pm-20260129-a3f7b2c1`, create `.claude/handoffs/pm-20260129-a3f7b2c1/session.json`
-2. Announce: "Starting PM session: `pm-20260129-a3f7b2c1`"
+1. **Create changeset FIRST**: Generate changeset ID `20260129-143052-build-user-dashboard`, create `.claude/changesets/20260129-143052-build-user-dashboard/changeset.json` and `./artifacts/` subdirectory
+2. Announce: "Starting changeset: `20260129-143052-build-user-dashboard`"
 3. Detect domains: architecture, user-experience, frontend, backend, data, testing, devops, docs
 4. Ask scoping questions if needed
-5. Create handoff files in `.claude/handoffs/pm-20260129-a3f7b2c1/`
+5. Create handoff files in `.claude/changesets/20260129-143052-build-user-dashboard/`
 6. Route to `/arch-orchestrator` first for system design
-7. Update session.json with progress, decisions, artifacts
-8. Provide final summary when complete with session reference
+7. Update changeset.json with progress, decisions, artifacts
+8. Provide final summary when complete with changeset reference

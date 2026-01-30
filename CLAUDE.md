@@ -137,16 +137,16 @@ Technical writing with 5 agents and 7 skills:
 - **Agents**: Patricia Moore (Lead), Andrew Kim (API), Laura Hernandez (Guides), Steven Brown (Arch), Michelle Lee (Runbooks)
 - **Skills**: docs-orchestrator, docs-team-session, docs-api-writer, docs-guide-writer, docs-architecture-documenter, docs-runbook-writer, docs-onboarding-creator
 
-### Dashboard Plugin (v1.0.0)
+### Dashboard Plugin (v2.1.1)
 Location: `plugins/dashboard/`
 
 Real-time web dashboard for visualizing the marketplace:
 - **Skills**: dashboard
-- **Purpose**: View all agents, skills, sessions, and domain interactions in a web UI
+- **Purpose**: View all agents, skills, changesets, and domain interactions in a web UI
 - **Features**:
   - Agent Explorer: 58 agents across 10 domains with search/filter
   - Skill Browser: 77 skills with handoff relationships
-  - Session Viewer: Real-time conversation tracking via SSE
+  - Changeset Viewer: Real-time conversation tracking via SSE
   - Domain Graph: D3.js visualization of domain collaborations
   - Handoff Timeline: Visual swimlane view of cross-domain handoffs
 - **Tech**: Flask server, vanilla JS frontend, D3.js for graphs
@@ -166,7 +166,7 @@ The centralized taxonomy at `.claude-plugin/taxonomy.json` defines:
 
 The user-experience and frontend plugins work in sequence:
 1. **User Experience** creates aesthetic briefs, typography specs, color systems, layout compositions
-2. **Handoff** passes design context to frontend via `.claude/handoffs/`
+2. **Handoff** passes design context to frontend via `.claude/changesets/`
 3. **Frontend** implements components using design specifications
 
 ### Capability Registry
@@ -177,12 +177,24 @@ Each plugin should have a `.claude-plugin/capabilities.json` that declares:
 - Capabilities with verbs, artifacts, keywords, intent patterns
 - Orchestrator skill reference
 
-### Handoff Protocol
+### Changeset Protocol
 
-Cross-domain workflows use file-based handoffs in `.claude/handoffs/`:
-- `session.json` - Session metadata, accumulated decisions
-- `handoff_NNN.json` - Individual handoff context between domains
-- `artifacts/` - Shared artifacts created during workflow
+Cross-domain workflows use file-based changesets in `.claude/changesets/`:
+
+```
+.claude/
+└── changesets/
+    └── 20260129-143052-implement-user-auth/
+        ├── changeset.json      # Changeset metadata, accumulated decisions
+        ├── handoff_001.json    # Individual handoff context between domains
+        ├── handoff_002.json
+        └── artifacts/          # Shared artifacts created during workflow
+            └── api-spec.md
+```
+
+**Directory naming format**: `{YYYYMMDD}-{HHMMSS}-{normalized-task-description}`
+- Date/time: Sortable format `20260129-143052`
+- Task description: Max 30 characters, hyphenated, lowercase
 
 ## Validation
 

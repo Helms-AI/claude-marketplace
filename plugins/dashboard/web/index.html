@@ -22,7 +22,7 @@
                 <nav class="nav">
                     <button class="nav-btn active" data-view="agents">Agents</button>
                     <button class="nav-btn" data-view="skills">Skills</button>
-                    <button class="nav-btn" data-view="sessions">Sessions</button>
+                    <button class="nav-btn" data-view="changesets">Changesets</button>
                     <button class="nav-btn" data-view="graph">Graph</button>
                 </nav>
             </div>
@@ -95,27 +95,27 @@
                 <div class="domain-groups" id="skillGrid"></div>
             </section>
 
-            <!-- Sessions View -->
-            <section class="view" id="sessionsView">
-                <div class="sessions-layout">
-                    <div class="sessions-sidebar">
+            <!-- Changesets View -->
+            <section class="view" id="changesetsView">
+                <div class="changesets-layout">
+                    <div class="changesets-sidebar">
                         <div class="sidebar-header">
-                            <h3>Sessions</h3>
-                            <span class="session-count" id="sessionCount">0</span>
+                            <h3>Changesets</h3>
+                            <span class="changeset-count" id="changesetCount">0</span>
                         </div>
-                        <div class="session-list" id="sessionList"></div>
+                        <div class="changeset-list" id="changesetList"></div>
                     </div>
-                    <div class="sessions-main">
+                    <div class="changesets-main">
                         <div class="conversation-header" id="conversationHeader">
                             <div class="header-placeholder">
                                 <span class="placeholder-icon">&#9638;</span>
-                                <span>Select a session to view conversation</span>
+                                <span>Select a changeset to view conversation</span>
                             </div>
                         </div>
                         <div class="conversation-container" id="conversationContainer">
                             <div class="conversation-empty">
                                 <div class="empty-terminal">
-                                    <div class="terminal-line">$ awaiting session selection...</div>
+                                    <div class="terminal-line">$ awaiting changeset selection...</div>
                                     <div class="terminal-cursor"></div>
                                 </div>
                             </div>
@@ -169,7 +169,7 @@
     <script src="js/dashboard.js"></script>
     <script src="js/agents.js"></script>
     <script src="js/skills.js"></script>
-    <script src="js/sessions.js"></script>
+    <script src="js/changesets.js"></script>
     <script src="js/graph.js"></script>
     <script src="js/tasks.js"></script>
     <script src="js/conversation.js"></script>

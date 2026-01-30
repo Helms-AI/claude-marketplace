@@ -1,89 +1,90 @@
 /**
- * Sessions Module
- * Handles session list and selection with unified conversation view
+ * Changesets Module
+ * Handles changeset list and selection with unified conversation view
  */
 
-const Sessions = {
+const Changesets = {
     data: {
-        sessions: [],
-        currentSessionId: null,
+        changesets: [],
+        currentChangesetId: null,
+        currentSessionId: null, // Claude Code's native session ID (for task matching)
         events: [],
         transcript: null
     },
 
     async init() {
-        await this.loadSessions();
+        await this.loadChangesets();
         this.render();
     },
 
-    async loadSessions() {
+    async loadChangesets() {
         try {
-            const response = await Dashboard.fetchAPI('/api/sessions');
-            this.data.sessions = response.sessions || [];
+            const response = await Dashboard.fetchAPI('/api/changesets');
+            this.data.changesets = response.changesets || [];
         } catch (e) {
-            console.error('Error loading sessions:', e);
-            this.data.sessions = [];
+            console.error('Error loading changesets:', e);
+            this.data.changesets = [];
         }
     },
 
     render() {
-        this.renderSessionList();
-        this.updateSessionCount();
+        this.renderChangesetList();
+        this.updateChangesetCount();
     },
 
-    updateSessionCount() {
-        const countEl = document.getElementById('sessionCount');
+    updateChangesetCount() {
+        const countEl = document.getElementById('changesetCount');
         if (countEl) {
-            countEl.textContent = this.data.sessions.length;
+            countEl.textContent = this.data.changesets.length;
         }
     },
 
-    renderSessionList() {
-        const list = document.getElementById('sessionList');
+    renderChangesetList() {
+        const list = document.getElementById('changesetList');
 
-        if (this.data.sessions.length === 0) {
+        if (this.data.changesets.length === 0) {
             list.innerHTML = `
-                <div class="empty-sessions">
+                <div class="empty-changesets">
                     <div class="empty-icon">&#9632;</div>
-                    <p>No active sessions</p>
+                    <p>No active changesets</p>
                 </div>
             `;
             return;
         }
 
-        list.innerHTML = this.data.sessions.map((session, index) => {
-            const isActive = session.id === this.data.currentSessionId;
-            const domains = (session.domains_involved || []).slice(0, 3);
-            const phaseClass = session.phase ? `phase-${session.phase}` : '';
+        list.innerHTML = this.data.changesets.map((changeset, index) => {
+            const isActive = changeset.id === this.data.currentChangesetId;
+            const domains = (changeset.domains_involved || []).slice(0, 3);
+            const phaseClass = changeset.phase ? `phase-${changeset.phase}` : '';
 
             return `
-                <div class="session-item ${isActive ? 'active' : ''}"
-                     data-session-id="${session.id}"
+                <div class="changeset-item ${isActive ? 'active' : ''}"
+                     data-changeset-id="${changeset.id}"
                      style="animation-delay: ${index * 50}ms">
-                    <div class="session-item-header">
-                        <span class="session-id">${session.id}</span>
-                        ${session.phase ? `<span class="session-status ${phaseClass}">${session.phase}</span>` : ''}
+                    <div class="changeset-item-header">
+                        <span class="changeset-id">${changeset.id}</span>
+                        ${changeset.phase ? `<span class="changeset-status ${phaseClass}">${changeset.phase}</span>` : ''}
                     </div>
-                    <div class="session-item-meta">
+                    <div class="changeset-item-meta">
                         <span class="meta-events">
                             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                             </svg>
-                            ${session.event_count || 0}
+                            ${changeset.event_count || 0}
                         </span>
-                        ${session.handoff_count ? `
+                        ${changeset.handoff_count ? `
                             <span class="meta-handoffs">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M5 12h14M12 5l7 7-7 7"></path>
                                 </svg>
-                                ${session.handoff_count}
+                                ${changeset.handoff_count}
                             </span>
                         ` : ''}
                     </div>
                     ${domains.length > 0 ? `
-                        <div class="session-item-domains">
+                        <div class="changeset-item-domains">
                             ${domains.map(d => `<span class="mini-domain domain-${d.replace(/_/g, '-')}">${this.getDomainInitial(d)}</span>`).join('')}
-                            ${(session.domains_involved || []).length > 3 ? `<span class="mini-domain more">+${session.domains_involved.length - 3}</span>` : ''}
+                            ${(changeset.domains_involved || []).length > 3 ? `<span class="mini-domain more">+${changeset.domains_involved.length - 3}</span>` : ''}
                         </div>
                     ` : ''}
                 </div>
@@ -91,10 +92,10 @@ const Sessions = {
         }).join('');
 
         // Add click handlers
-        list.querySelectorAll('.session-item').forEach(item => {
+        list.querySelectorAll('.changeset-item').forEach(item => {
             item.addEventListener('click', () => {
-                const sessionId = item.dataset.sessionId;
-                this.selectSession(sessionId);
+                const changesetId = item.dataset.changesetId;
+                this.selectChangeset(changesetId);
             });
         });
     },
@@ -142,33 +143,30 @@ const Sessions = {
         return [...new Set(domains)]; // Return unique domains
     },
 
-    async selectSession(sessionId) {
-        const previousSessionId = this.data.currentSessionId;
-        this.data.currentSessionId = sessionId;
+    async selectChangeset(changesetId) {
+        const previousChangesetId = this.data.currentChangesetId;
+        this.data.currentChangesetId = changesetId;
 
         // Update selection UI
-        document.querySelectorAll('.session-item').forEach(item => {
-            item.classList.toggle('active', item.dataset.sessionId === sessionId);
+        document.querySelectorAll('.changeset-item').forEach(item => {
+            item.classList.toggle('active', item.dataset.changesetId === changesetId);
         });
 
-        // Set the task session (clears previous tasks)
-        Tasks.setSession(sessionId);
-
-        // Unwatch previous session if any
-        if (previousSessionId && previousSessionId !== sessionId) {
+        // Unwatch previous changeset if any
+        if (previousChangesetId && previousChangesetId !== changesetId) {
             try {
-                await fetch(`/api/sessions/${previousSessionId}/unwatch`, { method: 'POST' });
+                await fetch(`/api/changesets/${previousChangesetId}/unwatch`, { method: 'POST' });
             } catch (e) {
-                console.warn('Failed to unwatch previous session:', e);
+                console.warn('Failed to unwatch previous changeset:', e);
             }
         }
 
-        // Load session details, conversation events, and transcript
+        // Load changeset details, conversation events, and transcript
         try {
             // Fetch both conversation events and transcript (with merged timeline) in parallel
             const [conversationResponse, transcriptResponse] = await Promise.all([
-                Dashboard.fetchAPI(`/api/sessions/${sessionId}/conversation`),
-                Dashboard.fetchAPI(`/api/sessions/${sessionId}/transcript?merge_timeline=true`).catch(e => {
+                Dashboard.fetchAPI(`/api/changesets/${changesetId}/conversation`),
+                Dashboard.fetchAPI(`/api/changesets/${changesetId}/transcript?merge_timeline=true`).catch(e => {
                     console.warn('Transcript not available:', e);
                     return { messages: [], subagents: {}, merged_timeline: [] };
                 })
@@ -177,25 +175,39 @@ const Sessions = {
             this.data.events = conversationResponse.events || [];
             this.data.transcript = transcriptResponse;
 
+            // Store the Claude Code native session ID for task event matching
+            this.data.currentSessionId = transcriptResponse.session_id || null;
+
+            // Set the task session using Claude's native session ID
+            Tasks.setSession(this.data.currentSessionId);
+
             // Set agent metadata from transcript response for proper agent naming/coloring
             if (transcriptResponse.agent_metadata) {
                 Conversation.setAgentMetadata(transcriptResponse.agent_metadata);
             }
 
-            this.renderConversationHeader(conversationResponse.session);
-            Conversation.render(this.data.events, conversationResponse.session, transcriptResponse);
+            this.renderConversationHeader(conversationResponse.changeset);
+            Conversation.render(this.data.events, conversationResponse.changeset, transcriptResponse);
 
             // Extract tasks from existing tool calls in the transcript
             this.initializeTasksFromTranscript(transcriptResponse);
 
-            // Start watching this session for real-time updates
+            // Start watching this changeset for real-time updates
             try {
-                await fetch(`/api/sessions/${sessionId}/watch`, { method: 'POST' });
+                const watchResponse = await fetch(`/api/changesets/${changesetId}/watch`, { method: 'POST' });
+                if (watchResponse.ok) {
+                    const watchData = await watchResponse.json();
+                    // Update session ID if returned by watch endpoint
+                    if (watchData.session_id) {
+                        this.data.currentSessionId = watchData.session_id;
+                        Tasks.setSession(watchData.session_id);
+                    }
+                }
             } catch (e) {
-                console.warn('Failed to start watching session:', e);
+                console.warn('Failed to start watching changeset:', e);
             }
         } catch (e) {
-            console.error('Error loading session:', e);
+            console.error('Error loading changeset:', e);
         }
     },
 
@@ -233,15 +245,15 @@ const Sessions = {
         }
     },
 
-    renderConversationHeader(session) {
+    renderConversationHeader(changeset) {
         const header = document.getElementById('conversationHeader');
 
-        // Collect domains from session metadata AND agent metadata
-        const sessionDomains = session.domains_involved || [];
+        // Collect domains from changeset metadata AND agent metadata
+        const changesetDomains = changeset.domains_involved || [];
         const agentDomains = this.extractDomainsFromAgentMetadata();
 
         // Merge and dedupe domains
-        const allDomains = [...new Set([...sessionDomains, ...agentDomains])];
+        const allDomains = [...new Set([...changesetDomains, ...agentDomains])];
 
         // Build domains badges
         const domainsBadges = allDomains
@@ -252,18 +264,18 @@ const Sessions = {
             .join('');
 
         // Build artifacts list
-        const artifacts = session.artifacts || [];
+        const artifacts = changeset.artifacts || [];
         const artifactsList = artifacts.slice(0, 3)
             .map(a => `<span class="header-artifact">${typeof a === 'object' ? a.name : a}</span>`)
             .join('');
 
-        const phaseClass = session.phase ? `phase-${session.phase}` : '';
+        const phaseClass = changeset.phase ? `phase-${changeset.phase}` : '';
 
         header.innerHTML = `
             <div class="header-top-row">
                 <div class="header-identity">
-                    <span class="header-session-id">${session.id}</span>
-                    <span class="header-phase ${phaseClass}">${session.phase || 'active'}</span>
+                    <span class="header-changeset-id">${changeset.id}</span>
+                    <span class="header-phase ${phaseClass}">${changeset.phase || 'active'}</span>
                 </div>
                 <div class="header-actions">
                     <div class="header-stats">
@@ -273,16 +285,16 @@ const Sessions = {
                             </svg>
                             ${this.data.events.length} events
                         </span>
-                        ${session.handoff_count ? `
+                        ${changeset.handoff_count ? `
                             <span class="header-stat">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M5 12h14M12 5l7 7-7 7"></path>
                                 </svg>
-                                ${session.handoff_count} handoffs
+                                ${changeset.handoff_count} handoffs
                             </span>
                         ` : ''}
                     </div>
-                    <button class="delete-session-btn" title="Delete session" data-session-id="${session.id}">
+                    <button class="delete-changeset-btn" title="Delete changeset" data-changeset-id="${changeset.id}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="3 6 5 6 21 6"></polyline>
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -292,10 +304,10 @@ const Sessions = {
                     </button>
                 </div>
             </div>
-            ${session.original_request ? `
+            ${changeset.original_request ? `
                 <div class="header-request">
                     <span class="request-label">REQUEST</span>
-                    <span class="request-text">${this.escapeHtml(session.original_request)}</span>
+                    <span class="request-text">${this.escapeHtml(changeset.original_request)}</span>
                 </div>
             ` : ''}
             <div class="header-bottom-row">
@@ -311,12 +323,12 @@ const Sessions = {
         `;
 
         // Add click handler for delete button
-        const deleteBtn = header.querySelector('.delete-session-btn');
+        const deleteBtn = header.querySelector('.delete-changeset-btn');
         if (deleteBtn) {
             deleteBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const sessionId = deleteBtn.dataset.sessionId;
-                this.deleteSession(sessionId);
+                const changesetId = deleteBtn.dataset.changesetId;
+                this.deleteChangeset(changesetId);
             });
         }
     },
@@ -329,21 +341,21 @@ const Sessions = {
     },
 
     handleEvent(event) {
-        // Add to current session if matching
-        if (event.session_id === this.data.currentSessionId) {
+        // Add to current changeset if matching
+        if (event.changeset_id === this.data.currentChangesetId) {
             this.data.events.push(event);
             Conversation.addEvent(event);
         }
 
-        // Update session list
-        const existingSession = this.data.sessions.find(s => s.id === event.session_id);
-        if (existingSession) {
-            existingSession.event_count++;
-            existingSession.current_domain = event.domain;
-            existingSession.current_agent = event.agent_id;
+        // Update changeset list
+        const existingChangeset = this.data.changesets.find(c => c.id === event.changeset_id);
+        if (existingChangeset) {
+            existingChangeset.event_count++;
+            existingChangeset.current_domain = event.domain;
+            existingChangeset.current_agent = event.agent_id;
         } else {
-            this.data.sessions.unshift({
-                id: event.session_id,
+            this.data.changesets.unshift({
+                id: event.changeset_id,
                 started_at: event.timestamp,
                 phase: 'active',
                 current_domain: event.domain,
@@ -355,50 +367,50 @@ const Sessions = {
             });
         }
 
-        this.renderSessionList();
-        this.updateSessionCount();
+        this.renderChangesetList();
+        this.updateChangesetCount();
     },
 
-    addSession(sessionData) {
-        // Check if session already exists
-        const exists = this.data.sessions.some(s => s.id === sessionData.session_id);
+    addChangeset(changesetData) {
+        // Check if changeset already exists
+        const exists = this.data.changesets.some(c => c.id === changesetData.changeset_id);
         if (exists) {
-            // Session exists - update it instead
-            if (sessionData.full_session) {
-                this.updateSession({
-                    session_id: sessionData.session_id,
+            // Changeset exists - update it instead
+            if (changesetData.full_changeset) {
+                this.updateChangeset({
+                    changeset_id: changesetData.changeset_id,
                     changes: {},
-                    full_session: sessionData.full_session
+                    full_changeset: changesetData.full_changeset
                 });
             }
             return;
         }
 
-        // Use full_session if available, otherwise construct from basic data
-        const newSession = sessionData.full_session || {
-            id: sessionData.session_id,
-            started_at: sessionData.started_at,
-            phase: sessionData.phase || 'active',
+        // Use full_changeset if available, otherwise construct from basic data
+        const newChangeset = changesetData.full_changeset || {
+            id: changesetData.changeset_id,
+            started_at: changesetData.started_at,
+            phase: changesetData.phase || 'active',
             current_domain: null,
             current_agent: null,
             event_count: 0,
             handoff_count: 0,
             artifacts: [],
-            domains_involved: sessionData.domains_involved || []
+            domains_involved: changesetData.domains_involved || []
         };
 
-        // Ensure id is set (full_session might use different key)
-        if (!newSession.id && sessionData.session_id) {
-            newSession.id = sessionData.session_id;
+        // Ensure id is set (full_changeset might use different key)
+        if (!newChangeset.id && changesetData.changeset_id) {
+            newChangeset.id = changesetData.changeset_id;
         }
 
-        this.data.sessions.unshift(newSession);
-        this.renderSessionList();
-        this.updateSessionCount();
+        this.data.changesets.unshift(newChangeset);
+        this.renderChangesetList();
+        this.updateChangesetCount();
 
-        // Highlight the new session card briefly
+        // Highlight the new changeset card briefly
         setTimeout(() => {
-            const newCard = document.querySelector(`.session-item[data-session-id="${newSession.id}"]`);
+            const newCard = document.querySelector(`.changeset-item[data-changeset-id="${newChangeset.id}"]`);
             if (newCard) {
                 this.animateChange(newCard);
             }
@@ -406,62 +418,62 @@ const Sessions = {
     },
 
     /**
-     * Update an existing session with real-time changes (surgical DOM updates)
-     * @param {Object} eventData - Contains session_id, changes, and full_session
+     * Update an existing changeset with real-time changes (surgical DOM updates)
+     * @param {Object} eventData - Contains changeset_id, changes, and full_changeset
      */
-    updateSession(eventData) {
-        const { session_id, changes, full_session } = eventData;
+    updateChangeset(eventData) {
+        const { changeset_id, changes, full_changeset } = eventData;
 
-        // Update in-memory session data
-        const sessionIndex = this.data.sessions.findIndex(s => s.id === session_id);
-        if (sessionIndex === -1) {
-            // Session not in list yet, add it
-            this.data.sessions.unshift(full_session);
-            this.renderSessionList();
-            this.updateSessionCount();
+        // Update in-memory changeset data
+        const changesetIndex = this.data.changesets.findIndex(c => c.id === changeset_id);
+        if (changesetIndex === -1) {
+            // Changeset not in list yet, add it
+            this.data.changesets.unshift(full_changeset);
+            this.renderChangesetList();
+            this.updateChangesetCount();
             return;
         }
 
-        // Merge changes into existing session
-        const session = this.data.sessions[sessionIndex];
-        Object.assign(session, full_session);
+        // Merge changes into existing changeset
+        const changeset = this.data.changesets[changesetIndex];
+        Object.assign(changeset, full_changeset);
 
-        // Find the DOM element for this session card
-        const cardElement = document.querySelector(`.session-item[data-session-id="${session_id}"]`);
+        // Find the DOM element for this changeset card
+        const cardElement = document.querySelector(`.changeset-item[data-changeset-id="${changeset_id}"]`);
         if (cardElement) {
-            this.updateSessionCardDOM(cardElement, session, changes);
+            this.updateChangesetCardDOM(cardElement, changeset, changes);
         }
 
-        // Update conversation header if this is the selected session
-        if (session_id === this.data.currentSessionId) {
-            this.renderConversationHeader(session);
+        // Update conversation header if this is the selected changeset
+        if (changeset_id === this.data.currentChangesetId) {
+            this.renderConversationHeader(changeset);
         }
     },
 
     /**
-     * Perform surgical DOM updates on a session card
-     * @param {HTMLElement} cardElement - The session card DOM element
-     * @param {Object} session - The updated session data
+     * Perform surgical DOM updates on a changeset card
+     * @param {HTMLElement} cardElement - The changeset card DOM element
+     * @param {Object} changeset - The updated changeset data
      * @param {Object} changes - Object describing what fields changed
      */
-    updateSessionCardDOM(cardElement, session, changes) {
+    updateChangesetCardDOM(cardElement, changeset, changes) {
         // Update phase badge if changed
         if ('phase' in changes) {
-            const statusEl = cardElement.querySelector('.session-status');
+            const statusEl = cardElement.querySelector('.changeset-status');
             if (statusEl) {
                 // Remove old phase classes
-                statusEl.className = 'session-status';
-                if (session.phase) {
-                    statusEl.classList.add(`phase-${session.phase}`);
-                    statusEl.textContent = session.phase;
+                statusEl.className = 'changeset-status';
+                if (changeset.phase) {
+                    statusEl.classList.add(`phase-${changeset.phase}`);
+                    statusEl.textContent = changeset.phase;
                 }
                 this.animateChange(statusEl);
-            } else if (session.phase) {
+            } else if (changeset.phase) {
                 // Create status badge if it didn't exist
-                const header = cardElement.querySelector('.session-item-header');
+                const header = cardElement.querySelector('.changeset-item-header');
                 const statusSpan = document.createElement('span');
-                statusSpan.className = `session-status phase-${session.phase}`;
-                statusSpan.textContent = session.phase;
+                statusSpan.className = `changeset-status phase-${changeset.phase}`;
+                statusSpan.textContent = changeset.phase;
                 header.appendChild(statusSpan);
                 this.animateChange(statusSpan);
             }
@@ -474,7 +486,7 @@ const Sessions = {
                 // Find text node and update it
                 const textNode = eventsEl.lastChild;
                 if (textNode) {
-                    textNode.textContent = ` ${session.event_count || 0}`;
+                    textNode.textContent = ` ${changeset.event_count || 0}`;
                 }
                 this.animateChange(eventsEl);
             }
@@ -483,14 +495,14 @@ const Sessions = {
         // Update handoff count if changed
         if ('handoff_count' in changes) {
             let handoffsEl = cardElement.querySelector('.meta-handoffs');
-            const metaEl = cardElement.querySelector('.session-item-meta');
+            const metaEl = cardElement.querySelector('.changeset-item-meta');
 
-            if (session.handoff_count && session.handoff_count > 0) {
+            if (changeset.handoff_count && changeset.handoff_count > 0) {
                 if (handoffsEl) {
                     // Update existing
                     const textNode = handoffsEl.lastChild;
                     if (textNode) {
-                        textNode.textContent = ` ${session.handoff_count}`;
+                        textNode.textContent = ` ${changeset.handoff_count}`;
                     }
                     this.animateChange(handoffsEl);
                 } else if (metaEl) {
@@ -501,7 +513,7 @@ const Sessions = {
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M5 12h14M12 5l7 7-7 7"></path>
                         </svg>
-                        ${session.handoff_count}
+                        ${changeset.handoff_count}
                     `;
                     metaEl.appendChild(handoffsEl);
                     this.animateChange(handoffsEl);
@@ -511,14 +523,14 @@ const Sessions = {
 
         // Update domain pills if changed
         if ('domains_involved' in changes) {
-            let domainsEl = cardElement.querySelector('.session-item-domains');
-            const domains = (session.domains_involved || []).slice(0, 3);
+            let domainsEl = cardElement.querySelector('.changeset-item-domains');
+            const domains = (changeset.domains_involved || []).slice(0, 3);
 
             if (domains.length > 0) {
                 const domainsHtml = domains.map(d =>
                     `<span class="mini-domain domain-${d.replace(/_/g, '-')}">${this.getDomainInitial(d)}</span>`
-                ).join('') + (session.domains_involved.length > 3
-                    ? `<span class="mini-domain more">+${session.domains_involved.length - 3}</span>`
+                ).join('') + (changeset.domains_involved.length > 3
+                    ? `<span class="mini-domain more">+${changeset.domains_involved.length - 3}</span>`
                     : '');
 
                 if (domainsEl) {
@@ -527,7 +539,7 @@ const Sessions = {
                 } else {
                     // Create domains container
                     domainsEl = document.createElement('div');
-                    domainsEl.className = 'session-item-domains';
+                    domainsEl.className = 'changeset-item-domains';
                     domainsEl.innerHTML = domainsHtml;
                     cardElement.appendChild(domainsEl);
                     this.animateChange(domainsEl);
@@ -549,15 +561,16 @@ const Sessions = {
     },
 
     /**
-     * Remove a session from the UI (called when session is deleted)
-     * @param {string} sessionId - The session ID to remove
+     * Remove a changeset from the UI (called when changeset is deleted)
+     * @param {string} changesetId - The changeset ID to remove
      */
-    removeSession(sessionId) {
+    removeChangeset(changesetId) {
         // Remove from in-memory data
-        this.data.sessions = this.data.sessions.filter(s => s.id !== sessionId);
+        this.data.changesets = this.data.changesets.filter(c => c.id !== changesetId);
 
-        // If this was the selected session, clear the conversation view
-        if (this.data.currentSessionId === sessionId) {
+        // If this was the selected changeset, clear the conversation view
+        if (this.data.currentChangesetId === changesetId) {
+            this.data.currentChangesetId = null;
             this.data.currentSessionId = null;
             this.data.events = [];
             this.data.transcript = null;
@@ -568,7 +581,7 @@ const Sessions = {
                 header.innerHTML = `
                     <div class="header-placeholder">
                         <span class="placeholder-icon">←</span>
-                        <span>Select a session to view conversation</span>
+                        <span>Select a changeset to view conversation</span>
                     </div>
                 `;
             }
@@ -579,7 +592,7 @@ const Sessions = {
                 container.innerHTML = `
                     <div class="conversation-empty">
                         <div class="empty-terminal">
-                            <div class="terminal-line">$ awaiting session selection...</div>
+                            <div class="terminal-line">$ awaiting changeset selection...</div>
                             <div class="terminal-cursor"></div>
                         </div>
                     </div>
@@ -587,43 +600,43 @@ const Sessions = {
             }
         }
 
-        // Re-render the session list
-        this.renderSessionList();
-        this.updateSessionCount();
+        // Re-render the changeset list
+        this.renderChangesetList();
+        this.updateChangesetCount();
     },
 
     /**
-     * Delete a session (with confirmation)
-     * @param {string} sessionId - The session ID to delete
+     * Delete a changeset (with confirmation)
+     * @param {string} changesetId - The changeset ID to delete
      */
-    async deleteSession(sessionId) {
-        const session = this.data.sessions.find(s => s.id === sessionId);
-        if (!session) return;
+    async deleteChangeset(changesetId) {
+        const changeset = this.data.changesets.find(c => c.id === changesetId);
+        if (!changeset) return;
 
         const confirmed = confirm(
-            `Delete session "${sessionId}"?\n\n` +
-            `This will permanently delete all files in this session's directory.\n` +
+            `Delete changeset "${changesetId}"?\n\n` +
+            `This will permanently delete all files in this changeset's directory.\n` +
             `This action cannot be undone.`
         );
 
         if (!confirmed) return;
 
         try {
-            const response = await fetch(`/api/sessions/${sessionId}`, {
+            const response = await fetch(`/api/changesets/${changesetId}`, {
                 method: 'DELETE'
             });
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || 'Failed to delete session');
+                throw new Error(error.error || 'Failed to delete changeset');
             }
 
             // The SSE event will handle the UI update, but we can also update immediately
-            this.removeSession(sessionId);
+            this.removeChangeset(changesetId);
 
         } catch (e) {
-            console.error('Error deleting session:', e);
-            alert(`Failed to delete session: ${e.message}`);
+            console.error('Error deleting changeset:', e);
+            alert(`Failed to delete changeset: ${e.message}`);
         }
     }
 };

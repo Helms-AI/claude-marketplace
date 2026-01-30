@@ -1,6 +1,6 @@
 ---
 name: dashboard
-description: Launch the Claude Marketplace Dashboard to view agents, skills, sessions, and domain interactions
+description: Launch the Claude Marketplace Dashboard to view agents, skills, changesets, and domain interactions
 ---
 
 # Dashboard Skill
@@ -29,7 +29,7 @@ The dashboard is a real-time web UI that visualizes:
    - Handoff relationships (inputs and outputs)
    - Invocation history and counts
 
-3. **Session Viewer** - Real-time conversation tracking
+3. **Changeset Viewer** - Real-time conversation tracking
    - Live event stream via Server-Sent Events
    - Conversation transcripts with agent announcements
    - Tool calls and user responses
@@ -83,10 +83,10 @@ Options:
 | `/api/skills/<domain>` | GET | Skills for specific domain |
 | `/api/skills/id/<id>` | GET | Single skill details |
 | `/api/skills/id/<id>/invocations` | GET | Skill invocation history |
-| `/api/sessions` | GET | All active sessions |
-| `/api/sessions/<id>` | GET | Single session details |
-| `/api/sessions/<id>/conversation` | GET | Full conversation transcript |
-| `/api/sessions/<id>/timeline` | GET | Handoff timeline data |
+| `/api/changesets` | GET | All active changesets |
+| `/api/changesets/<id>` | GET | Single changeset details |
+| `/api/changesets/<id>/conversation` | GET | Full conversation transcript |
+| `/api/changesets/<id>/timeline` | GET | Handoff timeline data |
 | `/api/handoffs` | GET | Recent cross-domain handoffs |
 | `/api/capabilities` | GET | Full capability registry |
 | `/api/collaboration-graph` | GET | Domain collaboration graph |
@@ -129,7 +129,7 @@ Dashboard is now available at http://localhost:24282
 Features:
 - Agent Registry: View all 58 agents across 10 domains
 - Skill Browser: Browse all 72 skills with handoff relationships
-- Session Viewer: Real-time conversation tracking
+- Changeset Viewer: Real-time conversation tracking
 - Domain Graph: Interactive visualization of domain collaborations
 
 The browser should open automatically. If not, visit the URL above.

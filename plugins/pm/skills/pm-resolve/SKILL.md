@@ -131,7 +131,7 @@ When reviewing handoffs, watch for these patterns that often cause conflicts:
 ## Recording Decisions
 
 All conflict resolutions are recorded in:
-`.claude/handoffs/<session-id>/session.json` under the `decisions` array
+`.claude/changesets/<changeset-id>/changeset.json` under the `decisions` array
 
 Each decision includes:
 - Conflict description

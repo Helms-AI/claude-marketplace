@@ -23,13 +23,13 @@ const Dashboard = {
         // Initialize sub-modules
         Agents.init();
         Skills.init();
-        Sessions.init();
+        Changesets.init();
         Graph.init();
         Tasks.init();
 
         // Check URL hash for initial view
         const hash = window.location.hash.slice(1); // Remove #
-        const validViews = ['agents', 'skills', 'sessions', 'graph'];
+        const validViews = ['agents', 'skills', 'changesets', 'graph'];
         if (hash && validViews.includes(hash)) {
             this.switchView(hash);
         }
@@ -119,7 +119,7 @@ const Dashboard = {
         // Handle browser back/forward navigation
         window.addEventListener('hashchange', () => {
             const hash = window.location.hash.slice(1);
-            const validViews = ['agents', 'skills', 'sessions', 'graph'];
+            const validViews = ['agents', 'skills', 'changesets', 'graph'];
             if (hash && validViews.includes(hash) && hash !== this.state.currentView) {
                 this.switchView(hash, false); // Don't update hash again
             }
@@ -306,32 +306,34 @@ const Dashboard = {
             return;
         }
 
-        // Handle new session created
-        if (data.type === 'session_created') {
-            console.log('New session detected:', data.data.session_id);
-            Sessions.addSession(data.data);
+        // Handle new changeset created
+        if (data.type === 'changeset_created') {
+            console.log('New changeset detected:', data.data.changeset_id);
+            Changesets.addChangeset(data.data);
             return;
         }
 
-        // Handle session updated (real-time state changes)
-        if (data.type === 'session_updated') {
-            console.log('Session updated:', data.data.session_id, data.data.changes);
-            Sessions.updateSession(data.data);
+        // Handle changeset updated (real-time state changes)
+        if (data.type === 'changeset_updated') {
+            console.log('Changeset updated:', data.data.changeset_id, data.data.changes);
+            Changesets.updateChangeset(data.data);
             return;
         }
 
-        // Handle session deleted
-        if (data.type === 'session_deleted') {
-            console.log('Session deleted:', data.data.session_id);
-            Sessions.removeSession(data.data.session_id);
+        // Handle changeset deleted
+        if (data.type === 'changeset_deleted') {
+            console.log('Changeset deleted:', data.data.changeset_id);
+            Changesets.removeChangeset(data.data.changeset_id);
             return;
         }
 
         // Handle real-time transcript messages
         if (data.type === 'transcript_message') {
             const msgData = data.data;
-            // Only update if we're viewing the relevant session
-            if (msgData.session_id === Sessions.data.currentSessionId) {
+            // Only update if we're viewing the relevant changeset (check both changeset_id and session_id)
+            const isCurrentChangeset = msgData.changeset_id === Changesets.data.currentChangesetId;
+            const isCurrentSession = msgData.session_id === Changesets.data.currentSessionId;
+            if (isCurrentChangeset || isCurrentSession) {
                 Conversation.addTranscriptMessage(msgData.message, msgData.source);
             }
             return;
@@ -345,7 +347,7 @@ const Dashboard = {
 
         if (data.type === 'conversation_event') {
             this.addToActivityFeed(data.data);
-            Sessions.handleEvent(data.data);
+            Changesets.handleEvent(data.data);
 
             // Update agent/skill activity
             if (data.data.agent_id) {

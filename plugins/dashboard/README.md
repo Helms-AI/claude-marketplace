@@ -1,12 +1,12 @@
 # Dashboard Plugin
 
-Real-time web dashboard for visualizing Claude Marketplace agents, skills, sessions, and cross-domain orchestration.
+Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration.
 
 ## Features
 
 - **Agent Explorer**: Grid/list of all 58+ agents across 10 domains with search/filter
 - **Skill Browser**: All 72+ skills organized by domain with handoff relationships
-- **Session Viewer**: Real-time conversation display with live event streaming
+- **Changeset Viewer**: Real-time conversation display with live event streaming
 - **Domain Graph**: D3.js visualization of domain collaboration relationships
 - **Handoff Timeline**: Visual swimlane timeline of cross-domain handoffs
 - **Dark/Light Theme**: Automatic theme persistence
@@ -47,13 +47,13 @@ plugins/dashboard/
 │   ├── services/            # Core services
 │   │   ├── agent_registry.py
 │   │   ├── skill_registry.py
-│   │   ├── session_tracker.py
+│   │   ├── changeset_tracker.py
 │   │   ├── event_store.py
 │   │   └── file_watcher.py
 │   └── routes/              # API endpoints
 │       ├── agents.py
 │       ├── skills.py
-│       ├── sessions.py
+│       ├── changesets.py
 │       ├── events.py
 │       ├── stream.py
 │       └── capabilities.py
@@ -65,7 +65,7 @@ plugins/dashboard/
 │       ├── dashboard.js     # Main app + SSE client
 │       ├── agents.js        # Agent explorer
 │       ├── skills.js        # Skill browser
-│       ├── sessions.js      # Session viewer
+│       ├── changesets.js    # Changeset viewer
 │       ├── conversation.js  # Transcript rendering
 │       ├── timeline.js      # Handoff timeline
 │       └── graph.js         # D3.js visualization
@@ -99,14 +99,14 @@ plugins/dashboard/
 | `/api/skills/recent` | GET | Get recently invoked skills |
 | `/api/skills/handoff-graph` | GET | Get skill handoff graph |
 
-### Sessions
+### Changesets
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/api/sessions` | GET | Get all sessions |
-| `/api/sessions/<id>` | GET | Get session by ID |
-| `/api/sessions/<id>/conversation` | GET | Get conversation transcript |
-| `/api/sessions/<id>/timeline` | GET | Get handoff timeline |
+| `/api/changesets` | GET | Get all changesets |
+| `/api/changesets/<id>` | GET | Get changeset by ID |
+| `/api/changesets/<id>/conversation` | GET | Get conversation transcript |
+| `/api/changesets/<id>/timeline` | GET | Get handoff timeline |
 | `/api/handoffs` | GET | Get recent handoffs |
 | `/api/handoffs/<id>` | GET | Get handoff by ID |
 
@@ -220,4 +220,4 @@ Environment variables:
 
 ## Version
 
-1.0.0
+2.1.1

@@ -21,7 +21,7 @@ Invoke `/pm-status` to:
 ```markdown
 ## Workflow Status Report
 
-**Session**: `<session-id>`
+**Changeset**: `<changeset-id>`
 **Started**: <timestamp>
 **Status**: <active|paused|completed|blocked>
 **Current Phase**: <phase name>
@@ -91,26 +91,27 @@ Use `/pm-resolve` to view and resolve conflicts.
 3. [Blockers to address]
 ```
 
-## Reading Session State
+## Reading Changeset State
 
-Read session state from `.claude/handoffs/<session-id>/session.json`
-Read individual handoffs from `.claude/handoffs/<session-id>/handoff_*.json`
+Read changeset state from `.claude/changesets/<changeset-id>/changeset.json`
+Read individual handoffs from `.claude/changesets/<changeset-id>/handoff_*.json`
+Artifacts are stored in `.claude/changesets/<changeset-id>/artifacts/`
 
-## No Active Session
+## No Active Changeset
 
-If no active session exists:
+If no active changeset exists:
 
 ```markdown
 ## No Active Workflow
 
-There is no active cross-domain workflow session.
+There is no active cross-domain workflow changeset.
 
 **To start a new workflow**:
 - Use `/pm` with a multi-domain request
 - Example: `/pm build a user dashboard with analytics`
 
-**Recent completed sessions**:
-- [List if any exist in .claude/handoffs/]
+**Recent completed changesets**:
+- [List if any exist in .claude/changesets/]
 ```
 
 ## Compact Mode
@@ -118,7 +119,7 @@ There is no active cross-domain workflow session.
 For quick status checks, provide a compact view:
 
 ```
-Workflow: <session-id> | Phase: Foundation (2/6) | Status: Active
+Workflow: <changeset-id> | Phase: Foundation (2/6) | Status: Active
 Handoffs: 3 complete, 1 in progress, 5 pending
 Decisions: 4 made | Conflicts: 0 pending
 ```

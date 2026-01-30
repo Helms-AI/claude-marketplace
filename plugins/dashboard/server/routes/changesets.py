@@ -1,102 +1,102 @@
-"""Sessions API routes."""
+"""Changesets API routes."""
 
 from flask import Blueprint, jsonify, current_app
 
-sessions_bp = Blueprint('sessions', __name__)
+changesets_bp = Blueprint('changesets', __name__)
 
 
-@sessions_bp.route('/api/sessions', methods=['GET'])
-def get_all_sessions():
-    """Get all active sessions."""
-    tracker = current_app.config['session_tracker']
-    sessions = tracker.get_all_sessions()
+@changesets_bp.route('/api/changesets', methods=['GET'])
+def get_all_changesets():
+    """Get all active changesets."""
+    tracker = current_app.config['changeset_tracker']
+    changesets = tracker.get_all_changesets()
     return jsonify({
-        'sessions': [tracker.to_dict(s) for s in sessions],
-        'count': len(sessions)
+        'changesets': [tracker.to_dict(c) for c in changesets],
+        'count': len(changesets)
     })
 
 
-@sessions_bp.route('/api/sessions/<session_id>', methods=['GET'])
-def get_session(session_id):
-    """Get a specific session."""
-    tracker = current_app.config['session_tracker']
-    session = tracker.get_session(session_id)
-    if not session:
-        return jsonify({'error': 'Session not found'}), 404
-    return jsonify(tracker.to_dict(session))
+@changesets_bp.route('/api/changesets/<changeset_id>', methods=['GET'])
+def get_changeset(changeset_id):
+    """Get a specific changeset."""
+    tracker = current_app.config['changeset_tracker']
+    changeset = tracker.get_changeset(changeset_id)
+    if not changeset:
+        return jsonify({'error': 'Changeset not found'}), 404
+    return jsonify(tracker.to_dict(changeset))
 
 
-@sessions_bp.route('/api/sessions/<session_id>', methods=['DELETE'])
-def delete_session(session_id):
-    """Delete a session and all its files.
+@changesets_bp.route('/api/changesets/<changeset_id>', methods=['DELETE'])
+def delete_changeset(changeset_id):
+    """Delete a changeset and all its files.
 
-    This removes the entire session directory from .claude/handoffs/<session_id>/
+    This removes the entire changeset directory from .claude/changesets/<changeset_id>/
     """
     import os
     import shutil
 
-    tracker = current_app.config['session_tracker']
-    session = tracker.get_session(session_id)
+    tracker = current_app.config['changeset_tracker']
+    changeset = tracker.get_changeset(changeset_id)
 
-    if not session:
-        return jsonify({'error': 'Session not found'}), 404
+    if not changeset:
+        return jsonify({'error': 'Changeset not found'}), 404
 
-    project_path = session.project_path
+    project_path = changeset.project_path
     if not project_path:
-        return jsonify({'error': 'No project path for session'}), 400
+        return jsonify({'error': 'No project path for changeset'}), 400
 
-    # Build the session directory path
-    session_dir = os.path.join(project_path, '.claude', 'handoffs', session_id)
+    # Build the changeset directory path
+    changeset_dir = os.path.join(project_path, '.claude', 'changesets', changeset_id)
 
-    if not os.path.isdir(session_dir):
-        return jsonify({'error': 'Session directory not found', 'path': session_dir}), 404
+    if not os.path.isdir(changeset_dir):
+        return jsonify({'error': 'Changeset directory not found', 'path': changeset_dir}), 404
 
-    # Delete the entire session directory
+    # Delete the entire changeset directory
     try:
-        shutil.rmtree(session_dir)
+        shutil.rmtree(changeset_dir)
     except Exception as e:
-        return jsonify({'error': f'Failed to delete session: {str(e)}'}), 500
+        return jsonify({'error': f'Failed to delete changeset: {str(e)}'}), 500
 
     # Remove from tracker's in-memory state
     with tracker.lock:
-        if session_id in tracker.sessions:
-            del tracker.sessions[session_id]
+        if changeset_id in tracker.changesets:
+            del tracker.changesets[changeset_id]
         # Remove related handoffs
-        tracker.handoffs = [h for h in tracker.handoffs if h.session_id != session_id]
+        tracker.handoffs = [h for h in tracker.handoffs if h.changeset_id != changeset_id]
 
     # Broadcast deletion via SSE
     sse_manager = current_app.config.get('sse_manager')
     if sse_manager:
         sse_manager.broadcast({
-            'session_id': session_id
-        }, event_type='session_deleted')
+            'changeset_id': changeset_id
+        }, event_type='changeset_deleted')
 
     return jsonify({
         'status': 'deleted',
-        'session_id': session_id,
-        'deleted_path': session_dir
+        'changeset_id': changeset_id,
+        'deleted_path': changeset_dir
     })
 
 
-@sessions_bp.route('/api/sessions/<session_id>/conversation', methods=['GET'])
-def get_session_conversation(session_id):
-    """Get full conversation transcript for a session."""
-    tracker = current_app.config['session_tracker']
+@changesets_bp.route('/api/changesets/<changeset_id>/conversation', methods=['GET'])
+def get_changeset_conversation(changeset_id):
+    """Get full conversation transcript for a changeset."""
+    tracker = current_app.config['changeset_tracker']
     event_store = current_app.config['event_store']
 
-    session = tracker.get_session(session_id)
-    if not session:
-        return jsonify({'error': 'Session not found'}), 404
+    changeset = tracker.get_changeset(changeset_id)
+    if not changeset:
+        return jsonify({'error': 'Changeset not found'}), 404
 
-    # Get events from session directly (loaded from session.json)
+    # Get events from changeset directly (loaded from session.json)
     # Also check event_store for any real-time events
-    session_events = session.events
-    event_store_events = event_store.get_by_session(session_id)
+    changeset_events = changeset.events
+    event_store_events = event_store.get_by_changeset(changeset_id)
 
     # Combine and dedupe by event id
     seen_ids = set()
     all_events = []
-    for e in session_events + event_store_events:
+    for e in changeset_events + event_store_events:
         if e.id not in seen_ids:
             seen_ids.add(e.id)
             all_events.append(e)
@@ -105,27 +105,27 @@ def get_session_conversation(session_id):
     all_events.sort(key=lambda e: e.timestamp)
 
     return jsonify({
-        'session': tracker.to_dict(session),
+        'changeset': tracker.to_dict(changeset),
         'events': [event_store.to_dict(e) for e in all_events],
         'event_count': len(all_events)
     })
 
 
-@sessions_bp.route('/api/sessions/<session_id>/timeline', methods=['GET'])
-def get_session_timeline(session_id):
-    """Get visual timeline of agent handoffs for a session."""
-    tracker = current_app.config['session_tracker']
+@changesets_bp.route('/api/changesets/<changeset_id>/timeline', methods=['GET'])
+def get_changeset_timeline(changeset_id):
+    """Get visual timeline of agent handoffs for a changeset."""
+    tracker = current_app.config['changeset_tracker']
 
-    session = tracker.get_session(session_id)
-    if not session:
-        return jsonify({'error': 'Session not found'}), 404
+    changeset = tracker.get_changeset(changeset_id)
+    if not changeset:
+        return jsonify({'error': 'Changeset not found'}), 404
 
-    handoffs = tracker.get_session_handoffs(session_id)
+    handoffs = tracker.get_changeset_handoffs(changeset_id)
 
     # Build timeline with swimlanes by domain
     timeline = {
-        'session_id': session_id,
-        'started_at': session.started_at.isoformat(),
+        'changeset_id': changeset_id,
+        'started_at': changeset.started_at.isoformat(),
         'domains': [],
         'events': []
     }
@@ -153,10 +153,10 @@ def get_session_timeline(session_id):
     return jsonify(timeline)
 
 
-@sessions_bp.route('/api/handoffs', methods=['GET'])
+@changesets_bp.route('/api/handoffs', methods=['GET'])
 def get_recent_handoffs():
     """Get recent cross-domain handoffs."""
-    tracker = current_app.config['session_tracker']
+    tracker = current_app.config['changeset_tracker']
     handoffs = tracker.get_recent_handoffs(limit=20)
     return jsonify({
         'handoffs': [tracker.handoff_to_dict(h) for h in handoffs],
@@ -164,10 +164,10 @@ def get_recent_handoffs():
     })
 
 
-@sessions_bp.route('/api/handoffs/<handoff_id>', methods=['GET'])
+@changesets_bp.route('/api/handoffs/<handoff_id>', methods=['GET'])
 def get_handoff(handoff_id):
     """Get a specific handoff."""
-    tracker = current_app.config['session_tracker']
+    tracker = current_app.config['changeset_tracker']
     handoffs = tracker.get_recent_handoffs(limit=1000)
 
     for handoff in handoffs:
@@ -177,9 +177,9 @@ def get_handoff(handoff_id):
     return jsonify({'error': 'Handoff not found'}), 404
 
 
-@sessions_bp.route('/api/sessions/<session_id>/transcript', methods=['GET'])
-def get_session_transcript(session_id):
-    """Get full Claude Code conversation transcript for a session.
+@changesets_bp.route('/api/changesets/<changeset_id>/transcript', methods=['GET'])
+def get_changeset_transcript(changeset_id):
+    """Get full Claude Code conversation transcript for a changeset.
 
     This reads the actual Claude Code JSONL transcript files that contain
     the complete conversation including user messages, assistant responses,
@@ -191,39 +191,39 @@ def get_session_transcript(session_id):
     """
     from flask import request
 
-    tracker = current_app.config['session_tracker']
+    tracker = current_app.config['changeset_tracker']
     transcript_reader = current_app.config['transcript_reader']
 
-    session = tracker.get_session(session_id)
-    if not session:
-        return jsonify({'error': 'Session not found'}), 404
+    changeset = tracker.get_changeset(changeset_id)
+    if not changeset:
+        return jsonify({'error': 'Changeset not found'}), 404
 
-    # Get the Claude transcript session ID if stored in session
-    # This may differ from the PM session ID
-    claude_session_id = getattr(session, 'claude_session_id', None)
-    project_path = session.project_path
+    # Get the Claude transcript session ID if stored in changeset
+    # This may differ from the PM changeset ID
+    session_id = getattr(changeset, 'session_id', None)
+    project_path = changeset.project_path
 
     if not project_path:
         return jsonify({
-            'error': 'No project path for session',
-            'session_id': session_id
+            'error': 'No project path for changeset',
+            'changeset_id': changeset_id
         }), 404
 
     include_subagents = request.args.get('include_subagents', 'true').lower() == 'true'
     merge_timeline = request.args.get('merge_timeline', 'false').lower() == 'true'
 
     # If we have the direct Claude session ID, use it
-    if claude_session_id:
+    if session_id:
         conversation = transcript_reader.read_full_conversation(
-            claude_session_id,
+            session_id,
             project_path,
             include_subagents=include_subagents
         )
     else:
-        # Try to find transcript by session creation time
+        # Try to find transcript by changeset creation time
         transcript_path = transcript_reader.find_transcript_by_timestamp(
             project_path,
-            session.started_at,
+            changeset.started_at,
             tolerance_seconds=600  # 10 minute window
         )
 
@@ -231,10 +231,10 @@ def get_session_transcript(session_id):
             # Extract session ID from filename
             import os
             filename = os.path.basename(transcript_path)
-            claude_session_id = filename[:-6] if filename.endswith('.jsonl') else filename
+            session_id = filename[:-6] if filename.endswith('.jsonl') else filename
 
             conversation = transcript_reader.read_full_conversation(
-                claude_session_id,
+                session_id,
                 project_path,
                 include_subagents=include_subagents
             )
@@ -254,8 +254,8 @@ def get_session_transcript(session_id):
     agent_metadata = transcript_reader.extract_agent_types(conversation['main'], subagent_ids)
 
     response = {
-        'session_id': session_id,
-        'claude_session_id': conversation.get('session_id'),
+        'changeset_id': changeset_id,
+        'session_id': conversation.get('session_id'),  # Claude Code's native session ID
         'project_path': project_path,
         'messages': main_messages,
         'subagents': subagent_messages,
@@ -274,7 +274,7 @@ def get_session_transcript(session_id):
     return jsonify(response)
 
 
-@sessions_bp.route('/api/transcripts', methods=['GET'])
+@changesets_bp.route('/api/transcripts', methods=['GET'])
 def list_transcripts():
     """List available Claude Code transcripts for all projects.
 
@@ -312,8 +312,8 @@ def list_transcripts():
     })
 
 
-@sessions_bp.route('/api/transcripts/<claude_session_id>', methods=['GET'])
-def get_transcript(claude_session_id):
+@changesets_bp.route('/api/transcripts/<session_id>', methods=['GET'])
+def get_transcript(session_id):
     """Get a specific Claude Code transcript by its session ID.
 
     Query params:
@@ -331,7 +331,7 @@ def get_transcript(claude_session_id):
     # If project_path not specified, search all projects
     if not project_path:
         for pp in project_paths:
-            filepath = transcript_reader.find_transcript_by_session(claude_session_id, pp)
+            filepath = transcript_reader.find_transcript_by_session(session_id, pp)
             if filepath:
                 project_path = pp
                 break
@@ -340,7 +340,7 @@ def get_transcript(claude_session_id):
         return jsonify({'error': 'Transcript not found'}), 404
 
     conversation = transcript_reader.read_full_conversation(
-        claude_session_id,
+        session_id,
         project_path,
         include_subagents=include_subagents
     )
@@ -353,7 +353,7 @@ def get_transcript(claude_session_id):
     }
 
     return jsonify({
-        'claude_session_id': claude_session_id,
+        'session_id': session_id,  # Claude Code's native session ID
         'project_path': project_path,
         'messages': main_messages,
         'subagents': subagent_messages,

@@ -76,7 +76,7 @@ class ConversationEvent:
     """A single event in a conversation."""
     id: str
     timestamp: datetime
-    session_id: str
+    changeset_id: str
     event_type: EventType
     domain: str
     agent_id: Optional[str] = None
@@ -85,9 +85,9 @@ class ConversationEvent:
 
 
 @dataclass
-class SessionInfo:
-    """Information about an active session."""
-    id: str
+class ChangesetInfo:
+    """Information about an active changeset (dashboard tracking unit)."""
+    changeset_id: str
     started_at: datetime
     phase: str = "active"
     current_domain: Optional[str] = None
@@ -95,13 +95,13 @@ class SessionInfo:
     events: list[ConversationEvent] = field(default_factory=list)
     handoffs: list[dict] = field(default_factory=list)
     artifacts: list[str] = field(default_factory=list)
-    # Additional fields for file-based sessions
+    # Additional fields for file-based changesets
     project_path: Optional[str] = None
     domains_involved: list[str] = field(default_factory=list)
     original_request: str = ""
     handoff_count: int = 0
-    # Claude Code transcript correlation
-    claude_session_id: Optional[str] = None
+    # Claude Code's native session ID (from transcripts)
+    session_id: Optional[str] = None
 
 
 @dataclass
@@ -109,7 +109,7 @@ class HandoffInfo:
     """Information about a cross-domain handoff."""
     id: str
     timestamp: datetime
-    session_id: str
+    changeset_id: str
     source_domain: str
     target_domain: str
     source_agent: Optional[str] = None

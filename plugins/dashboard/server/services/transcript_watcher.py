@@ -39,10 +39,10 @@ class TranscriptWatcher:
         self.poll_interval = poll_interval
         self.debug = debug
 
-        # Map of session_id -> watch info
+        # Map of changeset_id -> watch info
         # watch info: {
         #   'project_path': str,
-        #   'claude_session_id': str,
+        #   'session_id': str,  # Claude Code's native session ID
         #   'main_path': str,
         #   'main_position': int,
         #   'subagent_paths': {agent_id: path},
@@ -54,7 +54,7 @@ class TranscriptWatcher:
         self._thread: Optional[threading.Thread] = None
         self._broadcast_count = 0
 
-        # Task state extractors per session
+        # Task state extractors per changeset
         self._task_extractors: dict[str, TaskStateExtractor] = {}
 
     def _log(self, msg: str) -> None:
@@ -62,30 +62,30 @@ class TranscriptWatcher:
         if self.debug:
             print(f"[TranscriptWatcher] {msg}", file=sys.stderr, flush=True)
 
-    def watch_session(
+    def watch_changeset(
         self,
-        session_id: str,
+        changeset_id: str,
         project_path: str,
-        claude_session_id: str
+        session_id: str
     ) -> bool:
-        """Start watching a session's transcript files.
+        """Start watching a changeset's transcript files.
 
         Args:
-            session_id: The dashboard session ID.
+            changeset_id: The dashboard changeset ID.
             project_path: The project's filesystem path.
-            claude_session_id: The Claude Code session ID (UUID).
+            session_id: The Claude Code session ID (UUID).
 
         Returns:
             True if watch was started, False if transcript not found.
         """
-        self._log(f"watch_session called: session_id={session_id}, claude_session_id={claude_session_id}")
+        self._log(f"watch_changeset called: changeset_id={changeset_id}, session_id={session_id}")
 
         transcripts_dir = self.transcript_reader.get_project_transcripts_dir(project_path)
         if not transcripts_dir:
             self._log(f"No transcripts dir found for project: {project_path}")
             return False
 
-        main_path = os.path.join(transcripts_dir, f"{claude_session_id}.jsonl")
+        main_path = os.path.join(transcripts_dir, f"{session_id}.jsonl")
         if not os.path.isfile(main_path):
             self._log(f"Transcript file not found: {main_path}")
             return False
@@ -97,7 +97,7 @@ class TranscriptWatcher:
         # Check for subagent transcripts
         subagent_paths = {}
         subagent_positions = {}
-        subagents_dir = os.path.join(transcripts_dir, claude_session_id, 'subagents')
+        subagents_dir = os.path.join(transcripts_dir, session_id, 'subagents')
         if os.path.isdir(subagents_dir):
             for filename in os.listdir(subagents_dir):
                 if filename.startswith('agent-') and filename.endswith('.jsonl'):
@@ -108,38 +108,62 @@ class TranscriptWatcher:
                     self._log(f"Found subagent transcript: {agent_id}")
 
         with self._lock:
-            self._watches[session_id] = {
+            self._watches[changeset_id] = {
                 'project_path': project_path,
-                'claude_session_id': claude_session_id,
+                'session_id': session_id,
                 'transcripts_dir': transcripts_dir,
                 'main_path': main_path,
                 'main_position': main_position,
                 'subagent_paths': subagent_paths,
                 'subagent_positions': subagent_positions
             }
-            # Create a task extractor for this session
-            self._task_extractors[session_id] = TaskStateExtractor()
-            self._log(f"Now watching {len(self._watches)} session(s)")
+            # Create a task extractor for this changeset
+            self._task_extractors[changeset_id] = TaskStateExtractor()
+            self._log(f"Now watching {len(self._watches)} changeset(s)")
 
         return True
 
-    def unwatch_session(self, session_id: str) -> bool:
-        """Stop watching a session's transcript.
+    # Backwards compatibility alias
+    def watch_session(
+        self,
+        session_id: str,
+        project_path: str,
+        claude_session_id: str
+    ) -> bool:
+        """Backwards compatible alias for watch_changeset.
 
         Args:
-            session_id: The dashboard session ID.
+            session_id: The dashboard changeset ID (legacy name).
+            project_path: The project's filesystem path.
+            claude_session_id: The Claude Code session ID (UUID).
+
+        Returns:
+            True if watch was started, False if transcript not found.
+        """
+        return self.watch_changeset(session_id, project_path, claude_session_id)
+
+    def unwatch_changeset(self, changeset_id: str) -> bool:
+        """Stop watching a changeset's transcript.
+
+        Args:
+            changeset_id: The dashboard changeset ID.
 
         Returns:
             True if watch was removed, False if not found.
         """
         with self._lock:
-            if session_id in self._watches:
-                del self._watches[session_id]
+            if changeset_id in self._watches:
+                del self._watches[changeset_id]
                 # Clean up task extractor
-                if session_id in self._task_extractors:
-                    del self._task_extractors[session_id]
+                if changeset_id in self._task_extractors:
+                    del self._task_extractors[changeset_id]
                 return True
             return False
+
+    # Backwards compatibility alias
+    def unwatch_session(self, session_id: str) -> bool:
+        """Backwards compatible alias for unwatch_changeset."""
+        return self.unwatch_changeset(session_id)
 
     def start(self):
         """Start the watcher thread."""
@@ -168,11 +192,11 @@ class TranscriptWatcher:
             time.sleep(self.poll_interval)
 
     def _check_for_updates(self):
-        """Check all watched sessions for new content."""
+        """Check all watched changesets for new content."""
         with self._lock:
             watches = dict(self._watches)
 
-        for session_id, watch_info in watches.items():
+        for changeset_id, watch_info in watches.items():
             # Check main transcript
             main_path = watch_info['main_path']
             if os.path.isfile(main_path):
@@ -186,18 +210,18 @@ class TranscriptWatcher:
                     self._log(f"Read {len(new_lines)} new lines")
                     for line in new_lines:
                         msg = self._parse_and_broadcast(
-                            line, session_id, 'main'
+                            line, changeset_id, watch_info['session_id'], 'main'
                         )
 
                     # Update position
                     with self._lock:
-                        if session_id in self._watches:
-                            self._watches[session_id]['main_position'] = current_size
+                        if changeset_id in self._watches:
+                            self._watches[changeset_id]['main_position'] = current_size
 
             # Check for new subagent transcripts
             subagents_dir = os.path.join(
                 watch_info['transcripts_dir'],
-                watch_info['claude_session_id'],
+                watch_info['session_id'],
                 'subagents'
             )
             if os.path.isdir(subagents_dir):
@@ -209,9 +233,9 @@ class TranscriptWatcher:
                         # Add new subagent if not tracked
                         if agent_id not in watch_info['subagent_paths']:
                             with self._lock:
-                                if session_id in self._watches:
-                                    self._watches[session_id]['subagent_paths'][agent_id] = agent_path
-                                    self._watches[session_id]['subagent_positions'][agent_id] = 0
+                                if changeset_id in self._watches:
+                                    self._watches[changeset_id]['subagent_paths'][agent_id] = agent_path
+                                    self._watches[changeset_id]['subagent_positions'][agent_id] = 0
                             watch_info['subagent_paths'][agent_id] = agent_path
                             watch_info['subagent_positions'][agent_id] = 0
 
@@ -223,12 +247,12 @@ class TranscriptWatcher:
                     if current_size > agent_position:
                         new_lines = self._read_new_lines(agent_path, agent_position)
                         for line in new_lines:
-                            self._parse_and_broadcast(line, session_id, agent_id)
+                            self._parse_and_broadcast(line, changeset_id, watch_info['session_id'], agent_id)
 
                         # Update position
                         with self._lock:
-                            if session_id in self._watches:
-                                self._watches[session_id]['subagent_positions'][agent_id] = current_size
+                            if changeset_id in self._watches:
+                                self._watches[changeset_id]['subagent_positions'][agent_id] = current_size
 
     def _read_new_lines(self, filepath: str, start_pos: int) -> list[str]:
         """Read new lines from a file starting at a given position.
@@ -255,6 +279,7 @@ class TranscriptWatcher:
     def _parse_and_broadcast(
         self,
         line: str,
+        changeset_id: str,
         session_id: str,
         source: str
     ) -> Optional[dict]:
@@ -262,7 +287,8 @@ class TranscriptWatcher:
 
         Args:
             line: The JSONL line to parse.
-            session_id: The dashboard session ID.
+            changeset_id: The dashboard changeset ID.
+            session_id: Claude Code's native session ID.
             source: 'main' or the agent_id.
 
         Returns:
@@ -290,19 +316,22 @@ class TranscriptWatcher:
             self._log(f"Broadcasting message #{self._broadcast_count}: role={msg_dict.get('role')} source={source}")
 
             self.broadcast_callback({
-                'session_id': session_id,
+                'changeset_id': changeset_id,
+                'session_id': session_id,  # Claude Code's native session ID
                 'source': source,
                 'message': msg_dict,
                 'timestamp': msg_dict.get('timestamp', datetime.now().isoformat())
             }, 'transcript_message')
 
             # Process Task* tool calls for task state tracking
-            task_extractor = self._task_extractors.get(session_id)
+            task_extractor = self._task_extractors.get(changeset_id)
             if task_extractor:
                 for tool_call in msg_dict.get('tool_calls', []):
                     task_event = task_extractor.process_tool_call(tool_call)
                     if task_event:
-                        task_event['session_id'] = session_id
+                        # Include BOTH changeset_id AND session_id in task events
+                        task_event['changeset_id'] = changeset_id
+                        task_event['session_id'] = session_id  # Claude's native ID for matching
                         self._log(f"Broadcasting task event: {task_event.get('event')}")
                         self.broadcast_callback(task_event, 'task_state_change')
 
@@ -315,11 +344,16 @@ class TranscriptWatcher:
             self._log(f"Error parsing transcript line: {e}")
             return None
 
-    def get_watched_sessions(self) -> list[str]:
-        """Get list of currently watched session IDs.
+    def get_watched_changesets(self) -> list[str]:
+        """Get list of currently watched changeset IDs.
 
         Returns:
-            List of session IDs being watched.
+            List of changeset IDs being watched.
         """
         with self._lock:
             return list(self._watches.keys())
+
+    # Backwards compatibility alias
+    def get_watched_sessions(self) -> list[str]:
+        """Backwards compatible alias for get_watched_changesets."""
+        return self.get_watched_changesets()
