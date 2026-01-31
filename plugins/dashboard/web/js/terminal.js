@@ -17,16 +17,20 @@ const Terminal = {
         streamStartTime: null,
         streamTimer: null,
         streamingLineEl: null,
-        toolsInProgress: []
+        toolsInProgress: [],
+        // View mode: 'conversation' | 'terminal'
+        viewMode: 'conversation'
     },
 
     elements: {
         connectionStatus: null,
         output: null,
+        conversation: null,
         input: null,
         actionBtns: null,
         container: null,
-        agentInfo: null
+        agentInfo: null,
+        viewToggleBtns: null
     },
 
     /**
@@ -48,12 +52,21 @@ const Terminal = {
     init() {
         this.cacheElements();
         this.setupEventListeners();
+        this.setupViewToggle();
 
         // Detect OS and apply styling class
         this.state.detectedOS = this.detectOS();
         if (this.elements.container) {
             this.elements.container.classList.add(`terminal-${this.state.detectedOS}`);
         }
+
+        // Initialize conversation view
+        if (this.elements.conversation && typeof TerminalConversation !== 'undefined') {
+            TerminalConversation.init(this.elements.conversation);
+        }
+
+        // Set initial view mode
+        this.setViewMode(this.state.viewMode);
 
         // Fetch version and SDK info
         this.loadVersion();
@@ -125,8 +138,10 @@ const Terminal = {
         this.elements.container = document.querySelector('.terminal-container');
         this.elements.connectionStatus = document.getElementById('terminalConnectionStatus');
         this.elements.output = document.getElementById('terminalOutput');
+        this.elements.conversation = document.getElementById('terminalConversation');
         this.elements.input = document.getElementById('terminalInput');
         this.elements.actionBtns = document.querySelectorAll('.terminal-action-btn');
+        this.elements.viewToggleBtns = document.querySelectorAll('.terminal-view-toggle .view-toggle-btn');
     },
 
     setupEventListeners() {
@@ -144,6 +159,41 @@ const Terminal = {
                 this.handleAction(action);
             });
         });
+    },
+
+    /**
+     * Setup view toggle button event listeners
+     */
+    setupViewToggle() {
+        this.elements.viewToggleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.view;
+                if (view !== this.state.viewMode) {
+                    this.setViewMode(view);
+                }
+            });
+        });
+    },
+
+    /**
+     * Switch between terminal and conversation view modes
+     * @param {string} mode - 'terminal' | 'conversation'
+     */
+    setViewMode(mode) {
+        this.state.viewMode = mode;
+
+        // Update toggle button states
+        this.elements.viewToggleBtns.forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.view === mode);
+        });
+
+        // Toggle view visibility
+        if (this.elements.output) {
+            this.elements.output.classList.toggle('hidden', mode !== 'terminal');
+        }
+        if (this.elements.conversation) {
+            this.elements.conversation.classList.toggle('hidden', mode !== 'conversation');
+        }
     },
 
     handleInputKeydown(e) {
@@ -177,8 +227,17 @@ const Terminal = {
         this.state.historyIndex = -1;
         this.state.currentInput = '';
 
-        // Display command
-        this.appendLine(`> ${command}`, 'command');
+        // Display command based on view mode
+        if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+            // Remove welcome message if present
+            const welcome = this.elements.conversation?.querySelector('.terminal-conversation-welcome');
+            if (welcome) {
+                welcome.remove();
+            }
+            TerminalConversation.addUserMessage(command);
+        } else {
+            this.appendLine(`> ${command}`, 'command');
+        }
 
         // Clear input
         input.value = '';
@@ -200,7 +259,7 @@ const Terminal = {
             if (!response.ok) {
                 const error = await response.json();
                 this.stopStreamingProgress();
-                this.appendLine(`Error: ${error.error || 'Failed to send command'}`, 'error');
+                this.displayError(error.error || 'Failed to send command');
                 return;
             }
 
@@ -227,41 +286,41 @@ const Terminal = {
                         try {
                             const data = JSON.parse(line.slice(6));
 
-                            // Handle different message types
-                            // Accept 'assistant' or 'unknown' with content as valid responses
-                            if (data.type === 'assistant' || (data.type === 'unknown' && data.content)) {
-                                if (data.content) {
-                                    currentContent = data.content;
-                                    // Update streaming line with content preview
+                            // Handle different message types from the SDK
+                            this.handleStreamMessage(data, {
+                                onContent: (content) => {
+                                    currentContent = content;
                                     if (!hasStartedResponse) {
                                         hasStartedResponse = true;
                                         this.updateStreamingStatus('receiving');
                                     }
                                     this.updateStreamingContent(currentContent);
-                                }
-                                if (data.tool_uses) {
-                                    for (const tool of data.tool_uses) {
-                                        if (tool.name && !toolsUsed.includes(tool.name)) {
-                                            toolsUsed.push(tool.name);
-                                            this.addToolInProgress(tool.name);
-                                        }
+                                },
+                                onToolUse: (tool) => {
+                                    if (tool.name && !toolsUsed.find(t => t.name === tool.name && t.id === tool.id)) {
+                                        toolsUsed.push(tool);
+                                        this.addToolInProgress(tool);
                                     }
-                                }
-                            } else if (data.type === 'error') {
-                                this.stopStreamingProgress();
-                                this.appendLine(`Error: ${data.content || 'Unknown error'}`, 'error');
-                            } else if (data.type === 'tool_result') {
-                                // Tool results - mark tool complete, show errors
-                                const results = data.results || [];
-                                for (const result of results) {
-                                    this.markToolComplete(result.tool_use_id);
+                                },
+                                onToolResult: (result) => {
+                                    this.markToolComplete(result.tool_use_id, result.is_error);
                                     if (result.is_error) {
-                                        this.appendLine(`[Tool Error] ${result.content}`, 'error');
+                                        this.displayError(`[Tool Error] ${result.content}`);
+                                    }
+                                },
+                                onError: (error) => {
+                                    this.stopStreamingProgress();
+                                    this.displayError(error);
+                                },
+                                onResult: (result) => {
+                                    if (result.subagent) {
+                                        console.log(`[Terminal] Subagent returned result`, result);
                                     }
                                 }
-                            }
+                            });
                         } catch (e) {
                             // Ignore parse errors
+                            console.debug('[Terminal] Parse error:', e, line);
                         }
                     }
                 }
@@ -270,22 +329,52 @@ const Terminal = {
             // Stop streaming progress and display final content
             this.stopStreamingProgress();
 
-            if (currentContent) {
-                this.appendLine('', 'output');
-                const lines = currentContent.split('\n');
-                for (const line of lines) {
-                    this.appendLine(line, 'output');
-                }
+            // Display response based on view mode
+            if (currentContent || toolsUsed.length > 0) {
+                this.displayResponse(currentContent, toolsUsed);
             }
 
         } catch (error) {
             this.stopStreamingProgress();
-            this.appendLine(`Error: ${error.message}`, 'error');
+            this.displayError(error.message);
         } finally {
             this.elements.input.disabled = false;
             this.elements.input.focus();
             this.state.waitingForResponse = false;
             this.updateConnectionStatus('connected');
+        }
+    },
+
+    /**
+     * Display a response based on current view mode
+     * @param {string} content - The text content
+     * @param {Array} toolUses - Array of tool use objects
+     */
+    displayResponse(content, toolUses = []) {
+        if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+            TerminalConversation.addAssistantMessage(content, toolUses);
+        } else {
+            // Terminal mode: plain text output
+            if (content) {
+                this.appendLine('', 'output');
+                const lines = content.split('\n');
+                for (const line of lines) {
+                    this.appendLine(line, 'output');
+                }
+            }
+        }
+    },
+
+    /**
+     * Display an error based on current view mode
+     * @param {string} message - The error message
+     */
+    displayError(message) {
+        if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+            // Create error message as assistant response
+            TerminalConversation.addAssistantMessage(`**Error:** ${message}`, []);
+        } else {
+            this.appendLine(`Error: ${message}`, 'error');
         }
     },
 
@@ -296,23 +385,28 @@ const Terminal = {
         this.state.streamStartTime = Date.now();
         this.state.toolsInProgress = [];
 
-        // Create streaming status line
-        const output = this.elements.output;
-        if (output) {
-            this.state.streamingLineEl = document.createElement('div');
-            this.state.streamingLineEl.className = 'terminal-line streaming-progress';
-            this.state.streamingLineEl.innerHTML = this.getStreamingHTML('thinking', 0);
-            output.appendChild(this.state.streamingLineEl);
-            output.scrollTop = output.scrollHeight;
+        // Use conversation view streaming indicator if in conversation mode
+        if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+            TerminalConversation.startStreamingIndicator();
+        } else {
+            // Create streaming status line for terminal mode
+            const output = this.elements.output;
+            if (output) {
+                this.state.streamingLineEl = document.createElement('div');
+                this.state.streamingLineEl.className = 'terminal-line streaming-progress';
+                this.state.streamingLineEl.innerHTML = this.getStreamingHTML('thinking', 0);
+                output.appendChild(this.state.streamingLineEl);
+                output.scrollTop = output.scrollHeight;
+            }
+
+            // Start timer to update elapsed time
+            this.state.streamTimer = setInterval(() => {
+                this.updateStreamingTimer();
+            }, 100);
         }
 
         // Update status bar
         this.updateConnectionStatus('thinking');
-
-        // Start timer to update elapsed time
-        this.state.streamTimer = setInterval(() => {
-            this.updateStreamingTimer();
-        }, 100);
     },
 
     /**
@@ -393,32 +487,224 @@ const Terminal = {
 
     /**
      * Add a tool to the in-progress list
+     * @param {string|Object} tool - Tool name or full tool object
      */
-    addToolInProgress(toolName) {
-        if (!this.state.toolsInProgress.includes(toolName)) {
-            this.state.toolsInProgress.push(toolName);
-            this.updateStreamingTimer();
+    addToolInProgress(tool) {
+        const toolName = typeof tool === 'string' ? tool : tool.name;
+        const existingTool = this.state.toolsInProgress.find(t =>
+            (typeof t === 'string' ? t : t.name) === toolName
+        );
+
+        if (!existingTool) {
+            // Store full tool object if available
+            this.state.toolsInProgress.push(tool);
+
+            // Update appropriate indicator with full tool object
+            if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+                TerminalConversation.addToolInProgress(tool);
+            } else {
+                this.updateStreamingTimer();
+            }
+        }
+    },
+
+    /**
+     * Handle a streaming message from the SDK bridge.
+     * This is the central dispatcher for all SDK event types.
+     * @param {Object} data - The parsed message data
+     * @param {Object} callbacks - Callback functions for different event types
+     */
+    handleStreamMessage(data, callbacks) {
+        const { onContent, onToolUse, onToolResult, onError, onResult } = callbacks;
+
+        switch (data.type) {
+            // StreamEvent - Real-time lifecycle events
+            case 'stream_event':
+                this.handleStreamEvent(data, callbacks);
+                break;
+
+            // AssistantMessage - Complete response with content blocks
+            case 'assistant':
+                if (data.content) {
+                    onContent?.(data.content);
+                }
+                if (data.tool_uses) {
+                    for (const tool of data.tool_uses) {
+                        onToolUse?.(tool);
+                    }
+                }
+                // Handle thinking blocks (extended thinking)
+                if (data.thinking) {
+                    console.log('[Terminal] Thinking blocks:', data.thinking.length);
+                }
+                break;
+
+            // Unknown type with content - treat as assistant response
+            case 'unknown':
+                if (data.content) {
+                    onContent?.(data.content);
+                }
+                if (data.tool_uses) {
+                    for (const tool of data.tool_uses) {
+                        onToolUse?.(tool);
+                    }
+                }
+                break;
+
+            // Tool results from user message
+            case 'tool_result':
+                const results = data.results || [];
+                for (const result of results) {
+                    onToolResult?.(result);
+                }
+                break;
+
+            // Final result with cost/usage
+            case 'result':
+                onResult?.(data);
+                // Log usage info
+                if (data.total_cost_usd) {
+                    console.log(`[Terminal] Cost: $${data.total_cost_usd.toFixed(4)}`);
+                }
+                if (data.duration_ms) {
+                    console.log(`[Terminal] Duration: ${data.duration_ms}ms`);
+                }
+                break;
+
+            // System messages
+            case 'system':
+                console.log(`[Terminal] System (${data.subtype}):`, data.data);
+                break;
+
+            // Error messages
+            case 'error':
+                onError?.(data.content || 'Unknown error');
+                break;
+
+            default:
+                // Log unknown types for debugging
+                console.debug('[Terminal] Unknown message type:', data.type, data);
+        }
+    },
+
+    /**
+     * Handle StreamEvent messages - these provide real-time lifecycle visibility
+     * @param {Object} data - The stream event data
+     * @param {Object} callbacks - Callback functions
+     */
+    handleStreamEvent(data, callbacks) {
+        const { onContent, onToolUse } = callbacks;
+
+        switch (data.event_type) {
+            // A new content block is starting
+            case 'content_block_start':
+                if (data.block_type === 'tool_use') {
+                    // Tool is starting - show it immediately
+                    const tool = {
+                        id: data.tool_id,
+                        name: data.tool_name,
+                        input: {}, // Will be filled in by deltas
+                        status: 'starting'
+                    };
+                    onToolUse?.(tool);
+                    console.log(`[Terminal] Tool starting: ${data.tool_name}`);
+                } else if (data.block_type === 'thinking') {
+                    // Extended thinking is starting
+                    this.updateStreamingStatus('thinking');
+                    console.log('[Terminal] Thinking started');
+                } else if (data.block_type === 'text') {
+                    this.updateStreamingStatus('receiving');
+                }
+                break;
+
+            // Incremental content update
+            case 'content_block_delta':
+                if (data.delta_type === 'text_delta' && data.text) {
+                    // Accumulate streaming text
+                    this.streamingText = (this.streamingText || '') + data.text;
+                    onContent?.(this.streamingText);
+                } else if (data.delta_type === 'thinking_delta' && data.thinking) {
+                    // Could show thinking progress
+                    console.debug('[Terminal] Thinking:', data.thinking.substring(0, 50) + '...');
+                } else if (data.delta_type === 'input_json_delta') {
+                    // Tool input being built incrementally
+                    console.debug('[Terminal] Tool input delta');
+                }
+                break;
+
+            // A content block is complete
+            case 'content_block_stop':
+                console.debug(`[Terminal] Block ${data.block_index} complete`);
+                break;
+
+            // Message is starting
+            case 'message_start':
+                this.streamingText = ''; // Reset for new message
+                if (data.model) {
+                    console.log(`[Terminal] Using model: ${data.model}`);
+                }
+                break;
+
+            // Message metadata update
+            case 'message_delta':
+                if (data.stop_reason) {
+                    console.log(`[Terminal] Stop reason: ${data.stop_reason}`);
+                }
+                if (data.usage) {
+                    console.debug('[Terminal] Usage:', data.usage);
+                }
+                break;
+
+            // Message is complete
+            case 'message_stop':
+                console.debug('[Terminal] Message complete');
+                break;
+
+            default:
+                console.debug('[Terminal] Unknown stream event:', data.event_type);
         }
     },
 
     /**
      * Mark a tool as complete
+     * @param {string} toolId - The tool use ID
+     * @param {boolean} isError - Whether the tool resulted in an error
      */
-    markToolComplete(toolId) {
-        // For now just keep showing tools, they'll clear on response
+    markToolComplete(toolId, isError = false) {
+        // Update the tool in the in-progress list
+        const toolIndex = this.state.toolsInProgress.findIndex(t =>
+            (typeof t === 'object' ? t.id : null) === toolId
+        );
+
+        if (toolIndex >= 0) {
+            const tool = this.state.toolsInProgress[toolIndex];
+            if (typeof tool === 'object') {
+                tool.status = isError ? 'error' : 'complete';
+            }
+        }
+
+        // Update conversation view if active
+        if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+            TerminalConversation.markToolComplete(toolId, isError);
+        }
     },
 
     /**
      * Stop the streaming progress indicator
      */
     stopStreamingProgress() {
-        // Clear timer
+        // Stop conversation view indicator if in conversation mode
+        if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+            TerminalConversation.stopStreamingIndicator();
+        }
+
+        // Clear timer (terminal mode)
         if (this.state.streamTimer) {
             clearInterval(this.state.streamTimer);
             this.state.streamTimer = null;
         }
 
-        // Remove streaming line
+        // Remove streaming line (terminal mode)
         if (this.state.streamingLineEl) {
             this.state.streamingLineEl.remove();
             this.state.streamingLineEl = null;
@@ -477,10 +763,10 @@ const Terminal = {
     },
 
     clearOutput() {
+        // Clear terminal output
         const output = this.elements.output;
-        if (!output) return;
-
-        output.innerHTML = `<pre class="terminal-welcome">
+        if (output) {
+            output.innerHTML = `<pre class="terminal-welcome">
  ██████╗██╗       █████╗ ██╗   ██╗██████╗ ███████╗
 ██╔════╝██║      ██╔══██╗██║   ██║██╔══██╗██╔════╝
 ██║     ██║      ███████║██║   ██║██║  ██║█████╗
@@ -499,6 +785,28 @@ const Terminal = {
 
   Terminal cleared.
 </pre>`;
+        }
+
+        // Clear conversation view
+        if (this.elements.conversation && typeof TerminalConversation !== 'undefined') {
+            TerminalConversation.clear();
+            // Show welcome message again
+            this.elements.conversation.innerHTML = `
+                <div class="terminal-conversation-welcome">
+                    <div class="welcome-content">
+                        <div class="welcome-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                        </div>
+                        <h3>Claude SDK Terminal</h3>
+                        <p>Terminal cleared. Type a message to start a new conversation.</p>
+                    </div>
+                </div>
+            `;
+            // Re-initialize conversation module
+            TerminalConversation.init(this.elements.conversation);
+        }
     },
 
     updateConnectionStatus(status) {
