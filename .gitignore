@@ -31,3 +31,5 @@ npm-debug.log*
 .playwright-mcp
 
 .claude
+
+__pycache__
