@@ -306,6 +306,7 @@ const Skills = {
 
     /**
      * Show skill in modal (single-click quick view)
+     * Redesigned modal with domain accent, command display, handoff flow, stats
      */
     async showSkillDetail(skillId) {
         const skill = this.data.skills.find(s => s.id === skillId);
@@ -321,69 +322,225 @@ const Skills = {
         }
 
         const domainClass = Dashboard.getDomainClass(skill.domain);
+        const displayDomain = skill.domain.replace(/-/g, ' ');
 
-        const inputsHtml = skill.handoff_inputs?.length > 0
-            ? skill.handoff_inputs.map(s => `<span class="tool-tag">/${s}</span>`).join('')
-            : '<span class="text-muted">None</span>';
+        // Format last invoked time
+        const lastInvoked = skill.last_invoked 
+            ? this.formatRelativeTime(new Date(skill.last_invoked))
+            : 'Never';
 
-        const outputsHtml = skill.handoff_outputs?.length > 0
-            ? skill.handoff_outputs.map(s => `<span class="tool-tag">/${s}</span>`).join('')
-            : '<span class="text-muted">None</span>';
+        // Build backing agent card if available
+        const backingAgentHtml = skill.backing_agent ? this.buildBackingAgentCard(skill) : '';
 
+        // Build handoff flow visualization
+        const handoffFlowHtml = this.buildHandoffFlowHtml(skill, domainClass);
+
+        // Build invocations list with alternating rows
         const invocationsHtml = invocations.length > 0
-            ? invocations.slice(0, 10).map(e => `
-                <div class="transcript-event ${e.event_type}">
-                    <div class="event-timestamp">${new Date(e.timestamp).toLocaleString()}</div>
-                    <div class="event-content">${e.content?.tool || e.event_type.replace(/_/g, ' ')}</div>
-                </div>
-            `).join('')
-            : '<p class="text-muted">No invocations recorded</p>';
+            ? invocations.slice(0, 8).map(e => {
+                const time = new Date(e.timestamp).toLocaleTimeString([], { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                const eventText = e.content?.tool || e.event_type.replace(/_/g, ' ');
+                return `
+                    <div class="modal-activity-row">
+                        <span class="modal-activity-time">${time}</span>
+                        <span class="modal-activity-event">${eventText}</span>
+                    </div>
+                `;
+            }).join('')
+            : '<div class="modal-empty-state" style="padding: 16px;">No invocations recorded</div>';
 
         const content = `
-            <div class="modal-title">/${skill.id}</div>
-            <span class="card-domain ${domainClass}">${skill.domain.replace(/-/g, ' ')}</span>
-
-            <div class="modal-section">
-                <h4>Name</h4>
-                <p>${skill.name}</p>
+            <div class="modal-domain-accent ${domainClass}"></div>
+            
+            <div class="modal-header">
+                <p class="modal-command ${domainClass}"><span class="modal-command-prefix">/</span><span class="modal-command-name">${skill.id}</span></p>
+                <p class="modal-skill-name">${skill.name}</p>
+                <span class="modal-domain-badge ${domainClass}">${displayDomain}</span>
             </div>
 
-            ${skill.description ? `
+            ${backingAgentHtml ? `
             <div class="modal-section">
-                <h4>Description</h4>
-                <p>${skill.description}</p>
-            </div>
-            ` : ''}
-
-            ${skill.backing_agent ? `
-            <div class="modal-section">
-                <h4>Backing Agent</h4>
-                <p>${skill.backing_agent}</p>
+                <div class="modal-section-title">Powered By</div>
+                ${backingAgentHtml}
             </div>
             ` : ''}
 
             <div class="modal-section">
-                <h4>Receives Handoffs From</h4>
-                <div class="card-tools">${inputsHtml}</div>
+                <div class="modal-section-title">Handoff Flow</div>
+                ${handoffFlowHtml}
             </div>
 
             <div class="modal-section">
-                <h4>Hands Off To</h4>
-                <div class="card-tools">${outputsHtml}</div>
+                <div class="modal-stats-grid">
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-label">Invocations</div>
+                        <div class="modal-stat-value">${skill.invocation_count || 0}</div>
+                    </div>
+                    <div class="modal-stat-card">
+                        <div class="modal-stat-label">Last Invoked</div>
+                        <div class="modal-stat-value" style="font-size: 16px;">${lastInvoked}</div>
+                    </div>
+                </div>
             </div>
 
             <div class="modal-section">
-                <h4>Invocation Count</h4>
-                <p>${skill.invocation_count || 0}</p>
-            </div>
-
-            <div class="modal-section">
-                <h4>Recent Invocations</h4>
-                ${invocationsHtml}
+                <div class="modal-section-title">Recent Invocations</div>
+                <div class="modal-invocations-list">${invocationsHtml}</div>
             </div>
         `;
 
         Dashboard.openModal('skillModal', content);
+        
+        // Add the modal-skill class to the modal content for styling
+        const modalContent = document.querySelector('#skillModal .modal-content');
+        if (modalContent) {
+            modalContent.classList.add('modal-skill');
+        }
+
+        // Attach click handlers after modal opens
+        this.attachSkillModalHandlers(skill);
+    },
+
+    /**
+     * Build backing agent card HTML
+     */
+    buildBackingAgentCard(skill) {
+        const domainClass = Dashboard.getDomainClass(skill.domain);
+        
+        // Try to find the agent in the Agents cache
+        const agent = typeof Agents !== 'undefined' && Agents.data.agents 
+            ? Agents.data.agents.find(a => a.name === skill.backing_agent || a.id === skill.backing_agent)
+            : null;
+
+        const agentRole = agent?.role || 'Agent';
+        const initials = skill.backing_agent.split(' ')
+            .map(n => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
+
+        return `
+            <div class="modal-agent-link ${domainClass}" data-agent-name="${skill.backing_agent}" tabindex="0">
+                <div class="modal-agent-link-icon modal-avatar ${domainClass}">${initials}</div>
+                <div class="modal-agent-link-info">
+                    <div class="modal-agent-link-name">${skill.backing_agent}</div>
+                    <div class="modal-agent-link-role">${agentRole}</div>
+                </div>
+                <span class="modal-agent-link-arrow">→</span>
+            </div>
+        `;
+    },
+
+    /**
+     * Build handoff flow visualization HTML with SVG connectors
+     */
+    buildHandoffFlowHtml(skill, domainClass) {
+        const inputs = skill.handoff_inputs || [];
+        const outputs = skill.handoff_outputs || [];
+
+        // If no handoffs, show appropriate message
+        if (inputs.length === 0 && outputs.length === 0) {
+            return `
+                <div class="modal-handoff-flow">
+                    <div class="modal-empty-state">No handoff relationships defined</div>
+                </div>
+            `;
+        }
+
+        // Build input nodes with label
+        const inputNodesHtml = inputs.length > 0
+            ? `<div class="handoff-flow-label">Receives From</div>` +
+              inputs.map(s => `<div class="handoff-node" data-skill-id="${s}" tabindex="0" title="/${s}">/${s}</div>`).join('')
+            : '<div class="handoff-flow-label">Receives From</div><div class="modal-empty-state">No upstream skills</div>';
+
+        // Build output nodes with label
+        const outputNodesHtml = outputs.length > 0
+            ? `<div class="handoff-flow-label">Hands Off To</div>` +
+              outputs.map(s => `<div class="handoff-node" data-skill-id="${s}" tabindex="0" title="/${s}">/${s}</div>`).join('')
+            : '<div class="handoff-flow-label">Hands Off To</div><div class="modal-empty-state">Terminal skill</div>';
+
+        return `
+            <div class="modal-handoff-flow">
+                <div class="handoff-flow-container" id="handoffFlowContainer">
+                    <div class="handoff-flow-column inputs">
+                        ${inputNodesHtml}
+                    </div>
+                    <div class="handoff-flow-column center">
+                        <div class="handoff-flow-label">Current Skill</div>
+                        <div class="handoff-node handoff-node-current ${domainClass}">/${skill.id}</div>
+                    </div>
+                    <div class="handoff-flow-column outputs">
+                        ${outputNodesHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    /**
+     * Attach click handlers for skill modal interactive elements
+     */
+    attachSkillModalHandlers(skill) {
+        // Handle backing agent click
+        const agentLink = document.querySelector('.modal-agent-link');
+        if (agentLink) {
+            const handleAgentClick = () => {
+                const agentName = agentLink.dataset.agentName;
+                // Close skill modal
+                Dashboard.closeModal('skillModal');
+                // Find and open agent modal
+                if (typeof Agents !== 'undefined') {
+                    const agent = Agents.data.agents.find(a => 
+                        a.name === agentName || a.id === agentName
+                    );
+                    if (agent) {
+                        setTimeout(() => Agents.showAgentDetail(agent.id), 150);
+                    }
+                }
+            };
+            agentLink.addEventListener('click', handleAgentClick);
+            agentLink.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleAgentClick();
+            });
+        }
+
+        // Handle handoff node clicks
+        document.querySelectorAll('.handoff-node:not(.handoff-node-current)').forEach(node => {
+            const handleNodeClick = () => {
+                const targetSkillId = node.dataset.skillId;
+                if (targetSkillId) {
+                    // Close current modal
+                    Dashboard.closeModal('skillModal');
+                    // Open new skill modal after animation
+                    setTimeout(() => this.showSkillDetail(targetSkillId), 150);
+                }
+            };
+            node.addEventListener('click', handleNodeClick);
+            node.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleNodeClick();
+            });
+        });
+    },
+
+    /**
+     * Format a date as relative time (e.g., "2 hours ago")
+     */
+    formatRelativeTime(date) {
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSeconds = Math.floor(diffMs / 1000);
+        const diffMinutes = Math.floor(diffSeconds / 60);
+        const diffHours = Math.floor(diffMinutes / 60);
+        const diffDays = Math.floor(diffHours / 24);
+
+        if (diffSeconds < 60) return 'Just now';
+        if (diffMinutes < 60) return `${diffMinutes}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return date.toLocaleDateString();
     },
 
     /**

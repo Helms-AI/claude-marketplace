@@ -14,6 +14,7 @@ const Dashboard = {
         panelHeight: parseInt(localStorage.getItem('dashboard-panel-height')) || 200,
         activePanel: 'explorer',
         activePanelTab: 'activity',
+        explorerActiveTab: localStorage.getItem('dashboard-explorer-tab') || 'work',
         tabs: [],
         activeTabId: 'welcome',
         commandPaletteOpen: false
@@ -30,6 +31,7 @@ const Dashboard = {
         this.setupKeyboardShortcuts();
         this.setupProfileMenu();
         this.setupModals();
+        this.setupExplorerTabs();
         this.loadVersion();
         this.connectSSE();
 
@@ -129,15 +131,11 @@ const Dashboard = {
     },
 
     showSidebarSection(section) {
-        const explorerSection = document.getElementById('explorerSection');
-        const changesetsSection = document.getElementById('changesetsSection');
-
+        // With the new tabbed layout, switch to appropriate explorer tab
         if (section === 'explorer') {
-            explorerSection.style.display = 'block';
-            changesetsSection.style.display = 'block';
+            this.switchExplorerTab('agents');
         } else if (section === 'changesets') {
-            explorerSection.style.display = 'none';
-            changesetsSection.style.display = 'block';
+            this.switchExplorerTab('work');
         }
     },
 
@@ -194,12 +192,34 @@ const Dashboard = {
             });
         });
 
-        // Explorer search
-        const explorerSearch = document.getElementById('explorerSearch');
-        if (explorerSearch) {
-            explorerSearch.addEventListener('input', (e) => {
+        // Per-tab search inputs
+        const workSearch = document.getElementById('workSearch');
+        if (workSearch) {
+            workSearch.addEventListener('input', (e) => {
                 const query = e.target.value.toLowerCase();
-                this.filterExplorer(query);
+                if (Changesets && Changesets.filter) {
+                    Changesets.filter(query);
+                }
+            });
+        }
+
+        const agentsSearch = document.getElementById('agentsSearch');
+        if (agentsSearch) {
+            agentsSearch.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                if (Agents && Agents.filter) {
+                    Agents.filter(query);
+                }
+            });
+        }
+
+        const skillsSearch = document.getElementById('skillsSearch');
+        if (skillsSearch) {
+            skillsSearch.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                if (Skills && Skills.filter) {
+                    Skills.filter(query);
+                }
             });
         }
     },
@@ -211,12 +231,60 @@ const Dashboard = {
     },
 
     filterExplorer(query) {
-        // Filter agents and skills using their module methods
-        if (Agents && Agents.filter) {
+        // Filter based on active explorer tab
+        const activeTab = this.state.explorerActiveTab;
+        if (activeTab === 'work' && Changesets && Changesets.filter) {
+            Changesets.filter(query);
+        } else if (activeTab === 'agents' && Agents && Agents.filter) {
             Agents.filter(query);
-        }
-        if (Skills && Skills.filter) {
+        } else if (activeTab === 'skills' && Skills && Skills.filter) {
             Skills.filter(query);
+        }
+    },
+
+    // ==================== Explorer Tabs ====================
+    setupExplorerTabs() {
+        const tabs = document.querySelectorAll('.explorer-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                this.switchExplorerTab(tab.dataset.tab);
+            });
+        });
+
+        // Apply saved active tab
+        this.switchExplorerTab(this.state.explorerActiveTab);
+    },
+
+    switchExplorerTab(tabName) {
+        this.state.explorerActiveTab = tabName;
+        localStorage.setItem('dashboard-explorer-tab', tabName);
+
+        // Update tab buttons
+        document.querySelectorAll('.explorer-tab').forEach(tab => {
+            tab.classList.toggle('active', tab.dataset.tab === tabName);
+        });
+
+        // Update tab content
+        document.querySelectorAll('.explorer-tab-content').forEach(content => {
+            const contentTab = content.id.replace('TabContent', '');
+            content.classList.toggle('active', contentTab === tabName);
+        });
+    },
+
+    updateExplorerTabCounts() {
+        // Update tab counts
+        const workCount = document.getElementById('workTabCount');
+        const agentsCount = document.getElementById('agentsTabCount');
+        const skillsCount = document.getElementById('skillsTabCount');
+
+        if (workCount && Changesets?.data?.changesets) {
+            workCount.textContent = Changesets.data.changesets.length;
+        }
+        if (agentsCount && Agents?.data?.agents) {
+            agentsCount.textContent = Agents.data.agents.length;
+        }
+        if (skillsCount && Skills?.data?.skills) {
+            skillsCount.textContent = Skills.data.skills.length;
         }
     },
 
@@ -420,6 +488,9 @@ const Dashboard = {
         } else if (id.startsWith('skill-')) {
             document.getElementById('skillDetailTab').classList.add('active');
             // Skill detail is rendered by Skills.openSkillTab
+        } else if (id.startsWith('artifact-')) {
+            document.getElementById('artifactTab').classList.add('active');
+            // Artifact content is rendered by Changesets.renderArtifactContent
         } else if (contentMap[id]) {
             document.getElementById(contentMap[id]).classList.add('active');
             if (id === 'graph') {
@@ -446,6 +517,17 @@ const Dashboard = {
             breadcrumbs += '<span class="breadcrumb-item clickable">Changesets</span>';
             breadcrumbs += '<span class="breadcrumb-separator">›</span>';
             breadcrumbs += `<span class="breadcrumb-item current">${changesetId.length > 20 ? changesetId.substring(0, 20) + '...' : changesetId}</span>`;
+        } else if (tabId.startsWith('artifact-')) {
+            // Format: artifact-{changesetId}-{filename}
+            const parts = tabId.replace('artifact-', '').split('-');
+            const filename = parts.pop();
+            const changesetId = parts.join('-');
+            breadcrumbs += '<span class="breadcrumb-separator">›</span>';
+            breadcrumbs += '<span class="breadcrumb-item clickable">Changesets</span>';
+            breadcrumbs += '<span class="breadcrumb-separator">›</span>';
+            breadcrumbs += `<span class="breadcrumb-item clickable">${changesetId.length > 15 ? changesetId.substring(0, 15) + '...' : changesetId}</span>`;
+            breadcrumbs += '<span class="breadcrumb-separator">›</span>';
+            breadcrumbs += `<span class="breadcrumb-item current">${filename}</span>`;
         } else if (tabId.startsWith('agent-')) {
             const agentId = tabId.replace('agent-', '');
             const agent = Agents?.data?.agents?.find(a => a.id === agentId);

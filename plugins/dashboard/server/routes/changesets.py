@@ -312,6 +312,74 @@ def list_transcripts():
     })
 
 
+@changesets_bp.route('/api/changesets/<changeset_id>/artifacts/<path:filename>', methods=['GET'])
+def get_artifact_content(changeset_id, filename):
+    """Get content of a specific artifact file.
+
+    Returns:
+        {
+            'content': str,           # File content
+            'content_type': str,      # 'markdown', 'json', 'text', etc.
+            'artifact_name': str,     # Filename
+            'size': int               # File size in bytes
+        }
+    """
+    import os
+    import mimetypes
+
+    tracker = current_app.config['changeset_tracker']
+    changeset = tracker.get_changeset(changeset_id)
+
+    if not changeset:
+        return jsonify({'error': 'Changeset not found'}), 404
+
+    project_path = changeset.project_path
+    if not project_path:
+        return jsonify({'error': 'No project path for changeset'}), 400
+
+    # Build artifact path
+    artifact_path = os.path.join(
+        project_path, '.claude', 'changesets', changeset_id, 'artifacts', filename
+    )
+
+    if not os.path.isfile(artifact_path):
+        return jsonify({'error': 'Artifact not found', 'path': artifact_path}), 404
+
+    # Determine content type
+    ext = os.path.splitext(filename)[1].lower()
+    content_type_map = {
+        '.md': 'markdown',
+        '.json': 'json',
+        '.yaml': 'yaml',
+        '.yml': 'yaml',
+        '.txt': 'text',
+        '.py': 'python',
+        '.js': 'javascript',
+        '.ts': 'typescript',
+        '.html': 'html',
+        '.css': 'css',
+    }
+    content_type = content_type_map.get(ext, 'text')
+
+    try:
+        with open(artifact_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except UnicodeDecodeError:
+        return jsonify({
+            'error': 'Binary file cannot be displayed',
+            'artifact_name': filename
+        }), 415
+
+    file_size = os.path.getsize(artifact_path)
+
+    return jsonify({
+        'content': content,
+        'content_type': content_type,
+        'artifact_name': filename,
+        'size': file_size
+    })
+
+
 @changesets_bp.route('/api/transcripts/<session_id>', methods=['GET'])
 def get_transcript(session_id):
     """Get a specific Claude Code transcript by its session ID.

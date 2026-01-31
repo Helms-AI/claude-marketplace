@@ -10,7 +10,9 @@ const Changesets = {
         currentSessionId: null, // Claude Code's native session ID (for task matching)
         events: [],
         transcript: null,
-        selectedChangesetId: null
+        selectedChangesetId: null,
+        expandedChangesets: new Set(), // Track which changesets are expanded
+        filterQuery: ''
     },
 
     // Cache for command palette search
@@ -37,8 +39,12 @@ const Changesets = {
     },
 
     render() {
-        this.renderChangesetList();
+        this.renderChangesetTree();
         this.updateChangesetCount();
+        // Update explorer tab counts
+        if (Dashboard.updateExplorerTabCounts) {
+            Dashboard.updateExplorerTabCounts();
+        }
     },
 
     updateChangesetCount() {
@@ -46,67 +52,263 @@ const Changesets = {
         if (countEl) {
             countEl.textContent = this.data.changesets.length;
         }
+        // Also update work tab count
+        const workTabCount = document.getElementById('workTabCount');
+        if (workTabCount) {
+            workTabCount.textContent = this.data.changesets.length;
+        }
     },
 
-    renderChangesetList() {
-        const list = document.getElementById('changesetList');
+    /**
+     * Filter changesets by search query
+     * @param {string} query - Filter query
+     */
+    filter(query) {
+        this.data.filterQuery = query.toLowerCase();
+        this.renderChangesetTree();
+    },
 
-        if (this.data.changesets.length === 0) {
-            list.innerHTML = `
-                <div class="empty-changesets">
-                    <div class="empty-icon">&#9632;</div>
-                    <p>No active changesets</p>
+    /**
+     * Render changesets as expandable tree items
+     */
+    renderChangesetTree() {
+        const tree = document.getElementById('changesetTree');
+        if (!tree) return;
+
+        // Filter changesets if query present
+        let changesets = this.data.changesets;
+        if (this.data.filterQuery) {
+            changesets = changesets.filter(c =>
+                c.id.toLowerCase().includes(this.data.filterQuery) ||
+                (c.phase || '').toLowerCase().includes(this.data.filterQuery) ||
+                (c.artifacts || []).some(a => {
+                    const name = typeof a === 'object' ? a.name : a;
+                    return name.toLowerCase().includes(this.data.filterQuery);
+                })
+            );
+        }
+
+        if (changesets.length === 0) {
+            tree.innerHTML = `
+                <div class="tree-empty">
+                    ${this.data.filterQuery ? 'No matching changesets' : 'No active changesets'}
                 </div>
             `;
             return;
         }
 
-        list.innerHTML = this.data.changesets.map((changeset, index) => {
+        tree.innerHTML = changesets.map((changeset) => {
             const isActive = changeset.id === this.data.currentChangesetId;
-            const domains = (changeset.domains_involved || []).slice(0, 3);
-            const phaseClass = changeset.phase ? `phase-${changeset.phase}` : '';
+            const isExpanded = this.data.expandedChangesets.has(changeset.id);
+            const artifacts = changeset.artifacts || [];
+            const hasArtifacts = artifacts.length > 0;
+
+            // Format time
+            const timeStr = changeset.started_at ? Dashboard.formatTime(changeset.started_at) : '';
 
             return `
-                <div class="changeset-item ${isActive ? 'active' : ''}"
-                     data-changeset-id="${changeset.id}"
-                     style="animation-delay: ${index * 50}ms">
-                    <div class="changeset-item-header">
-                        <span class="changeset-id">${changeset.id}</span>
-                        ${changeset.phase ? `<span class="changeset-status ${phaseClass}">${changeset.phase}</span>` : ''}
+                <div class="changeset-tree-item ${isExpanded ? 'expanded' : ''}" data-changeset-id="${changeset.id}">
+                    <div class="changeset-tree-header ${isActive ? 'active' : ''}">
+                        <span class="changeset-expand-chevron ${hasArtifacts ? '' : 'no-artifacts'} ${isExpanded ? 'expanded' : ''}">▶</span>
+                        <span class="changeset-tree-icon">📁</span>
+                        <span class="changeset-tree-name">${this.formatChangesetName(changeset.id)}</span>
+                        ${changeset.phase ? `<span class="changeset-tree-badge phase-${changeset.phase}">${changeset.phase}</span>` : ''}
+                        <span class="changeset-tree-time">${timeStr}</span>
                     </div>
-                    <div class="changeset-item-meta">
-                        <span class="meta-events">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
-                            </svg>
-                            ${changeset.event_count || 0}
-                        </span>
-                        ${changeset.handoff_count ? `
-                            <span class="meta-handoffs">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M5 12h14M12 5l7 7-7 7"></path>
-                                </svg>
-                                ${changeset.handoff_count}
-                            </span>
-                        ` : ''}
-                    </div>
-                    ${domains.length > 0 ? `
-                        <div class="changeset-item-domains">
-                            ${domains.map(d => `<span class="mini-domain domain-${d.replace(/_/g, '-')}">${this.getDomainInitial(d)}</span>`).join('')}
-                            ${(changeset.domains_involved || []).length > 3 ? `<span class="mini-domain more">+${changeset.domains_involved.length - 3}</span>` : ''}
+                    ${hasArtifacts ? `
+                        <div class="changeset-artifacts">
+                            ${artifacts.map(a => this.renderArtifactItem(changeset.id, a)).join('')}
                         </div>
                     ` : ''}
                 </div>
             `;
         }).join('');
 
-        // Add click handlers
-        list.querySelectorAll('.changeset-item').forEach(item => {
-            item.addEventListener('click', () => {
+        // Add event listeners
+        this.attachTreeEventListeners(tree);
+    },
+
+    /**
+     * Format changeset name for display (extract meaningful part)
+     * @param {string} id - Changeset ID like "20260129-143052-implement-user-auth"
+     */
+    formatChangesetName(id) {
+        // Try to extract task name from format: YYYYMMDD-HHMMSS-task-name
+        const parts = id.split('-');
+        if (parts.length > 2) {
+            // Skip date and time parts, join the rest
+            return parts.slice(2).join('-');
+        }
+        return id;
+    },
+
+    /**
+     * Render a single artifact item
+     */
+    renderArtifactItem(changesetId, artifact) {
+        const name = typeof artifact === 'object' ? artifact.name : artifact;
+        const icon = this.getArtifactIcon(name);
+        const iconClass = this.getArtifactIconClass(name);
+
+        return `
+            <div class="artifact-item" data-changeset-id="${changesetId}" data-artifact="${name}">
+                <span class="artifact-icon ${iconClass}">${icon}</span>
+                <span class="artifact-name">${name}</span>
+            </div>
+        `;
+    },
+
+    /**
+     * Get icon for artifact based on extension
+     */
+    getArtifactIcon(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        const iconMap = {
+            'md': '📝',
+            'json': '{}',
+            'yaml': '📋',
+            'yml': '📋',
+            'txt': '📄',
+            'py': '🐍',
+            'js': '📜',
+            'ts': '📜',
+            'html': '🌐',
+            'css': '🎨'
+        };
+        return iconMap[ext] || '📄';
+    },
+
+    /**
+     * Get CSS class for artifact icon coloring
+     */
+    getArtifactIconClass(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        const classMap = {
+            'md': 'markdown',
+            'json': 'json',
+            'yaml': 'yaml',
+            'yml': 'yaml',
+            'txt': 'text',
+            'py': 'code',
+            'js': 'code',
+            'ts': 'code'
+        };
+        return classMap[ext] || 'text';
+    },
+
+    /**
+     * Attach event listeners to tree items
+     */
+    attachTreeEventListeners(tree) {
+        // Chevron click to expand/collapse
+        tree.querySelectorAll('.changeset-expand-chevron:not(.no-artifacts)').forEach(chevron => {
+            chevron.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const item = chevron.closest('.changeset-tree-item');
+                const changesetId = item.dataset.changesetId;
+                this.toggleChangeset(changesetId);
+            });
+        });
+
+        // Header click to select changeset
+        tree.querySelectorAll('.changeset-tree-header').forEach(header => {
+            header.addEventListener('click', (e) => {
+                // Ignore if clicking the chevron
+                if (e.target.classList.contains('changeset-expand-chevron')) return;
+
+                const item = header.closest('.changeset-tree-item');
                 const changesetId = item.dataset.changesetId;
                 this.selectChangeset(changesetId);
             });
         });
+
+        // Artifact click to open in tab
+        tree.querySelectorAll('.artifact-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const changesetId = item.dataset.changesetId;
+                const artifactName = item.dataset.artifact;
+                this.openArtifact(changesetId, artifactName);
+            });
+        });
+    },
+
+    /**
+     * Toggle changeset expand/collapse state
+     */
+    toggleChangeset(changesetId) {
+        if (this.data.expandedChangesets.has(changesetId)) {
+            this.data.expandedChangesets.delete(changesetId);
+        } else {
+            this.data.expandedChangesets.add(changesetId);
+        }
+        this.renderChangesetTree();
+    },
+
+    /**
+     * Open an artifact file in a new editor tab
+     */
+    async openArtifact(changesetId, artifactName) {
+        const tabId = `artifact-${changesetId}-${artifactName}`;
+
+        // Open the tab first
+        Dashboard.openTab(tabId, artifactName, '📄');
+
+        // Fetch artifact content
+        try {
+            const response = await Dashboard.fetchAPI(`/api/changesets/${changesetId}/artifacts/${encodeURIComponent(artifactName)}`);
+            this.renderArtifactContent(response);
+        } catch (e) {
+            console.error('Error loading artifact:', e);
+            this.renderArtifactError(artifactName, e.message);
+        }
+    },
+
+    /**
+     * Render artifact content in the artifact view
+     */
+    renderArtifactContent(data) {
+        const view = document.getElementById('artifactView');
+        if (!view) return;
+
+        const isMarkdown = data.content_type === 'markdown';
+
+        if (isMarkdown && typeof marked !== 'undefined') {
+            // Render markdown
+            view.innerHTML = `
+                <div class="artifact-content markdown">
+                    ${marked.parse(data.content)}
+                </div>
+            `;
+        } else {
+            // Render as plain text/code
+            view.innerHTML = `
+                <div class="artifact-content">
+                    <pre>${this.escapeHtml(data.content)}</pre>
+                </div>
+            `;
+        }
+    },
+
+    /**
+     * Render error when artifact fails to load
+     */
+    renderArtifactError(artifactName, errorMessage) {
+        const view = document.getElementById('artifactView');
+        if (!view) return;
+
+        view.innerHTML = `
+            <div class="artifact-placeholder">
+                <span class="placeholder-icon">⚠️</span>
+                <span>Failed to load ${artifactName}</span>
+                <span style="font-size: 12px; color: var(--text-muted)">${errorMessage}</span>
+            </div>
+        `;
+    },
+
+    // Keep the old renderChangesetList as alias for compatibility
+    renderChangesetList() {
+        this.renderChangesetTree();
     },
 
     getDomainInitial(domain) {
@@ -157,9 +359,10 @@ const Changesets = {
         this.data.currentChangesetId = changesetId;
         this.data.selectedChangesetId = changesetId;
 
-        // Update selection UI in sidebar
-        document.querySelectorAll('.changeset-item').forEach(item => {
-            item.classList.toggle('active', item.dataset.changesetId === changesetId);
+        // Update selection UI in sidebar (tree view)
+        document.querySelectorAll('.changeset-tree-header').forEach(header => {
+            const item = header.closest('.changeset-tree-item');
+            header.classList.toggle('active', item.dataset.changesetId === changesetId);
         });
 
         // Open as a tab in the editor
@@ -494,20 +697,20 @@ const Changesets = {
         }
 
         this.data.changesets.unshift(newChangeset);
-        this.renderChangesetList();
+        this.renderChangesetTree();
         this.updateChangesetCount();
 
-        // Highlight the new changeset card briefly
+        // Highlight the new changeset tree item briefly
         setTimeout(() => {
-            const newCard = document.querySelector(`.changeset-item[data-changeset-id="${newChangeset.id}"]`);
-            if (newCard) {
-                this.animateChange(newCard);
+            const newItem = document.querySelector(`.changeset-tree-item[data-changeset-id="${newChangeset.id}"]`);
+            if (newItem) {
+                this.animateChange(newItem.querySelector('.changeset-tree-header'));
             }
         }, 50);
     },
 
     /**
-     * Update an existing changeset with real-time changes (surgical DOM updates)
+     * Update an existing changeset with real-time changes
      * @param {Object} eventData - Contains changeset_id, changes, and full_changeset
      */
     updateChangeset(eventData) {
@@ -518,7 +721,7 @@ const Changesets = {
         if (changesetIndex === -1) {
             // Changeset not in list yet, add it
             this.data.changesets.unshift(full_changeset);
-            this.renderChangesetList();
+            this.renderChangesetTree();
             this.updateChangesetCount();
             return;
         }
@@ -527,113 +730,12 @@ const Changesets = {
         const changeset = this.data.changesets[changesetIndex];
         Object.assign(changeset, full_changeset);
 
-        // Find the DOM element for this changeset card
-        const cardElement = document.querySelector(`.changeset-item[data-changeset-id="${changeset_id}"]`);
-        if (cardElement) {
-            this.updateChangesetCardDOM(cardElement, changeset, changes);
-        }
+        // Re-render tree for simplicity (could be optimized for surgical updates)
+        this.renderChangesetTree();
 
         // Update conversation header if this is the selected changeset
         if (changeset_id === this.data.currentChangesetId) {
             this.renderConversationHeader(changeset);
-        }
-    },
-
-    /**
-     * Perform surgical DOM updates on a changeset card
-     * @param {HTMLElement} cardElement - The changeset card DOM element
-     * @param {Object} changeset - The updated changeset data
-     * @param {Object} changes - Object describing what fields changed
-     */
-    updateChangesetCardDOM(cardElement, changeset, changes) {
-        // Update phase badge if changed
-        if ('phase' in changes) {
-            const statusEl = cardElement.querySelector('.changeset-status');
-            if (statusEl) {
-                // Remove old phase classes
-                statusEl.className = 'changeset-status';
-                if (changeset.phase) {
-                    statusEl.classList.add(`phase-${changeset.phase}`);
-                    statusEl.textContent = changeset.phase;
-                }
-                this.animateChange(statusEl);
-            } else if (changeset.phase) {
-                // Create status badge if it didn't exist
-                const header = cardElement.querySelector('.changeset-item-header');
-                const statusSpan = document.createElement('span');
-                statusSpan.className = `changeset-status phase-${changeset.phase}`;
-                statusSpan.textContent = changeset.phase;
-                header.appendChild(statusSpan);
-                this.animateChange(statusSpan);
-            }
-        }
-
-        // Update event count if changed
-        if ('event_count' in changes) {
-            const eventsEl = cardElement.querySelector('.meta-events');
-            if (eventsEl) {
-                // Find text node and update it
-                const textNode = eventsEl.lastChild;
-                if (textNode) {
-                    textNode.textContent = ` ${changeset.event_count || 0}`;
-                }
-                this.animateChange(eventsEl);
-            }
-        }
-
-        // Update handoff count if changed
-        if ('handoff_count' in changes) {
-            let handoffsEl = cardElement.querySelector('.meta-handoffs');
-            const metaEl = cardElement.querySelector('.changeset-item-meta');
-
-            if (changeset.handoff_count && changeset.handoff_count > 0) {
-                if (handoffsEl) {
-                    // Update existing
-                    const textNode = handoffsEl.lastChild;
-                    if (textNode) {
-                        textNode.textContent = ` ${changeset.handoff_count}`;
-                    }
-                    this.animateChange(handoffsEl);
-                } else if (metaEl) {
-                    // Create new handoff count element
-                    handoffsEl = document.createElement('span');
-                    handoffsEl.className = 'meta-handoffs';
-                    handoffsEl.innerHTML = `
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M5 12h14M12 5l7 7-7 7"></path>
-                        </svg>
-                        ${changeset.handoff_count}
-                    `;
-                    metaEl.appendChild(handoffsEl);
-                    this.animateChange(handoffsEl);
-                }
-            }
-        }
-
-        // Update domain pills if changed
-        if ('domains_involved' in changes) {
-            let domainsEl = cardElement.querySelector('.changeset-item-domains');
-            const domains = (changeset.domains_involved || []).slice(0, 3);
-
-            if (domains.length > 0) {
-                const domainsHtml = domains.map(d =>
-                    `<span class="mini-domain domain-${d.replace(/_/g, '-')}">${this.getDomainInitial(d)}</span>`
-                ).join('') + (changeset.domains_involved.length > 3
-                    ? `<span class="mini-domain more">+${changeset.domains_involved.length - 3}</span>`
-                    : '');
-
-                if (domainsEl) {
-                    domainsEl.innerHTML = domainsHtml;
-                    this.animateChange(domainsEl);
-                } else {
-                    // Create domains container
-                    domainsEl = document.createElement('div');
-                    domainsEl.className = 'changeset-item-domains';
-                    domainsEl.innerHTML = domainsHtml;
-                    cardElement.appendChild(domainsEl);
-                    this.animateChange(domainsEl);
-                }
-            }
         }
     },
 

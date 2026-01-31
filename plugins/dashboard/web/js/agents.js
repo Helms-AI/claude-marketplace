@@ -299,6 +299,7 @@ const Agents = {
 
     /**
      * Show agent in modal (single-click quick view)
+     * Redesigned modal with domain accent, avatar, tools grid, key phrases
      */
     async showAgentDetail(agentId) {
         const agent = this.data.agents.find(a => a.id === agentId);
@@ -314,53 +315,81 @@ const Agents = {
         }
 
         const domainClass = Dashboard.getDomainClass(agent.domain);
-        const tools = agent.tools.map(t => `<span class="tool-tag">${t}</span>`).join('');
-        const phrases = agent.key_phrases.map(p => `<div class="key-phrase">"${p}"</div>`).join('');
+        const displayDomain = agent.domain.replace(/-/g, ' ');
+        
+        // Get initials for avatar
+        const initials = agent.name.split(' ')
+            .map(n => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2);
 
+        // Build tools grid
+        const toolsHtml = agent.tools && agent.tools.length > 0
+            ? agent.tools.map(t => `<span class="modal-tool-tag">${t}</span>`).join('')
+            : '<span class="modal-empty-state">No tools configured</span>';
+
+        // Build key phrases with domain-colored borders
+        const phrasesHtml = agent.key_phrases && agent.key_phrases.length > 0
+            ? agent.key_phrases.map(p => 
+                `<div class="modal-phrase-item ${domainClass}">"${p}"</div>`
+            ).join('')
+            : '<span class="modal-empty-state">No key phrases defined</span>';
+
+        // Build activity list with alternating rows
         const activityHtml = activity.length > 0
-            ? activity.slice(0, 10).map(e => `
-                <div class="transcript-event ${e.event_type}">
-                    <div class="event-timestamp">${new Date(e.timestamp).toLocaleString()}</div>
-                    <div class="event-content">${e.event_type.replace(/_/g, ' ')}</div>
-                </div>
-            `).join('')
-            : '<p class="text-muted">No recent activity</p>';
+            ? activity.slice(0, 10).map(e => {
+                const time = new Date(e.timestamp).toLocaleTimeString([], { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                const eventText = e.event_type.replace(/_/g, ' ');
+                return `
+                    <div class="modal-activity-row">
+                        <span class="modal-activity-time">${time}</span>
+                        <span class="modal-activity-event">${eventText}</span>
+                    </div>
+                `;
+            }).join('')
+            : '<div class="modal-empty-state" style="padding: 16px;">No recent activity</div>';
 
         const content = `
-            <div class="modal-title">${agent.name}</div>
-            <span class="card-domain ${domainClass}">${agent.domain.replace(/-/g, ' ')}</span>
-
-            <div class="modal-section">
-                <h4>Role</h4>
-                <p>${agent.role}</p>
+            <div class="modal-domain-accent ${domainClass}"></div>
+            
+            <div class="modal-header">
+                <div class="modal-identity">
+                    <div class="modal-avatar ${domainClass}">${initials}</div>
+                    <div class="modal-identity-info">
+                        <h2 class="modal-name">${agent.name}</h2>
+                        <p class="modal-role">${agent.role}</p>
+                        <span class="modal-domain-badge ${domainClass}">${displayDomain}</span>
+                    </div>
+                </div>
             </div>
 
-            ${agent.description ? `
             <div class="modal-section">
-                <h4>Description</h4>
-                <p>${agent.description}</p>
-            </div>
-            ` : ''}
-
-            <div class="modal-section">
-                <h4>Tools</h4>
-                <div class="card-tools">${tools}</div>
+                <div class="modal-section-title">Tools</div>
+                <div class="modal-tools-grid">${toolsHtml}</div>
             </div>
 
-            ${agent.key_phrases.length > 0 ? `
             <div class="modal-section">
-                <h4>Key Phrases</h4>
-                ${phrases}
+                <div class="modal-section-title">Key Phrases</div>
+                <div class="modal-phrases">${phrasesHtml}</div>
             </div>
-            ` : ''}
 
             <div class="modal-section">
-                <h4>Recent Activity</h4>
-                ${activityHtml}
+                <div class="modal-section-title">Recent Activity</div>
+                <div class="modal-activity-list">${activityHtml}</div>
             </div>
         `;
 
         Dashboard.openModal('agentModal', content);
+        
+        // Add the modal-agent class to the modal content for styling
+        const modalContent = document.querySelector('#agentModal .modal-content');
+        if (modalContent) {
+            modalContent.classList.add('modal-agent');
+        }
     },
 
     /**

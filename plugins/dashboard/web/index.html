@@ -77,7 +77,7 @@
             <!-- Primary Sidebar -->
             <aside class="sidebar" id="sidebar">
                 <div class="sidebar-content">
-                    <!-- Explorer Section -->
+                    <!-- Explorer Section with Tabs -->
                     <div class="sidebar-section" id="explorerSection">
                         <div class="section-header">
                             <span class="section-title">EXPLORER</span>
@@ -89,38 +89,46 @@
                                 </svg>
                             </button>
                         </div>
-                        <div class="sidebar-search">
-                            <input type="text" class="tree-search" id="explorerSearch" placeholder="Filter...">
-                        </div>
-                        <div class="tree-container">
-                            <!-- Agents Tree -->
-                            <div class="tree-group" id="agentsTree">
-                                <div class="tree-group-header" data-expanded="true">
-                                    <span class="tree-chevron">▾</span>
-                                    <span class="tree-group-label">Agents</span>
-                                    <span class="tree-group-count" id="agentCount">0</span>
-                                </div>
-                                <div class="tree-group-content" id="agentsTreeContent"></div>
-                            </div>
-                            <!-- Skills Tree -->
-                            <div class="tree-group" id="skillsTree">
-                                <div class="tree-group-header" data-expanded="true">
-                                    <span class="tree-chevron">▾</span>
-                                    <span class="tree-group-label">Skills</span>
-                                    <span class="tree-group-count" id="skillCount">0</span>
-                                </div>
-                                <div class="tree-group-content" id="skillsTreeContent"></div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Changesets Section -->
-                    <div class="sidebar-section" id="changesetsSection">
-                        <div class="section-header">
-                            <span class="section-title">CHANGESETS</span>
-                            <span class="section-badge" id="changesetCount">0</span>
+                        <!-- Explorer Tab Bar -->
+                        <div class="explorer-tabs">
+                            <button class="explorer-tab active" data-tab="work">
+                                Work
+                                <span class="explorer-tab-count" id="workTabCount">0</span>
+                            </button>
+                            <button class="explorer-tab" data-tab="agents">
+                                Agents
+                                <span class="explorer-tab-count" id="agentsTabCount">0</span>
+                            </button>
+                            <button class="explorer-tab" data-tab="skills">
+                                Skills
+                                <span class="explorer-tab-count" id="skillsTabCount">0</span>
+                            </button>
                         </div>
-                        <div class="changeset-list" id="changesetList"></div>
+
+                        <!-- Work Tab (Changesets) -->
+                        <div class="explorer-tab-content active" id="workTabContent">
+                            <div class="sidebar-search">
+                                <input type="text" class="tree-search" id="workSearch" placeholder="Filter changesets...">
+                            </div>
+                            <div class="changeset-tree" id="changesetTree"></div>
+                        </div>
+
+                        <!-- Agents Tab -->
+                        <div class="explorer-tab-content" id="agentsTabContent">
+                            <div class="sidebar-search">
+                                <input type="text" class="tree-search" id="agentsSearch" placeholder="Filter agents...">
+                            </div>
+                            <div class="tree-container" id="agentsTreeContent"></div>
+                        </div>
+
+                        <!-- Skills Tab -->
+                        <div class="explorer-tab-content" id="skillsTabContent">
+                            <div class="sidebar-search">
+                                <input type="text" class="tree-search" id="skillsSearch" placeholder="Filter skills...">
+                            </div>
+                            <div class="tree-container" id="skillsTreeContent"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -233,10 +241,20 @@
                     <div class="editor-tab-content" id="skillDetailTab">
                         <div class="detail-view" id="skillDetailView"></div>
                     </div>
+
+                    <!-- Artifact Tab Content -->
+                    <div class="editor-tab-content" id="artifactTab">
+                        <div class="artifact-view" id="artifactView">
+                            <div class="artifact-placeholder">
+                                <span class="placeholder-icon">📄</span>
+                                <span>Select an artifact to view its contents</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </main>
 
-            <!-- Activity Bar (Right Side) -->
+            <!-- Activity Bar (Left Side) -->
             <nav class="activity-bar" id="activityBar">
                 <div class="activity-bar-top">
                     <button class="activity-btn active" data-panel="explorer" title="Explorer (⌘⇧E)">
@@ -364,7 +382,7 @@
                     <span>☽</span>
                 </div>
                 <div class="status-item" id="statusVersion">
-                    <span id="dashboardVersion">v2.1.1</span>
+                    <span id="dashboardVersion">v2.3.0</span>
                 </div>
             </div>
         </footer>
