@@ -8,6 +8,49 @@ from threading import Lock
 from typing import Callable, Optional
 
 
+class ActivityDebouncer:
+    """Debounces rapid activity events to prevent animation spam."""
+
+    def __init__(self, window_ms: int = 500):
+        """Initialize the debouncer.
+
+        Args:
+            window_ms: Time window in milliseconds to debounce events.
+        """
+        self.window_ms = window_ms
+        self.last_events: dict[str, float] = {}
+        self.lock = Lock()
+
+    def should_broadcast(self, node_id: str) -> bool:
+        """Check if an event for this node should be broadcast.
+
+        Args:
+            node_id: The node identifier.
+
+        Returns:
+            True if enough time has passed since the last event for this node.
+        """
+        now = time.time() * 1000  # Convert to milliseconds
+        with self.lock:
+            last_time = self.last_events.get(node_id, 0)
+            if now - last_time >= self.window_ms:
+                self.last_events[node_id] = now
+                return True
+            return False
+
+    def clear(self, node_id: str = None) -> None:
+        """Clear debounce history.
+
+        Args:
+            node_id: Optional specific node to clear. If None, clears all.
+        """
+        with self.lock:
+            if node_id:
+                self.last_events.pop(node_id, None)
+            else:
+                self.last_events.clear()
+
+
 class SSEManager:
     """Manages Server-Sent Events connections and broadcasting."""
 
@@ -22,6 +65,7 @@ class SSEManager:
         self.event_listener: Optional[Callable] = None
         self.debug = debug
         self._broadcast_count = 0
+        self.activity_debouncer = ActivityDebouncer(window_ms=500)
 
     def _log(self, msg: str) -> None:
         """Log a debug message if debug mode is enabled."""
@@ -112,6 +156,68 @@ class SSEManager:
 
         self.event_listener = listener
         return listener
+
+    def broadcast_graph_activity(
+        self,
+        node_id: str,
+        agent_id: str = None,
+        skill: str = None,
+        activity_type: str = 'skill'
+    ) -> int:
+        """Broadcast a graph activity event (with debouncing).
+
+        Args:
+            node_id: The domain node ID.
+            agent_id: Optional agent ID within the domain.
+            skill: Optional skill that was invoked.
+            activity_type: Type of activity ('skill', 'agent').
+
+        Returns:
+            Number of clients the message was sent to.
+        """
+        # Use debouncer to prevent rapid-fire animations
+        if not self.activity_debouncer.should_broadcast(node_id):
+            return 0
+
+        event_data = {
+            'node_id': node_id,
+            'type': activity_type
+        }
+        if agent_id:
+            event_data['agent_id'] = agent_id
+        if skill:
+            event_data['skill'] = skill
+
+        return self.broadcast(event_data, event_type='graph_activity')
+
+    def broadcast_graph_handoff(
+        self,
+        source: str,
+        target: str,
+        source_agent: str = None,
+        target_agent: str = None
+    ) -> int:
+        """Broadcast a graph handoff event.
+
+        Args:
+            source: Source domain.
+            target: Target domain.
+            source_agent: Optional source agent ID.
+            target_agent: Optional target agent ID.
+
+        Returns:
+            Number of clients the message was sent to.
+        """
+        event_data = {
+            'source': source,
+            'target': target
+        }
+        if source_agent:
+            event_data['source_agent'] = source_agent
+        if target_agent:
+            event_data['target_agent'] = target_agent
+
+        return self.broadcast(event_data, event_type='graph_handoff')
 
     def generate_stream(self, client_queue: queue.Queue):
         """Generate SSE stream for a client.

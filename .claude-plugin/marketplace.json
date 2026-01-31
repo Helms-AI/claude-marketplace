@@ -284,8 +284,8 @@
     {
       "name": "dashboard",
       "source": "./plugins/dashboard",
-      "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration. Features agent explorer, skill browser, changeset viewer with live SSE, inline subagent conversations, D3.js domain graph, handoff timeline, semantic tool renderers, thinking indicator, error stream panel, and token usage meter with cost tracking.",
-      "version": "2.8.3",
+      "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration. Features agent explorer, skill browser, changeset viewer with live SSE, inline subagent conversations, D3.js domain graph with agent clustering and live activity pulse, handoff timeline, semantic tool renderers, thinking indicator, error stream panel, and token usage meter with cost tracking.",
+      "version": "2.9.2",
       "author": {
         "name": "Platform Team"
       },

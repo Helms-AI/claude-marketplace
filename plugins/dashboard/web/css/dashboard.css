@@ -958,6 +958,14 @@ body {
     overflow-y: auto;
 }
 
+/* Graph tab uses flex layout to properly size the graph container */
+#graphTab.active {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
 /* Welcome View */
 .welcome-view {
     padding: var(--spacing-xl);
@@ -2086,6 +2094,12 @@ body {
     border-bottom: 1px solid var(--border-color);
 }
 
+.graph-toolbar .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
 .toolbar-btn {
     display: flex;
     align-items: center;
@@ -2160,6 +2174,8 @@ body {
     padding: var(--spacing-md);
     background: var(--bg-secondary);
     border-top: 1px solid var(--border-color);
+    flex-shrink: 0;
+    margin-top: auto;
 }
 
 .legend-item {
@@ -2173,6 +2189,127 @@ body {
     width: 12px;
     height: 12px;
     border-radius: 50%;
+}
+
+/* ===== Graph Animations ===== */
+
+/* Expanding pulse ring animation for activity */
+@keyframes pulseRing {
+    0% {
+        r: 20;
+        stroke-opacity: 1;
+    }
+    100% {
+        r: 60;
+        stroke-opacity: 0;
+    }
+}
+
+@keyframes pulseRingAgent {
+    0% {
+        r: 12;
+        stroke-opacity: 1;
+    }
+    100% {
+        r: 35;
+        stroke-opacity: 0;
+    }
+}
+
+.graph-pulse-ring {
+    fill: none;
+    stroke-width: 3;
+    animation: pulseRing 1.5s ease-out forwards;
+    will-change: transform, opacity;
+    pointer-events: none;
+}
+
+.graph-pulse-ring.agent {
+    animation: pulseRingAgent 1.2s ease-out forwards;
+    stroke-width: 2;
+}
+
+/* Edge flow animation for handoffs */
+@keyframes edgeFlow {
+    0% {
+        stroke-dashoffset: 20;
+    }
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+.graph-edge-active {
+    stroke-dasharray: 10 5;
+    animation: edgeFlow 0.5s linear infinite;
+    stroke-width: 4;
+    stroke-opacity: 1;
+}
+
+/* Agent node styles */
+.graph-node.agent-node circle {
+    stroke-width: 1.5px;
+    transition: var(--transition-fast);
+}
+
+.graph-node.agent-node:hover circle {
+    stroke-width: 2.5px;
+    filter: brightness(1.1);
+}
+
+.graph-node.agent-node text {
+    font-size: 10px;
+    font-weight: 400;
+}
+
+/* Mode toggle button styling */
+.graph-toolbar .toolbar-btn.active {
+    background: var(--accent-color);
+    color: var(--text-inverse);
+    border-color: var(--accent-color);
+}
+
+.graph-toolbar .mode-toggle {
+    min-width: 110px;
+    justify-content: center;
+}
+
+/* Graph tooltip */
+.graph-tooltip {
+    position: absolute;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    font-size: var(--font-size-sm);
+    box-shadow: var(--shadow-md);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    z-index: 1000;
+    max-width: 250px;
+}
+
+.graph-tooltip.visible {
+    opacity: 1;
+}
+
+.graph-tooltip-title {
+    font-weight: 600;
+    margin-bottom: var(--spacing-xs);
+}
+
+.graph-tooltip-role {
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+}
+
+/* Cluster visual styling */
+.graph-cluster-bg {
+    fill-opacity: 0.05;
+    stroke-opacity: 0.2;
+    stroke-width: 1;
+    stroke-dasharray: 4 2;
 }
 
 /* ===== Domain Colors ===== */

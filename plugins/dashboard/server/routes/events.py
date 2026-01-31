@@ -45,6 +45,16 @@ def receive_event():
                 skill_registry.update_invocation(skill_id)
                 content['skill_name'] = skill.name
 
+                # Broadcast graph activity for skill invocation
+                sse_manager = current_app.config.get('sse_manager')
+                if sse_manager:
+                    sse_manager.broadcast_graph_activity(
+                        node_id=skill.domain,
+                        agent_id=skill.backing_agent,
+                        skill=skill_id,
+                        activity_type='skill'
+                    )
+
     # Detect agent activation from output patterns
     agent_match = re.search(
         r'\*\*([A-Z][a-z]+\s+[A-Z][a-z]+)\s+-\s+([^*]+)\*\*\s+is now working',
@@ -63,6 +73,15 @@ def receive_event():
                 agent_id = agent.id
                 domain = agent.domain
                 agent_registry.update_activity(agent_id)
+
+                # Broadcast graph activity for agent activation
+                sse_manager = current_app.config.get('sse_manager')
+                if sse_manager:
+                    sse_manager.broadcast_graph_activity(
+                        node_id=agent.domain,
+                        agent_id=agent_id,
+                        activity_type='agent'
+                    )
                 break
 
     # Detect handoff patterns
@@ -91,6 +110,16 @@ def receive_event():
                     context={'trigger': tool_output[:200]}
                 )
                 content['handoff_target'] = target_skill
+
+                # Broadcast graph handoff event
+                sse_manager = current_app.config.get('sse_manager')
+                if sse_manager:
+                    sse_manager.broadcast_graph_handoff(
+                        source=source_domain,
+                        target=target_domain,
+                        source_agent=agent_id,
+                        target_agent=target_skill_info.backing_agent
+                    )
 
     # Detect AskUserQuestion responses
     if tool_name == 'AskUserQuestion':
