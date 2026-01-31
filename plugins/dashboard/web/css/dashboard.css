@@ -5711,3 +5711,427 @@ details.tool-call-card[open] .tool-expand-icon {
         transform: translateX(20px);
     }
 }
+
+/* ===== Retro Terminal ===== */
+/* ==========================================================================
+   Terminal - OS-Adaptive Claude Code Terminal
+   Supports macOS, Windows, and Linux styling based on browser detection
+   ========================================================================== */
+
+/* Terminal CSS Variables - Base (used as fallback) */
+.terminal-container {
+    --term-bg: #1e1e1e;
+    --term-header-bg: #2d2d2d;
+    --term-border: #404040;
+    --term-text: #f5f5f5;
+    --term-text-dim: #808080;
+    --term-prompt: #50fa7b;
+    --term-accent: #bd93f9;
+    --term-command: #f8f8f2;
+    --term-error: #ff5555;
+    --term-success: #50fa7b;
+    --term-warning: #ffb86c;
+
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--term-bg);
+    font-family: 'IBM Plex Mono', monospace;
+    overflow: hidden;
+    border-radius: 6px;
+}
+
+/* macOS Theme - Clean Terminal.app style */
+.terminal-container.terminal-macos {
+    --term-bg: #1e1e1e;
+    --term-header-bg: #2d2d2d;
+    --term-border: #404040;
+    --term-text: #f5f5f5;
+    --term-text-dim: #808080;
+    --term-prompt: #50fa7b;
+    --term-accent: #bd93f9;
+    --term-command: #f8f8f2;
+    --term-error: #ff5555;
+    --term-success: #50fa7b;
+    --term-warning: #ffb86c;
+}
+
+/* Windows Theme - PowerShell aesthetic */
+.terminal-container.terminal-windows {
+    --term-bg: #012456;
+    --term-header-bg: #001b3d;
+    --term-border: #0a3d7c;
+    --term-text: #f2f2f2;
+    --term-text-dim: #808080;
+    --term-prompt: #ffff00;
+    --term-accent: #00bcd4;
+    --term-command: #f2f2f2;
+    --term-error: #ff6b6b;
+    --term-success: #00ff00;
+    --term-warning: #ffff00;
+}
+
+/* Linux Theme - GNOME Terminal / Ubuntu style */
+.terminal-container.terminal-linux {
+    --term-bg: #300a24;
+    --term-header-bg: #3d1028;
+    --term-border: #5c2f4d;
+    --term-text: #ffffff;
+    --term-text-dim: #999999;
+    --term-prompt: #4e9a06;
+    --term-accent: #729fcf;
+    --term-command: #eeeeec;
+    --term-error: #ef2929;
+    --term-success: #4e9a06;
+    --term-warning: #c4a000;
+}
+
+.terminal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--term-header-bg);
+    border-bottom: 1px solid var(--term-border);
+    z-index: 2;
+}
+
+.terminal-title {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--term-text);
+    font-weight: 600;
+    font-size: var(--font-size-sm);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.terminal-icon {
+    font-size: 16px;
+    color: var(--term-prompt);
+}
+
+.terminal-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.terminal-select {
+    background: var(--term-bg);
+    color: var(--term-text);
+    border: 1px solid var(--term-border);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+    min-width: 180px;
+}
+
+.terminal-select:focus {
+    outline: none;
+    border-color: var(--term-accent);
+    box-shadow: 0 0 4px rgba(189, 147, 249, 0.3);
+}
+
+.terminal-select option {
+    background: var(--term-header-bg);
+    color: var(--term-text);
+}
+
+.terminal-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    background: var(--term-bg);
+    border: 1px solid var(--term-border);
+    border-radius: var(--radius-sm);
+    color: var(--term-text);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.terminal-btn:hover {
+    background: var(--term-header-bg);
+    border-color: var(--term-accent);
+}
+
+.terminal-btn:active {
+    transform: scale(0.95);
+}
+
+.terminal-btn.spinning svg {
+    animation: spin 0.8s linear infinite;
+}
+
+.terminal-status {
+    font-size: var(--font-size-xs);
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+.terminal-status.disconnected {
+    color: var(--term-text-dim);
+    background: var(--term-bg);
+    border: 1px solid var(--term-border);
+}
+
+.terminal-status.connecting {
+    color: var(--term-warning);
+    background: rgba(255, 184, 108, 0.1);
+    border: 1px solid var(--term-warning);
+    animation: status-pulse 1.5s ease-in-out infinite;
+}
+
+.terminal-status.connected {
+    color: var(--term-success);
+    background: rgba(80, 250, 123, 0.1);
+    border: 1px solid var(--term-success);
+}
+
+@keyframes status-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* Terminal Output Area */
+.terminal-output {
+    flex: 1;
+    overflow-y: auto;
+    padding: var(--spacing-md);
+    color: var(--term-text);
+    font-size: 13px;
+    line-height: 1.5;
+    z-index: 1;
+}
+
+.terminal-output::-webkit-scrollbar {
+    width: 8px;
+}
+
+.terminal-output::-webkit-scrollbar-track {
+    background: var(--term-bg);
+}
+
+.terminal-output::-webkit-scrollbar-thumb {
+    background: var(--term-border);
+    border-radius: 4px;
+}
+
+.terminal-output::-webkit-scrollbar-thumb:hover {
+    background: var(--term-text-dim);
+}
+
+.terminal-welcome {
+    color: var(--term-accent);
+    white-space: pre;
+    margin: 0;
+    font-size: 12px;
+}
+
+.terminal-line {
+    margin: 0;
+    padding: 2px 0;
+    word-wrap: break-word;
+}
+
+.terminal-line.command {
+    color: var(--term-command);
+}
+
+.terminal-line.command::before {
+    content: '$ ';
+    color: var(--term-prompt);
+}
+
+.terminal-line.output {
+    color: var(--term-text);
+}
+
+.terminal-line.error {
+    color: var(--term-error);
+}
+
+.terminal-line.system {
+    color: var(--term-text-dim);
+    font-style: italic;
+}
+
+.terminal-line.success {
+    color: var(--term-success);
+}
+
+.terminal-line.info {
+    color: var(--term-text-dim);
+    font-size: 11px;
+    opacity: 0.8;
+}
+
+.terminal-line.assistant-label {
+    color: var(--term-prompt);
+    font-weight: 600;
+    margin-top: var(--spacing-sm);
+}
+
+/* Streaming Progress Indicator */
+.terminal-line.streaming-progress {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) 0;
+    margin: var(--spacing-xs) 0;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(90deg,
+        rgba(99, 102, 241, 0.1) 0%,
+        rgba(99, 102, 241, 0.05) 100%);
+    animation: pulse-bg 2s ease-in-out infinite;
+}
+
+@keyframes pulse-bg {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.streaming-status {
+    font-family: var(--font-mono);
+    font-size: 12px;
+}
+
+.streaming-status.status-thinking {
+    color: var(--term-accent);
+}
+
+.streaming-status.status-tools {
+    color: var(--term-warning);
+}
+
+.streaming-status.status-receiving {
+    color: var(--term-success);
+}
+
+.streaming-time {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--term-text-dim);
+    padding-right: var(--spacing-sm);
+}
+
+/* Animated status in header */
+.terminal-status.thinking {
+    animation: thinking-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes thinking-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* Terminal Input Area */
+.terminal-input-area {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--term-header-bg);
+    border-top: 1px solid var(--term-border);
+    z-index: 2;
+}
+
+.terminal-prompt {
+    color: var(--term-prompt);
+    font-weight: 600;
+}
+
+.terminal-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--term-command);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    caret-color: var(--term-accent);
+}
+
+.terminal-input::placeholder {
+    color: var(--term-text-dim);
+}
+
+.terminal-input:disabled {
+    color: var(--term-text-dim);
+}
+
+.terminal-input:disabled::placeholder {
+    color: var(--term-border);
+}
+
+.terminal-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.terminal-action-btn {
+    padding: 4px 8px;
+    background: var(--term-bg);
+    border: 1px solid var(--term-border);
+    border-radius: var(--radius-sm);
+    color: var(--term-text-dim);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.terminal-action-btn:not(:disabled):hover {
+    color: var(--term-accent);
+    border-color: var(--term-accent);
+}
+
+.terminal-action-btn:not(:disabled):active {
+    transform: scale(0.95);
+    background: var(--term-header-bg);
+}
+
+.terminal-action-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.terminal-action-btn[data-action="interrupt"]:not(:disabled):hover {
+    color: var(--term-error);
+    border-color: var(--term-error);
+}
+
+.terminal-action-btn[data-action="clear"]:not(:disabled) {
+    color: var(--term-text-dim);
+}
+
+/* Blinking cursor for terminal output */
+.terminal-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 14px;
+    background: var(--term-accent);
+    animation: terminal-blink 1s step-end infinite;
+    vertical-align: text-bottom;
+    margin-left: 2px;
+}
+
+@keyframes terminal-blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+
+/* Light theme - keep terminal dark regardless of app theme */
+[data-theme="light"] .terminal-container {
+    /* Terminal stays dark in light theme for authenticity */
+}

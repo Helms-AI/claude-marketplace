@@ -6,6 +6,7 @@ from .changeset_watcher import ChangesetWatcher
 from .event_store import EventStore
 from .file_watcher import FileWatcher
 from .transcript_reader import TranscriptReader
+from .marketplace_sdk_bridge import MarketplaceSDKBridge
 
 __all__ = [
     'AgentRegistry',
@@ -14,5 +15,6 @@ __all__ = [
     'ChangesetWatcher',
     'EventStore',
     'FileWatcher',
-    'TranscriptReader'
+    'TranscriptReader',
+    'MarketplaceSDKBridge',
 ]

@@ -6,5 +6,15 @@ from .events import events_bp
 from .stream import stream_bp
 from .capabilities import capabilities_bp
 from .processes import processes_bp
+from .input import input_bp
 
-__all__ = ['agents_bp', 'skills_bp', 'changesets_bp', 'events_bp', 'stream_bp', 'capabilities_bp', 'processes_bp']
+__all__ = [
+    'agents_bp',
+    'skills_bp',
+    'changesets_bp',
+    'events_bp',
+    'stream_bp',
+    'capabilities_bp',
+    'processes_bp',
+    'input_bp',
+]

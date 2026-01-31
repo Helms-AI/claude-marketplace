@@ -25,7 +25,7 @@ from .services.changeset_tracker import ChangesetTracker
 from .services.event_store import EventStore
 from .services.file_watcher import FileWatcher
 from .services.changeset_watcher import ChangesetWatcher, ChangesetFileEvent
-from .routes import agents_bp, skills_bp, changesets_bp, events_bp, stream_bp, capabilities_bp, processes_bp
+from .routes import agents_bp, skills_bp, changesets_bp, events_bp, stream_bp, capabilities_bp, processes_bp, input_bp
 from .services.transcript_reader import TranscriptReader
 from .services.transcript_watcher import TranscriptWatcher
 
@@ -393,6 +393,7 @@ def create_app(local_only: bool = True) -> Flask:
     app.register_blueprint(stream_bp)
     app.register_blueprint(capabilities_bp)
     app.register_blueprint(processes_bp)
+    app.register_blueprint(input_bp)
 
     # Static file routes
     @app.route('/')

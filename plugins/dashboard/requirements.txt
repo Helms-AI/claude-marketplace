@@ -1,2 +1,5 @@
 flask>=2.0.0
 pyyaml>=5.0.0
+# Claude Agent SDK (requires Python 3.10+)
+# Install from GitHub: pip install git+https://github.com/anthropics/claude-agent-sdk-python.git
+claude-agent-sdk

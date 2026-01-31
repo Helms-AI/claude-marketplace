@@ -175,6 +175,53 @@
 
                 <!-- Editor Content -->
                 <div class="editor-content" id="editorContent">
+                    <!-- Terminal Tab -->
+                    <div class="editor-tab-content" id="terminalTab">
+                        <div class="terminal-container">
+                            <!-- Terminal Header -->
+                            <div class="terminal-header">
+                                <div class="terminal-title">
+                                    <span class="terminal-icon">&gt;_</span>
+                                    <span>Claude SDK Terminal</span>
+                                </div>
+                                <div class="terminal-controls">
+                                    <span id="terminalConnectionStatus" class="terminal-status connected">SDK Ready</span>
+                                </div>
+                            </div>
+                            <!-- Terminal Output Area -->
+                            <div class="terminal-output" id="terminalOutput">
+                                <pre class="terminal-welcome">
+ ██████╗██╗       █████╗ ██╗   ██╗██████╗ ███████╗
+██╔════╝██║      ██╔══██╗██║   ██║██╔══██╗██╔════╝
+██║     ██║      ███████║██║   ██║██║  ██║█████╗
+██║     ██║      ██╔══██║██║   ██║██║  ██║██╔══╝
+╚██████╗███████╗ ██║  ██║╚██████╔╝██████╔╝███████╗
+ ╚═════╝╚══════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝
+   ██████╗ ██████╗ ██████╗ ███████╗
+  ██╔════╝██╔═══██╗██╔══██╗██╔════╝
+  ██║     ██║   ██║██║  ██║█████╗
+  ██║     ██║   ██║██║  ██║██╔══╝
+  ╚██████╗╚██████╔╝██████╔╝███████╗
+   ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝
+
+  Claude Code Terminal v?.?.?
+  ─────────────────────────────
+
+  Powered by Claude Agent SDK
+  Type a message and press Enter to query Claude.
+</pre>
+                            </div>
+                            <!-- Terminal Input Area -->
+                            <div class="terminal-input-area">
+                                <span class="terminal-prompt">$</span>
+                                <input type="text" id="terminalInput" class="terminal-input" placeholder="Ask Claude something...">
+                                <div class="terminal-actions">
+                                    <button class="terminal-action-btn" data-action="clear" title="Clear output (^L)">CLR</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Welcome View (default) -->
                     <div class="editor-tab-content active" id="welcomeTab">
                         <div class="welcome-view">
@@ -515,5 +562,6 @@
     <script src="js/token-meter.js"></script>
     <script src="js/conversation.js"></script>
     <script src="js/timeline.js"></script>
+    <script src="js/terminal.js"></script>
 </body>
 </html>

@@ -357,3 +357,62 @@ class TranscriptWatcher:
     def get_watched_sessions(self) -> list[str]:
         """Backwards compatible alias for get_watched_changesets."""
         return self.get_watched_changesets()
+
+    def watch_for_pid(self, pid: int) -> bool:
+        """Start watching transcripts for a registered process.
+
+        Looks up the process in the registry to get session_id and project_path,
+        then starts watching that transcript. Uses a watch key of 'terminal-{pid}'
+        to allow filtering SSE events by terminal.
+
+        Args:
+            pid: Process ID to watch.
+
+        Returns:
+            True if watch started successfully, False otherwise.
+        """
+        from .process_registry import ProcessRegistryManager
+
+        process = ProcessRegistryManager.get_registry().get(pid)
+        if not process:
+            self._log(f"watch_for_pid: Process {pid} not found in registry")
+            return False
+
+        if not process.session_id:
+            self._log(f"watch_for_pid: Process {pid} has no session_id")
+            return False
+
+        if not process.project_path:
+            self._log(f"watch_for_pid: Process {pid} has no project_path")
+            return False
+
+        watch_key = f"terminal-{pid}"
+        self._log(f"watch_for_pid: Starting watch for PID {pid} -> {watch_key}")
+
+        return self.watch_changeset(watch_key, process.project_path, process.session_id)
+
+    def unwatch_for_pid(self, pid: int) -> bool:
+        """Stop watching transcripts for a PID.
+
+        Args:
+            pid: Process ID to stop watching.
+
+        Returns:
+            True if watch was removed, False if not found.
+        """
+        watch_key = f"terminal-{pid}"
+        self._log(f"unwatch_for_pid: Stopping watch for PID {pid}")
+        return self.unwatch_changeset(watch_key)
+
+    def is_watching_pid(self, pid: int) -> bool:
+        """Check if we're currently watching a PID.
+
+        Args:
+            pid: Process ID to check.
+
+        Returns:
+            True if currently watching this PID.
+        """
+        watch_key = f"terminal-{pid}"
+        with self._lock:
+            return watch_key in self._watches

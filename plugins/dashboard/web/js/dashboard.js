@@ -393,8 +393,11 @@ const Dashboard = {
             });
         }
 
-        // Add welcome tab by default
+        // Add Terminal as the first tab, then Welcome
+        this.addTab('terminal', 'Terminal', '>_');
         this.addTab('welcome', 'Welcome', '🏠');
+        // Activate Terminal tab by default
+        this.activateTab('terminal');
     },
 
     addTab(id, label, icon) {
@@ -482,6 +485,7 @@ const Dashboard = {
 
         // Show requested content
         const contentMap = {
+            'terminal': 'terminalTab',
             'welcome': 'welcomeTab',
             'graph': 'graphTab'
         };
@@ -503,6 +507,8 @@ const Dashboard = {
             document.getElementById(contentMap[id]).classList.add('active');
             if (id === 'graph') {
                 Graph.render();
+            } else if (id === 'terminal' && typeof Terminal !== 'undefined') {
+                Terminal.onTabActivated();
             }
         } else {
             // Default to welcome
@@ -516,7 +522,10 @@ const Dashboard = {
 
         let breadcrumbs = '<span class="breadcrumb-item">Dashboard</span>';
 
-        if (tabId === 'graph') {
+        if (tabId === 'terminal') {
+            breadcrumbs += '<span class="breadcrumb-separator">›</span>';
+            breadcrumbs += '<span class="breadcrumb-item current">Terminal</span>';
+        } else if (tabId === 'graph') {
             breadcrumbs += '<span class="breadcrumb-separator">›</span>';
             breadcrumbs += '<span class="breadcrumb-item current">Graph</span>';
         } else if (tabId.startsWith('changeset-')) {
