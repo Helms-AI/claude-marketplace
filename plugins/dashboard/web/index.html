@@ -308,12 +308,12 @@
                     <button class="panel-tab active" data-tab="activity">
                         Activity
                     </button>
-                    <button class="panel-tab" data-tab="tasks">
-                        Tasks
-                        <span class="tab-badge" id="tasksBadge">0</span>
-                    </button>
                     <button class="panel-tab" data-tab="timeline">
                         Timeline
+                    </button>
+                    <button class="panel-tab" data-tab="errors">
+                        Errors
+                        <span class="tab-badge has-errors" id="errorsBadge" style="display: none;">0</span>
                     </button>
                     <button class="panel-tab" data-tab="console">
                         Console
@@ -342,10 +342,6 @@
                 <div class="panel-tab-content active" id="activityPanel">
                     <div class="activity-list" id="activityList"></div>
                 </div>
-                <!-- Tasks Tab -->
-                <div class="panel-tab-content" id="tasksPanel">
-                    <div class="tasks-list" id="tasksList"></div>
-                </div>
                 <!-- Timeline Tab -->
                 <div class="panel-tab-content" id="timelinePanel">
                     <div class="timeline-view" id="timelineView">
@@ -355,6 +351,10 @@
                 <!-- Console Tab -->
                 <div class="panel-tab-content" id="consolePanel">
                     <div class="console-output" id="consoleOutput"></div>
+                </div>
+                <!-- Errors Tab -->
+                <div class="panel-tab-content" id="errorsPanel">
+                    <div class="errors-list" id="errorsList"></div>
                 </div>
             </div>
         </div>
@@ -374,10 +374,37 @@
                 <div class="status-item" id="statusDomains">
                     <span>Domains: 0</span>
                 </div>
+                <div class="status-item clickable token-meter" id="tokenMeterStatus" title="Token Usage">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 6v6l4 2"></path>
+                    </svg>
+                    <span class="token-count">0</span>
+                    <span class="token-cost">$0.00</span>
+                </div>
+                <!-- Token Meter Expanded Panel -->
+                <div class="token-meter-panel" id="tokenMeterPanel"></div>
             </div>
             <div class="status-right">
-                <div class="status-item" id="statusTasks">
+                <div class="status-item clickable" id="statusTasks" title="Click to view tasks">
                     <span>Tasks: 0/0</span>
+                    <!-- Task List Panel -->
+                    <div class="task-list-panel" id="taskListPanel">
+                        <div class="task-list-header">
+                            <span class="task-list-title">Tasks</span>
+                            <span class="task-list-count" id="taskListCount">0/0</span>
+                            <button class="task-list-close" id="closeTaskListPanel">&times;</button>
+                        </div>
+                        <div class="task-list-progress">
+                            <div class="task-list-progress-bar" id="taskListProgressBar"></div>
+                        </div>
+                        <div class="task-list-body" id="taskListBody">
+                            <div class="panel-empty">
+                                <span class="empty-icon">☐</span>
+                                <span>No tasks in this session</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="status-item clickable" id="statusTheme" title="Toggle Theme">
                     <span>☽</span>
@@ -443,6 +470,9 @@
     <script src="js/tool-renderers/skill-renderer.js"></script>
     <script src="js/tool-renderers/question-renderer.js"></script>
 
+    <script src="js/thinking-indicator.js"></script>
+    <script src="js/error-stream.js"></script>
+    <script src="js/token-meter.js"></script>
     <script src="js/conversation.js"></script>
     <script src="js/timeline.js"></script>
 </body>

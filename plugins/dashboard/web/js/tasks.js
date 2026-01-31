@@ -267,23 +267,37 @@ const Tasks = {
 
         content.innerHTML = sortedTasks.map(task => this.renderTask(task)).join('');
 
-        // Also render into bottom panel tasks list
-        this.renderPanelTasks(sortedTasks, completed, total, progress);
+        // Also render into popup panel if it's open
+        const panel = document.getElementById('taskListPanel');
+        if (panel && panel.classList.contains('open')) {
+            this.renderPopupTasks(sortedTasks, completed, total, progress);
+        }
     },
 
     /**
-     * Render tasks into the bottom panel tasks tab
+     * Render tasks into the popup modal
      * @param {Array} sortedTasks - Sorted task list
      * @param {number} completed - Completed count
      * @param {number} total - Total count
      * @param {number} progress - Progress percentage
      */
-    renderPanelTasks(sortedTasks, completed, total, progress) {
-        const panelList = document.getElementById('tasksList');
-        if (!panelList) return;
+    renderPopupTasks(sortedTasks, completed, total, progress) {
+        const popupBody = document.getElementById('taskListBody');
+        const popupCount = document.getElementById('taskListCount');
+        const popupProgressBar = document.getElementById('taskListProgressBar');
+
+        if (!popupBody) return;
+
+        // Update count and progress bar
+        if (popupCount) {
+            popupCount.textContent = `${completed}/${total}`;
+        }
+        if (popupProgressBar) {
+            popupProgressBar.style.width = `${progress}%`;
+        }
 
         if (sortedTasks.length === 0) {
-            panelList.innerHTML = `
+            popupBody.innerHTML = `
                 <div class="panel-empty">
                     <span class="empty-icon">☐</span>
                     <span>No tasks in this session</span>
@@ -292,17 +306,44 @@ const Tasks = {
             return;
         }
 
-        panelList.innerHTML = `
-            <div class="panel-tasks-header">
-                <span class="panel-tasks-count">${completed}/${total} tasks completed</span>
-                <div class="panel-tasks-progress">
-                    <div class="panel-tasks-progress-bar" style="width: ${progress}%"></div>
-                </div>
-            </div>
-            <div class="panel-tasks-list">
-                ${sortedTasks.map(task => this.renderPanelTask(task)).join('')}
-            </div>
-        `;
+        popupBody.innerHTML = sortedTasks.map(task => this.renderPanelTask(task)).join('');
+    },
+
+    /**
+     * Toggle the task list popup panel
+     */
+    togglePopup() {
+        const panel = document.getElementById('taskListPanel');
+        if (!panel) return;
+
+        const isOpen = panel.classList.contains('open');
+        if (isOpen) {
+            panel.classList.remove('open');
+        } else {
+            // Calculate stats and render fresh content
+            const total = this.data.tasks.length;
+            const completed = this.data.tasks.filter(t => t.status === 'completed').length;
+            const progress = total > 0 ? (completed / total) * 100 : 0;
+
+            // Sort tasks: in_progress first, then pending, then completed
+            const sortedTasks = [...this.data.tasks].sort((a, b) => {
+                const order = { 'in_progress': 0, 'pending': 1, 'completed': 2 };
+                return (order[a.status] || 1) - (order[b.status] || 1);
+            });
+
+            this.renderPopupTasks(sortedTasks, completed, total, progress);
+            panel.classList.add('open');
+        }
+    },
+
+    /**
+     * Close the task list popup panel
+     */
+    closePopup() {
+        const panel = document.getElementById('taskListPanel');
+        if (panel) {
+            panel.classList.remove('open');
+        }
     },
 
     /**

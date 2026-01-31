@@ -42,6 +42,14 @@ const Dashboard = {
         Graph.init();
         Tasks.init();
 
+        // Initialize observability modules
+        if (typeof ErrorStream !== 'undefined') {
+            ErrorStream.init();
+        }
+        if (typeof TokenMeter !== 'undefined') {
+            TokenMeter.init();
+        }
+
         // Load welcome stats
         this.loadWelcomeStats();
     },
@@ -821,21 +829,54 @@ const Dashboard = {
                 }
             });
         }
+
+        // Task list popup toggle from status bar
+        const statusTasks = document.getElementById('statusTasks');
+        const taskListPanel = document.getElementById('taskListPanel');
+        const closeTaskListPanel = document.getElementById('closeTaskListPanel');
+
+        if (statusTasks) {
+            statusTasks.addEventListener('click', (e) => {
+                // Don't toggle if clicking inside the panel (except close button)
+                if (taskListPanel && taskListPanel.contains(e.target) && e.target !== closeTaskListPanel) {
+                    return;
+                }
+                if (Tasks && Tasks.togglePopup) {
+                    Tasks.togglePopup();
+                }
+            });
+        }
+
+        // Close button for task list panel
+        if (closeTaskListPanel) {
+            closeTaskListPanel.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (Tasks && Tasks.closePopup) {
+                    Tasks.closePopup();
+                }
+            });
+        }
+
+        // Click outside to close task list panel
+        document.addEventListener('click', (e) => {
+            if (taskListPanel && taskListPanel.classList.contains('open')) {
+                if (!statusTasks.contains(e.target)) {
+                    if (Tasks && Tasks.closePopup) {
+                        Tasks.closePopup();
+                    }
+                }
+            }
+        });
     },
 
     updateStatusBar() {
-        // Update tasks count
-        const tasksBadge = document.getElementById('tasksBadge');
+        // Update tasks count in status bar (select only the direct child span, not panel spans)
         const statusTasks = document.getElementById('statusTasks');
-        if (Tasks && Tasks.data) {
+        if (Tasks && Tasks.data && statusTasks) {
             const completed = Tasks.data.tasks?.filter(t => t.status === 'completed').length || 0;
             const total = Tasks.data.tasks?.length || 0;
-            const pending = total - completed;
-            if (tasksBadge) tasksBadge.textContent = pending > 0 ? pending : '';
-            if (statusTasks) {
-                const span = statusTasks.querySelector('span');
-                if (span) span.textContent = `Tasks: ${completed}/${total}`;
-            }
+            const span = statusTasks.querySelector(':scope > span');
+            if (span) span.textContent = `Tasks: ${completed}/${total}`;
         }
 
         // Update domains count
@@ -887,6 +928,10 @@ const Dashboard = {
                     document.querySelectorAll('.modal.open').forEach(modal => {
                         this.closeModal(modal.id);
                     });
+                    // Close task list panel
+                    if (Tasks && Tasks.closePopup) {
+                        Tasks.closePopup();
+                    }
                     // Close mobile sidebar
                     document.getElementById('sidebar')?.classList.remove('open');
                 }
