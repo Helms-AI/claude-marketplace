@@ -1,0 +1,20 @@
+{
+  "changeset_id": "20260130-182946-redesign-agent-skill-modals",
+  "created_at": "2026-01-30T18:29:46Z",
+  "original_request": "Review the agent and skill modals (when you click on them) and redesign them based on the content available. Use the user experience team to help design and the frontend agents to develop it.",
+  "domains_involved": ["user-experience", "frontend"],
+  "current_phase": "implementation",
+  "handoff_count": 2,
+  "decisions": [
+    {"domain": "user-experience", "decision": "Agent modal emphasizes personality with avatar, tools, key phrases", "rationale": "Agents are personas - need to convey character"},
+    {"domain": "user-experience", "decision": "Skill modal emphasizes data flow with handoff visualization", "rationale": "Skills are functional - show how they connect"},
+    {"domain": "user-experience", "decision": "4px domain accent bar at top of both modals", "rationale": "Immediate visual domain identification"},
+    {"domain": "user-experience", "decision": "Two-column stats grid for skill metrics", "rationale": "Quick scanning of invocation data"}
+  ],
+  "artifacts": [
+    {"name": "discovery.md", "domain": "pm", "path": "./artifacts/discovery.md"},
+    {"name": "modal-design-spec.md", "domain": "user-experience", "path": "./artifacts/modal-design-spec.md"}
+  ],
+  "conflicts": [],
+  "status": "completed"
+}
