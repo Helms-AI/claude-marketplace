@@ -119,6 +119,84 @@ const SearchRenderer = {
             case 'Glob': return this.renderGlob(tool);
             default: return ToolRendererRegistry.renderDefault(tool);
         }
+    },
+
+    /**
+     * Preview dispatcher for streaming indicator
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string for compact preview
+     */
+    renderPreview(tool) {
+        const name = tool.name;
+        switch (name) {
+            case 'Grep': return this.renderGrepPreview(tool);
+            case 'Glob': return this.renderGlobPreview(tool);
+            default: return ToolRendererRegistry.renderDefaultPreview(tool);
+        }
+    },
+
+    /**
+     * Compact preview for Grep operation
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string
+     */
+    renderGrepPreview(tool) {
+        const input = tool.input || {};
+        const pattern = input.pattern || '';
+        const path = input.path || '.';
+        const glob = input.glob;
+        const type = input.type;
+        const caseInsensitive = input['-i'];
+
+        const icon = ToolIcons.search;
+        const color = ToolColors.search;
+
+        // Compact pattern display
+        const displayPattern = BaseRenderer.truncate(pattern, 20);
+
+        // Build compact badges
+        const badges = [];
+        if (caseInsensitive) badges.push('-i');
+        if (glob) badges.push(glob);
+        if (type) badges.push(`.${type}`);
+
+        const badgeHtml = badges.length > 0
+            ? badges.map(b => `<span class="preview-badge">${BaseRenderer.escapeHtml(b)}</span>`).join('')
+            : '';
+
+        const pathDisplay = path !== '.' ? ` in ${BaseRenderer.formatPath(path, 15)}` : '';
+
+        return `
+            <div class="streaming-tool-preview streaming-tool-search" style="--tool-color: ${color}">
+                <span class="preview-icon">${icon}</span>
+                <span class="preview-text">"${BaseRenderer.escapeHtml(displayPattern)}"${pathDisplay}</span>
+                ${badgeHtml}
+            </div>
+        `;
+    },
+
+    /**
+     * Compact preview for Glob operation
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string
+     */
+    renderGlobPreview(tool) {
+        const input = tool.input || {};
+        const pattern = input.pattern || '';
+        const path = input.path;
+
+        const icon = ToolIcons.glob;
+        const color = ToolColors.search;
+
+        const displayPattern = BaseRenderer.truncate(pattern, 25);
+        const pathDisplay = path ? ` in ${BaseRenderer.formatPath(path, 15)}` : '';
+
+        return `
+            <div class="streaming-tool-preview streaming-tool-search" style="--tool-color: ${color}">
+                <span class="preview-icon">${icon}</span>
+                <span class="preview-text">${BaseRenderer.escapeHtml(displayPattern)}${pathDisplay}</span>
+            </div>
+        `;
     }
 };
 

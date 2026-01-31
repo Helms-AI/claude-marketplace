@@ -90,6 +90,43 @@ const TaskAgentRenderer = {
         return type.split(/[-:_]/).map(w =>
             w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
         ).join(' ');
+    },
+
+    /**
+     * Compact preview for streaming indicator
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string for compact preview
+     */
+    renderPreview(tool) {
+        const input = tool.input || {};
+        const subagentType = input.subagent_type || 'Agent';
+        const description = input.description || '';
+        const model = input.model;
+        const runInBackground = input.run_in_background;
+
+        const icon = ToolIcons.agent;
+        const color = ToolColors.agent;
+
+        // Format agent type for compact display
+        const agentName = this.formatAgentType(subagentType);
+        const displayDesc = description ? `: ${BaseRenderer.truncate(description, 20)}` : '';
+
+        // Build compact badges
+        const badges = [];
+        if (model) badges.push(model);
+        if (runInBackground) badges.push('bg');
+
+        const badgeHtml = badges.length > 0
+            ? badges.map(b => `<span class="preview-badge">${BaseRenderer.escapeHtml(b)}</span>`).join('')
+            : '';
+
+        return `
+            <div class="streaming-tool-preview streaming-tool-task" style="--tool-color: ${color}">
+                <span class="preview-icon">${icon}</span>
+                <span class="preview-text">${BaseRenderer.escapeHtml(agentName)}${displayDesc}</span>
+                ${badgeHtml}
+            </div>
+        `;
     }
 };
 

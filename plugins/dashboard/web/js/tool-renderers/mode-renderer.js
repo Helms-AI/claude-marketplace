@@ -93,6 +93,36 @@ const ModeRenderer = {
             case 'ExitPlanMode': return this.renderExit(tool);
             default: return ToolRendererRegistry.renderDefault(tool);
         }
+    },
+
+    /**
+     * Compact preview for streaming indicator
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string for compact preview
+     */
+    renderPreview(tool) {
+        const name = tool.name;
+        const input = tool.input || {};
+
+        const icon = ToolIcons.lightbulb;
+        const color = ToolColors.planning;
+
+        const isEntering = name === 'EnterPlanMode';
+        const text = isEntering ? 'Entering plan mode' : 'Exiting plan mode';
+
+        // Badge for prompts count on exit
+        const allowedPrompts = input.allowedPrompts || [];
+        const badgeHtml = !isEntering && allowedPrompts.length > 0
+            ? `<span class="preview-badge">${allowedPrompts.length} prompts</span>`
+            : '';
+
+        return `
+            <div class="streaming-tool-preview streaming-tool-mode" style="--tool-color: ${color}">
+                <span class="preview-icon">${icon}</span>
+                <span class="preview-text">${text}</span>
+                ${badgeHtml}
+            </div>
+        `;
     }
 };
 

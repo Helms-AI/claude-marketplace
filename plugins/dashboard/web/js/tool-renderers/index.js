@@ -63,6 +63,66 @@ const ToolRendererRegistry = {
     },
 
     /**
+     * Render a compact preview for streaming indicator context
+     * Used by terminal-conversation.js during tool execution
+     * @param {Object} tool - Tool call object with name and input
+     * @returns {string} HTML string for compact preview
+     */
+    renderPreview(tool) {
+        const name = tool.name || 'Unknown Tool';
+
+        // Check if we should use default preview
+        if (BaseRenderer.shouldUseDefault(name)) {
+            return this.renderDefaultPreview(tool);
+        }
+
+        // Try custom preview renderer
+        const renderer = this.get(name);
+        if (renderer && typeof renderer.renderPreview === 'function') {
+            try {
+                return renderer.renderPreview(tool);
+            } catch (e) {
+                console.warn(`Preview renderer error for ${name}:`, e);
+            }
+        }
+
+        // Fall back to default preview
+        return this.renderDefaultPreview(tool);
+    },
+
+    /**
+     * Default compact preview for tools without custom preview renderers
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string for compact preview
+     */
+    renderDefaultPreview(tool) {
+        const name = tool.name || 'Unknown Tool';
+        const input = tool.input || {};
+        const icon = getToolIcon(name);
+        const color = getToolColor(name);
+
+        // Try to extract a meaningful preview text
+        let previewText = name;
+        const keys = typeof input === 'object' ? Object.keys(input) : [];
+
+        if (keys.length === 1) {
+            const val = input[keys[0]];
+            if (typeof val === 'string') {
+                previewText = BaseRenderer.truncate(val, 40);
+            }
+        } else if (keys.length > 1) {
+            previewText = `${name} (${keys.length} params)`;
+        }
+
+        return `
+            <div class="streaming-tool-preview" style="--tool-color: ${color}">
+                <span class="preview-icon">${icon}</span>
+                <span class="preview-text">${BaseRenderer.escapeHtml(previewText)}</span>
+            </div>
+        `;
+    },
+
+    /**
      * Default renderer for tools without custom renderers
      * Maintains backward compatibility with existing behavior
      * @param {Object} tool - Tool call object

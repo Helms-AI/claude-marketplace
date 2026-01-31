@@ -37,6 +37,29 @@ const SkillRenderer = {
                 </div>
             </div>
         `;
+    },
+
+    /**
+     * Compact preview for streaming indicator
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string for compact preview
+     */
+    renderPreview(tool) {
+        const input = tool.input || {};
+        const skill = input.skill || 'skill';
+        const args = input.args || '';
+
+        const icon = ToolIcons.slash;
+        const color = ToolColors.skill;
+
+        const argsPreview = args ? ` ${BaseRenderer.truncate(args, 15)}` : '';
+
+        return `
+            <div class="streaming-tool-preview streaming-tool-skill" style="--tool-color: ${color}">
+                <span class="preview-icon">${icon}</span>
+                <span class="preview-text">/${BaseRenderer.escapeHtml(skill)}${argsPreview}</span>
+            </div>
+        `;
     }
 };
 

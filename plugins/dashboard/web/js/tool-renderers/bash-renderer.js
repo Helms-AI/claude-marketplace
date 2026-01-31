@@ -70,6 +70,48 @@ const BashRenderer = {
                 ${description ? `<div class="tool-card-secondary tool-bash-description">${BaseRenderer.escapeHtml(BaseRenderer.truncate(description, 100))}</div>` : ''}
             </div>
         `;
+    },
+
+    /**
+     * Render a compact preview for streaming indicator
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string for compact preview
+     */
+    renderPreview(tool) {
+        const input = tool.input || {};
+        const command = input.command || '';
+        const description = input.description || '';
+        const runInBackground = input.run_in_background;
+        const timeout = input.timeout;
+
+        const icon = ToolIcons.terminal;
+        const color = ToolColors.command;
+
+        // Use description if available, otherwise truncate command
+        const displayText = description
+            ? BaseRenderer.truncate(description, 35)
+            : `$ ${BaseRenderer.truncate(command, 30)}`;
+
+        // Build compact badges
+        const badges = [];
+        if (runInBackground) {
+            badges.push('bg');
+        }
+        if (timeout && timeout !== 120000) {
+            badges.push(`${Math.round(timeout / 1000)}s`);
+        }
+
+        const badgeHtml = badges.length > 0
+            ? badges.map(b => `<span class="preview-badge">${b}</span>`).join('')
+            : '';
+
+        return `
+            <div class="streaming-tool-preview streaming-tool-bash" style="--tool-color: ${color}">
+                <span class="preview-icon">${icon}</span>
+                <span class="preview-text">${BaseRenderer.escapeHtml(displayText)}</span>
+                ${badgeHtml}
+            </div>
+        `;
     }
 };
 

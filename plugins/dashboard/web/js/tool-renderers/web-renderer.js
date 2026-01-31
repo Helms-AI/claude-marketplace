@@ -120,6 +120,78 @@ const WebRenderer = {
             case 'WebSearch': return this.renderWebSearch(tool);
             default: return ToolRendererRegistry.renderDefault(tool);
         }
+    },
+
+    /**
+     * Preview dispatcher for streaming indicator
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string for compact preview
+     */
+    renderPreview(tool) {
+        const name = tool.name;
+        switch (name) {
+            case 'WebFetch': return this.renderWebFetchPreview(tool);
+            case 'WebSearch': return this.renderWebSearchPreview(tool);
+            default: return ToolRendererRegistry.renderDefaultPreview(tool);
+        }
+    },
+
+    /**
+     * Compact preview for WebFetch operation
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string
+     */
+    renderWebFetchPreview(tool) {
+        const input = tool.input || {};
+        const url = input.url || '';
+
+        const icon = ToolIcons.globe;
+        const color = ToolColors.web;
+
+        // Format URL for compact display
+        let displayUrl = url;
+        try {
+            const urlObj = new URL(url);
+            displayUrl = urlObj.hostname;
+        } catch {
+            displayUrl = BaseRenderer.truncate(url, 25);
+        }
+
+        return `
+            <div class="streaming-tool-preview streaming-tool-web" style="--tool-color: ${color}">
+                <span class="preview-icon">${icon}</span>
+                <span class="preview-text">${BaseRenderer.escapeHtml(displayUrl)}</span>
+            </div>
+        `;
+    },
+
+    /**
+     * Compact preview for WebSearch operation
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string
+     */
+    renderWebSearchPreview(tool) {
+        const input = tool.input || {};
+        const query = input.query || '';
+        const allowedDomains = input.allowed_domains || [];
+
+        const icon = ToolIcons.globeSearch;
+        const color = ToolColors.web;
+
+        const displayQuery = BaseRenderer.truncate(query, 25);
+
+        // Show domain filter badge if present
+        const badgeHtml = allowedDomains.length > 0
+            ? `<span class="preview-badge">+${allowedDomains.length}</span>`
+            : '';
+
+        return `
+            <div class="streaming-tool-preview streaming-tool-web" style="--tool-color: ${color}">
+                <span class="preview-icon">${icon}</span>
+                <span class="preview-text">"${BaseRenderer.escapeHtml(displayQuery)}"</span>
+                ${badgeHtml}
+            </div>
+        `;
     }
 };
 

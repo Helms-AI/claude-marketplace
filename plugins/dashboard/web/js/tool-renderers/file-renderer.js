@@ -182,6 +182,131 @@ const FileRenderer = {
             case 'NotebookEdit': return this.renderNotebookEdit(tool);
             default: return ToolRendererRegistry.renderDefault(tool);
         }
+    },
+
+    /**
+     * Preview dispatcher for streaming indicator
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string for compact preview
+     */
+    renderPreview(tool) {
+        const name = tool.name;
+        switch (name) {
+            case 'Read': return this.renderReadPreview(tool);
+            case 'Write': return this.renderWritePreview(tool);
+            case 'Edit': return this.renderEditPreview(tool);
+            case 'NotebookEdit': return this.renderNotebookEditPreview(tool);
+            default: return ToolRendererRegistry.renderDefaultPreview(tool);
+        }
+    },
+
+    /**
+     * Compact preview for Read operation
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string
+     */
+    renderReadPreview(tool) {
+        const input = tool.input || {};
+        const filePath = input.file_path || '';
+        const offset = input.offset;
+        const limit = input.limit;
+
+        const icon = ToolIcons.fileRead;
+        const color = ToolColors.file;
+        const displayPath = BaseRenderer.formatPath(filePath, 30);
+
+        // Build compact info badges
+        const badges = [];
+        if (offset) badges.push(`L${offset}`);
+        if (limit) badges.push(`${limit}L`);
+
+        const badgeHtml = badges.length > 0
+            ? badges.map(b => `<span class="preview-badge">${b}</span>`).join('')
+            : '';
+
+        return `
+            <div class="streaming-tool-preview streaming-tool-file" style="--tool-color: ${color}">
+                <span class="preview-icon">${icon}</span>
+                <span class="preview-text">${BaseRenderer.escapeHtml(displayPath)}</span>
+                ${badgeHtml}
+            </div>
+        `;
+    },
+
+    /**
+     * Compact preview for Write operation
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string
+     */
+    renderWritePreview(tool) {
+        const input = tool.input || {};
+        const filePath = input.file_path || '';
+        const content = input.content || '';
+
+        const icon = ToolIcons.fileWrite;
+        const color = ToolColors.file;
+        const displayPath = BaseRenderer.formatPath(filePath, 25);
+        const lineCount = content.split('\n').length;
+
+        return `
+            <div class="streaming-tool-preview streaming-tool-file" style="--tool-color: ${color}">
+                <span class="preview-icon">${icon}</span>
+                <span class="preview-text">${BaseRenderer.escapeHtml(displayPath)}</span>
+                <span class="preview-badge">${lineCount}L</span>
+            </div>
+        `;
+    },
+
+    /**
+     * Compact preview for Edit operation
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string
+     */
+    renderEditPreview(tool) {
+        const input = tool.input || {};
+        const filePath = input.file_path || '';
+        const replaceAll = input.replace_all;
+
+        const icon = ToolIcons.fileEdit;
+        const color = ToolColors.file;
+        const displayPath = BaseRenderer.formatPath(filePath, 28);
+
+        const badgeHtml = replaceAll
+            ? '<span class="preview-badge preview-badge-accent">all</span>'
+            : '';
+
+        return `
+            <div class="streaming-tool-preview streaming-tool-file" style="--tool-color: ${color}">
+                <span class="preview-icon">${icon}</span>
+                <span class="preview-text">${BaseRenderer.escapeHtml(displayPath)}</span>
+                ${badgeHtml}
+            </div>
+        `;
+    },
+
+    /**
+     * Compact preview for NotebookEdit operation
+     * @param {Object} tool - Tool call object
+     * @returns {string} HTML string
+     */
+    renderNotebookEditPreview(tool) {
+        const input = tool.input || {};
+        const notebookPath = input.notebook_path || '';
+        const cellType = input.cell_type || 'code';
+        const editMode = input.edit_mode || 'replace';
+
+        const icon = ToolIcons.fileEdit;
+        const color = ToolColors.file;
+        const displayPath = BaseRenderer.formatPath(notebookPath, 22);
+
+        return `
+            <div class="streaming-tool-preview streaming-tool-file" style="--tool-color: ${color}">
+                <span class="preview-icon">${icon}</span>
+                <span class="preview-text">${BaseRenderer.escapeHtml(displayPath)}</span>
+                <span class="preview-badge">${cellType}</span>
+                <span class="preview-badge">${editMode}</span>
+            </div>
+        `;
     }
 };
 
