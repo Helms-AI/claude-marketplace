@@ -208,6 +208,11 @@ const Conversation = {
 
         this.container.innerHTML = html;
 
+        // Re-attach thinking indicator after innerHTML reset
+        if (typeof ThinkingIndicator !== 'undefined') {
+            ThinkingIndicator.ensureAttached();
+        }
+
         // Add view toggle event listeners
         this.bindViewToggle();
 
@@ -633,6 +638,10 @@ const Conversation = {
         const emptyState = this.container.querySelector('.conversation-empty');
         if (emptyState) {
             this.container.innerHTML = '<div class="chat-stream"></div>';
+            // Re-attach thinking indicator after innerHTML reset
+            if (typeof ThinkingIndicator !== 'undefined') {
+                ThinkingIndicator.ensureAttached();
+            }
         }
 
         const stream = this.container.querySelector('.chat-stream');
@@ -684,6 +693,10 @@ const Conversation = {
         if (emptyState) {
             this.container.innerHTML = this.renderViewToggle(false, true) + '<div class="chat-stream"></div>';
             this.bindViewToggle();
+            // Re-attach thinking indicator after innerHTML reset
+            if (typeof ThinkingIndicator !== 'undefined') {
+                ThinkingIndicator.ensureAttached();
+            }
         }
 
         const stream = this.container.querySelector('.chat-stream');

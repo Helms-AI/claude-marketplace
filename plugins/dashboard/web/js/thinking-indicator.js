@@ -30,6 +30,76 @@ const ThinkingIndicator = {
     element: null,
 
     /**
+     * Format a tool name for display.
+     * Converts internal tool names to user-friendly labels.
+     * @param {string} rawName - The raw tool name (e.g., "mcp__plugin_playwright_playwright__browser_evaluate")
+     * @returns {string} - Formatted display name (e.g., "Browser Evaluate")
+     */
+    formatToolName(rawName) {
+        if (!rawName) return 'Tool';
+
+        // Tool name mappings for common tools
+        const toolMappings = {
+            'Read': 'Reading file',
+            'Write': 'Writing file',
+            'Edit': 'Editing file',
+            'Bash': 'Running command',
+            'Grep': 'Searching code',
+            'Glob': 'Finding files',
+            'Task': 'Running agent',
+            'WebFetch': 'Fetching URL',
+            'WebSearch': 'Searching web',
+            'AskUserQuestion': 'Asking question',
+            'Skill': 'Running skill',
+            'TaskCreate': 'Creating task',
+            'TaskUpdate': 'Updating task',
+            'TaskList': 'Listing tasks',
+            'TaskGet': 'Getting task',
+            'NotebookEdit': 'Editing notebook',
+            'EnterPlanMode': 'Planning',
+            'ExitPlanMode': 'Finalizing plan'
+        };
+
+        // Check if it's a simple tool name we know
+        if (toolMappings[rawName]) {
+            return toolMappings[rawName];
+        }
+
+        // Handle MCP plugin tool names (e.g., mcp__plugin_playwright_playwright__browser_evaluate)
+        if (rawName.startsWith('mcp__')) {
+            // Extract the action part after the last double underscore
+            const parts = rawName.split('__');
+            if (parts.length >= 3) {
+                // Get the last part (the actual action)
+                const action = parts[parts.length - 1];
+                // Convert underscores and dashes to spaces and capitalize
+                return action
+                    .split(/[_-]/)
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                    .join(' ');
+            }
+        }
+
+        // Handle tool names with underscores (convert to readable format)
+        if (rawName.includes('_')) {
+            return rawName
+                .split('_')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+        }
+
+        // Handle camelCase or PascalCase (add spaces before capitals)
+        if (/[a-z][A-Z]/.test(rawName)) {
+            return rawName
+                .replace(/([a-z])([A-Z])/g, '$1 $2')
+                .replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2');
+        }
+
+        // Return as-is if no formatting needed
+        return rawName;
+    },
+
+    /**
      * Initialize the thinking indicator.
      * Creates the DOM element and appends it to the conversation container.
      */
@@ -62,6 +132,20 @@ const ThinkingIndicator = {
 
         // Append to container
         this.container.appendChild(this.element);
+    },
+
+    /**
+     * Ensure the indicator element is attached to the DOM.
+     * Call this after container innerHTML is replaced.
+     */
+    ensureAttached() {
+        if (!this.element || !this.container) return;
+
+        // Check if element is still in DOM
+        if (!document.body.contains(this.element)) {
+            // Re-append to container
+            this.container.appendChild(this.element);
+        }
     },
 
     /**
@@ -181,7 +265,7 @@ const ThinkingIndicator = {
                 this.element.style.display = 'block';
                 thinkingIndicator.classList.add('tool-active');
                 thinkingLabel.textContent = 'Executing';
-                toolLabel.textContent = toolName || 'Tool';
+                toolLabel.textContent = this.formatToolName(toolName);
                 toolLabel.style.display = 'inline-block';
 
                 // Don't set idle timeout during tool execution

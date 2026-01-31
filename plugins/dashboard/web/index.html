@@ -68,6 +68,22 @@
                             </svg>
                             Kill Server
                         </button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" id="processManager">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                                <rect x="9" y="9" width="6" height="6"></rect>
+                                <line x1="9" y1="1" x2="9" y2="4"></line>
+                                <line x1="15" y1="1" x2="15" y2="4"></line>
+                                <line x1="9" y1="20" x2="9" y2="23"></line>
+                                <line x1="15" y1="20" x2="15" y2="23"></line>
+                                <line x1="20" y1="9" x2="23" y2="9"></line>
+                                <line x1="20" y1="14" x2="23" y2="14"></line>
+                                <line x1="1" y1="9" x2="4" y2="9"></line>
+                                <line x1="1" y1="14" x2="4" y2="14"></line>
+                            </svg>
+                            Process Manager
+                        </button>
                     </div>
                 </div>
             </div>
@@ -446,6 +462,14 @@
         <div class="modal-content">
             <button class="modal-close" id="closeSkillModal">&times;</button>
             <div class="modal-body" id="skillModalBody"></div>
+        </div>
+    </div>
+
+    <!-- Process Manager Modal -->
+    <div class="modal" id="processModal">
+        <div class="modal-content modal-process-manager">
+            <button class="modal-close" id="closeProcessModal">&times;</button>
+            <div class="modal-body" id="processModalBody"></div>
         </div>
     </div>
 

@@ -1054,6 +1054,11 @@ const Dashboard = {
         if (closeSkillModal) {
             closeSkillModal.addEventListener('click', () => this.closeModal('skillModal'));
         }
+
+        const closeProcessModal = document.getElementById('closeProcessModal');
+        if (closeProcessModal) {
+            closeProcessModal.addEventListener('click', () => this.closeModal('processModal'));
+        }
     },
 
     openModal(modalId, content) {
@@ -1110,6 +1115,14 @@ const Dashboard = {
                     // Expected
                 }
                 this.updateConnectionStatus('disconnected');
+            });
+        }
+
+        const processManagerBtn = document.getElementById('processManager');
+        if (processManagerBtn) {
+            processManagerBtn.addEventListener('click', () => {
+                menu.classList.remove('open');
+                this.openProcessManager();
             });
         }
     },
@@ -1366,6 +1379,286 @@ const Dashboard = {
                 </div>
             `;
         }
+    },
+
+    // ==================== Process Manager ====================
+    openProcessManager() {
+        const modal = document.getElementById('processModal');
+        const body = document.getElementById('processModalBody');
+
+        body.innerHTML = this.buildProcessManagerLoading();
+        modal.classList.add('open');
+
+        this.refreshProcessList();
+    },
+
+    async refreshProcessList() {
+        const body = document.getElementById('processModalBody');
+
+        try {
+            const data = await this.fetchAPI('/api/processes');
+            body.innerHTML = this.buildProcessManagerContent(data);
+            this.setupProcessManagerHandlers(data);
+        } catch (error) {
+            body.innerHTML = this.buildProcessManagerError('Failed to load processes: ' + error.message);
+        }
+    },
+
+    buildProcessManagerContent(data) {
+        const { processes, current_pid, count } = data;
+
+        let processListHtml = '';
+
+        if (processes.length === 0) {
+            processListHtml = `
+                <div class="process-empty">
+                    <div class="process-empty-icon">⚙️</div>
+                    <div>No dashboard processes found</div>
+                </div>
+            `;
+        } else {
+            processListHtml = processes.map(proc => {
+                const isCurrent = proc.current;
+                const canKill = !isCurrent || processes.length > 1;
+
+                return `
+                    <div class="process-item${isCurrent ? ' current' : ''}">
+                        <div class="process-icon">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                                <rect x="9" y="9" width="6" height="6"></rect>
+                                <line x1="9" y1="1" x2="9" y2="4"></line>
+                                <line x1="15" y1="1" x2="15" y2="4"></line>
+                                <line x1="9" y1="20" x2="9" y2="23"></line>
+                                <line x1="15" y1="20" x2="15" y2="23"></line>
+                                <line x1="20" y1="9" x2="23" y2="9"></line>
+                                <line x1="20" y1="14" x2="23" y2="14"></line>
+                                <line x1="1" y1="9" x2="4" y2="9"></line>
+                                <line x1="1" y1="14" x2="4" y2="14"></line>
+                            </svg>
+                        </div>
+                        <div class="process-info">
+                            <div class="process-pid">
+                                PID ${proc.pid}
+                                ${isCurrent ? '<span class="process-current-badge">Current</span>' : ''}
+                            </div>
+                            <div class="process-started">${proc.started}</div>
+                            <div class="process-command" title="${proc.command}">${proc.command}</div>
+                        </div>
+                        <button class="process-kill-btn"
+                                data-pid="${proc.pid}"
+                                data-current="${isCurrent}"
+                                ${!canKill ? 'disabled title="Cannot kill the only running process"' : 'title="Kill process"'}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        return `
+            <div class="process-manager-header">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                    <rect x="9" y="9" width="6" height="6"></rect>
+                    <line x1="9" y1="1" x2="9" y2="4"></line>
+                    <line x1="15" y1="1" x2="15" y2="4"></line>
+                    <line x1="9" y1="20" x2="9" y2="23"></line>
+                    <line x1="15" y1="20" x2="15" y2="23"></line>
+                    <line x1="20" y1="9" x2="23" y2="9"></line>
+                    <line x1="20" y1="14" x2="23" y2="14"></line>
+                    <line x1="1" y1="9" x2="4" y2="9"></line>
+                    <line x1="1" y1="14" x2="4" y2="14"></line>
+                </svg>
+                <h3>Process Manager</h3>
+            </div>
+            <div class="process-list">
+                ${processListHtml}
+            </div>
+            <div class="process-manager-footer">
+                <span class="process-count">${count} process${count !== 1 ? 'es' : ''} running</span>
+                <button class="process-refresh-btn" id="processRefreshBtn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 4v6h-6"></path>
+                        <path d="M1 20v-6h6"></path>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        `;
+    },
+
+    buildProcessManagerLoading() {
+        return `
+            <div class="process-manager-header">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                    <rect x="9" y="9" width="6" height="6"></rect>
+                    <line x1="9" y1="1" x2="9" y2="4"></line>
+                    <line x1="15" y1="1" x2="15" y2="4"></line>
+                    <line x1="9" y1="20" x2="9" y2="23"></line>
+                    <line x1="15" y1="20" x2="15" y2="23"></line>
+                    <line x1="20" y1="9" x2="23" y2="9"></line>
+                    <line x1="20" y1="14" x2="23" y2="14"></line>
+                    <line x1="1" y1="9" x2="4" y2="9"></line>
+                    <line x1="1" y1="14" x2="4" y2="14"></line>
+                </svg>
+                <h3>Process Manager</h3>
+            </div>
+            <div class="process-manager-loading">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6"></path>
+                    <path d="M1 20v-6h6"></path>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                </svg>
+                <div>Loading processes...</div>
+            </div>
+        `;
+    },
+
+    buildProcessManagerError(message) {
+        return `
+            <div class="process-manager-header">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                    <rect x="9" y="9" width="6" height="6"></rect>
+                    <line x1="9" y1="1" x2="9" y2="4"></line>
+                    <line x1="15" y1="1" x2="15" y2="4"></line>
+                    <line x1="9" y1="20" x2="9" y2="23"></line>
+                    <line x1="15" y1="20" x2="15" y2="23"></line>
+                    <line x1="20" y1="9" x2="23" y2="9"></line>
+                    <line x1="20" y1="14" x2="23" y2="14"></line>
+                    <line x1="1" y1="9" x2="4" y2="9"></line>
+                    <line x1="1" y1="14" x2="4" y2="14"></line>
+                </svg>
+                <h3>Process Manager</h3>
+            </div>
+            <div class="process-manager-error">
+                <div>${message}</div>
+            </div>
+            <div class="process-manager-footer">
+                <span class="process-count">Error loading processes</span>
+                <button class="process-refresh-btn" id="processRefreshBtn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 4v6h-6"></path>
+                        <path d="M1 20v-6h6"></path>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    Retry
+                </button>
+            </div>
+        `;
+    },
+
+    setupProcessManagerHandlers(data) {
+        // Refresh button
+        const refreshBtn = document.getElementById('processRefreshBtn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                refreshBtn.classList.add('spinning');
+                await this.refreshProcessList();
+            });
+        }
+
+        // Kill buttons
+        document.querySelectorAll('.process-kill-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const pid = parseInt(btn.dataset.pid);
+                const isCurrent = btn.dataset.current === 'true';
+                const processItem = btn.closest('.process-item');
+
+                const message = isCurrent
+                    ? 'Kill this process? The dashboard will disconnect.'
+                    : `Kill process ${pid}?`;
+
+                if (!confirm(message)) return;
+
+                // Set pending state
+                processItem.classList.add('killing');
+                btn.disabled = true;
+                btn.innerHTML = `
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="spinning">
+                        <path d="M23 4v6h-6"></path>
+                        <path d="M1 20v-6h6"></path>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                `;
+
+                try {
+                    const response = await fetch(`/api/processes/${pid}/kill`, { method: 'POST' });
+                    const result = await response.json();
+
+                    if (response.ok) {
+                        if (isCurrent) {
+                            this.closeModal('processModal');
+                            this.updateConnectionStatus('disconnected');
+                        } else {
+                            // Verify process is actually gone by polling
+                            await this.verifyProcessKilled(pid, processItem);
+                        }
+                    } else {
+                        // Reset state on error
+                        processItem.classList.remove('killing');
+                        btn.disabled = false;
+                        btn.innerHTML = `
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        `;
+                        alert(result.error || 'Failed to kill process');
+                    }
+                } catch (error) {
+                    if (isCurrent) {
+                        // Connection lost is expected when killing current
+                        this.closeModal('processModal');
+                        this.updateConnectionStatus('disconnected');
+                    } else {
+                        // Reset state on error
+                        processItem.classList.remove('killing');
+                        btn.disabled = false;
+                        btn.innerHTML = `
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        `;
+                        alert('Failed to kill process: ' + error.message);
+                    }
+                }
+            });
+        });
+    },
+
+    async verifyProcessKilled(pid, processItem) {
+        const maxAttempts = 10;
+        const pollInterval = 300; // ms
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, pollInterval));
+
+            try {
+                const data = await this.fetchAPI('/api/processes');
+                const stillExists = data.processes.some(p => p.pid === pid);
+
+                if (!stillExists) {
+                    // Process confirmed killed - animate removal
+                    processItem.classList.add('removed');
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    await this.refreshProcessList();
+                    return;
+                }
+            } catch (e) {
+                // API error, continue polling
+            }
+        }
+
+        // Timeout - refresh anyway
+        await this.refreshProcessList();
     },
 
     // ==================== Utilities ====================
