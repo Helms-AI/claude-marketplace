@@ -44,6 +44,11 @@ const Conversation = {
     init() {
         this.container = document.getElementById('conversationContainer');
         this.autoScrollEnabled = true;
+
+        // Initialize thinking indicator
+        if (typeof ThinkingIndicator !== 'undefined') {
+            ThinkingIndicator.init();
+        }
     },
 
     /**
@@ -659,6 +664,21 @@ const Conversation = {
          */
         if (!this.container) this.init();
 
+        // Update thinking indicator based on message
+        if (typeof ThinkingIndicator !== 'undefined') {
+            ThinkingIndicator.processMessage(message, source);
+        }
+
+        // Track token usage
+        if (typeof TokenMeter !== 'undefined') {
+            TokenMeter.addTokens(message, message.role);
+        }
+
+        // Check for errors in tool results (user messages contain tool_result blocks)
+        if (typeof ErrorStream !== 'undefined' && message.role === 'user' && message.content) {
+            this.processToolResultsForErrors(message.content, source);
+        }
+
         // Remove empty state if present
         const emptyState = this.container.querySelector('.conversation-empty');
         if (emptyState) {
@@ -1015,11 +1035,42 @@ const Conversation = {
         return div.innerHTML;
     },
 
+    /**
+     * Process tool result blocks to detect and report errors.
+     * @param {Array} content - Message content array
+     * @param {string} source - 'main' or agent ID
+     */
+    processToolResultsForErrors(content, source) {
+        if (!Array.isArray(content)) return;
+
+        content.forEach(block => {
+            if (block.type !== 'tool_result') return;
+
+            // Get tool name from pending tools in ThinkingIndicator if available
+            let toolName = 'Tool';
+            if (typeof ThinkingIndicator !== 'undefined' && block.tool_use_id) {
+                toolName = ThinkingIndicator.pendingTools.get(block.tool_use_id) || 'Tool';
+            }
+
+            // Parse the tool result for errors
+            const error = ErrorStream.parseToolResult(block, toolName, source);
+            if (error) {
+                ErrorStream.addError(error);
+            }
+        });
+    },
+
     clear() {
         if (!this.container) this.init();
         this.lastDomain = null;
         this.messageIndex = 0;
         this.currentTranscript = null;
+
+        // Clear thinking indicator
+        if (typeof ThinkingIndicator !== 'undefined') {
+            ThinkingIndicator.clear();
+        }
+
         this.container.innerHTML = `
             <div class="conversation-empty">
                 <div class="empty-terminal">
