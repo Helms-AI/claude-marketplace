@@ -660,6 +660,12 @@ def create_app(local_only: bool = True) -> Flask:
             'total_changesets': len(changeset_tracker.get_all_changesets())
         })
 
+    # Health check endpoint
+    @app.route('/api/health', methods=['GET'])
+    def health_check():
+        """Health check endpoint for restart polling."""
+        return {'status': 'healthy', 'pid': os.getpid()}
+
     # Server control endpoints
     @app.route('/api/server/kill', methods=['POST'])
     def kill_server():
@@ -678,14 +684,31 @@ def create_app(local_only: bool = True) -> Flask:
     @app.route('/api/server/restart', methods=['POST'])
     def restart_server():
         """Restart the server process."""
+        import subprocess
+
         if not local_only:
             return {'error': 'Server control only available locally'}, 403
 
         def restart():
             time.sleep(0.5)  # Give response time to send
             _shutdown_event.set()
-            # Re-exec the current process
-            os.execv(sys.executable, [sys.executable] + sys.argv)
+
+            # Prepare environment for new process
+            env = os.environ.copy()
+            env['DASHBOARD_RESTART_DELAY'] = '1'  # Signal new process to wait
+
+            # Start new process - it will wait for port to be free
+            subprocess.Popen(
+                [sys.executable] + sys.argv,
+                cwd=os.getcwd(),
+                env=env,
+                start_new_session=True  # Detach from current process group
+            )
+
+            # Give subprocess a moment to start, then kill current process
+            # The new process will wait for the port to become available
+            time.sleep(0.2)
+            os.kill(os.getpid(), signal.SIGTERM)
 
         threading.Thread(target=restart, daemon=True).start()
         return {'status': 'restarting'}
@@ -828,6 +851,26 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # Check if this is a restart - wait for port to be available
+    if os.environ.get('DASHBOARD_RESTART_DELAY'):
+        import socket
+        print("Restart detected - waiting for port to become available...")
+        max_wait = 10  # Max 10 seconds
+        waited = 0
+        while waited < max_wait:
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('127.0.0.1', args.port))
+                    # Port is free
+                    break
+            except OSError:
+                time.sleep(0.2)
+                waited += 0.2
+        if waited >= max_wait:
+            print(f"Warning: Port {args.port} still in use after {max_wait}s")
+        else:
+            print(f"Port available after {waited:.1f}s")
 
     # Register cleanup handlers
     atexit.register(_cleanup)

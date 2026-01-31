@@ -222,6 +222,12 @@ const TerminalConversation = {
         // Don't start if already streaming
         if (this.streamingMessage) return;
 
+        // Guard against null container - critical fix for black screen bug
+        if (!this.container) {
+            console.warn('[TerminalConversation] Cannot start streaming - container is null');
+            return;
+        }
+
         const time = this.formatTime(new Date());
         const isSubagent = source !== 'main';
         const agentInfo = this.getAgentInfo(source);
@@ -303,17 +309,33 @@ const TerminalConversation = {
     appendStreamingText(text) {
         if (!text) return;
 
+        // Guard against null container - critical fix for black screen bug
+        if (!this.container) {
+            console.warn('[TerminalConversation] Cannot append text - container is null');
+            return;
+        }
+
         // Auto-start message if not already started
         if (!this.streamingMessage) {
             this.startStreamingMessage('main');
+            // If startStreamingMessage failed due to container issues, abort
+            if (!this.streamingMessage) {
+                console.warn('[TerminalConversation] Failed to start streaming message');
+                return;
+            }
         }
 
         this.streamingMessageContent += text;
 
         // Update the text content with markdown rendering
         const textEl = this.streamingMessage?.querySelector('.streaming-text');
-        if (textEl) {
-            textEl.innerHTML = this.formatMarkdown(this.streamingMessageContent);
+        if (textEl && this.container.contains(this.streamingMessage)) {
+            try {
+                textEl.innerHTML = this.formatMarkdown(this.streamingMessageContent);
+            } catch (e) {
+                console.error('[TerminalConversation] Error formatting markdown:', e);
+                textEl.textContent = this.streamingMessageContent;
+            }
         }
 
         // Auto-scroll to keep up with new content
@@ -329,9 +351,20 @@ const TerminalConversation = {
     addStreamingTool(tool) {
         if (!tool) return;
 
+        // Guard against null container
+        if (!this.container) {
+            console.warn('[TerminalConversation] Cannot add tool - container is null');
+            return;
+        }
+
         // Auto-start message if not already started
         if (!this.streamingMessage) {
             this.startStreamingMessage('main');
+            // If startStreamingMessage failed, abort
+            if (!this.streamingMessage) {
+                console.warn('[TerminalConversation] Failed to start streaming message for tool');
+                return;
+            }
         }
 
         // Check if tool already exists
@@ -346,14 +379,45 @@ const TerminalConversation = {
             this.streamingMessageTools.push(tool);
         }
 
-        // ALWAYS re-render tools when called - ensures updates are displayed immediately
-        // This is especially important for real-time streaming of tool input data
+        // Re-render tools when called - ensures updates are displayed immediately
+        // IMPORTANT: Skip re-rendering interactive tools that have user state (like AskUserQuestion)
         const toolsEl = this.streamingMessage?.querySelector('.streaming-tools');
-        if (toolsEl) {
+        if (toolsEl && this.container.contains(this.streamingMessage)) {
+            // Build list of tools that have active interactive state
+            const toolsWithState = new Set();
+            if (typeof QuestionRenderer !== 'undefined') {
+                for (const t of this.streamingMessageTools) {
+                    if (t.name === 'AskUserQuestion' && t.id) {
+                        const questionData = QuestionRenderer.activeQuestions[t.id];
+                        // Has state if: exists, not submitted, and has at least one answer or DOM cache
+                        if (questionData && !questionData.submitted && !questionData._cleaned) {
+                            toolsWithState.add(t.id);
+                        }
+                    }
+                }
+            }
+
+            // Re-render only tools without active state
+            const existingCards = new Map();
+            // Preserve existing interactive tool cards
+            toolsEl.querySelectorAll('[data-tool-id]').forEach(card => {
+                const toolId = card.dataset.toolId;
+                if (toolsWithState.has(toolId)) {
+                    existingCards.set(toolId, card);
+                }
+            });
+
+            // Clear and rebuild, reinserting preserved cards
             toolsEl.innerHTML = '';
             for (const t of this.streamingMessageTools) {
-                const toolHtml = this.renderToolCall(t);
-                toolsEl.insertAdjacentHTML('beforeend', toolHtml);
+                if (t.id && existingCards.has(t.id)) {
+                    // Reinsert the preserved card (maintains user state)
+                    toolsEl.appendChild(existingCards.get(t.id));
+                } else {
+                    // Render fresh
+                    const toolHtml = this.renderToolCall(t);
+                    toolsEl.insertAdjacentHTML('beforeend', toolHtml);
+                }
             }
         }
 
@@ -379,16 +443,46 @@ const TerminalConversation = {
         const pulse = this.streamingMessage.querySelector('.streaming-pulse');
         if (pulse) pulse.classList.remove('streaming-pulse');
 
-        // Always re-render tools with final complete data
+        // Re-render tools with final complete data
         // This ensures tool inputs (which may have been empty during streaming) are now displayed
+        // IMPORTANT: Preserve interactive tools that have user state (like AskUserQuestion)
         if (finalToolUses.length > 0) {
             const toolsEl = this.streamingMessage.querySelector('.streaming-tools');
             if (toolsEl) {
-                // Clear and re-render all tools with complete data
+                // Build list of tools that have active interactive state
+                const toolsWithState = new Set();
+                if (typeof QuestionRenderer !== 'undefined') {
+                    for (const tool of finalToolUses) {
+                        if (tool.name === 'AskUserQuestion' && tool.id) {
+                            const questionData = QuestionRenderer.activeQuestions[tool.id];
+                            // Has state if: exists and not fully cleaned up
+                            if (questionData && !questionData._cleaned) {
+                                toolsWithState.add(tool.id);
+                            }
+                        }
+                    }
+                }
+
+                // Preserve existing interactive tool cards
+                const existingCards = new Map();
+                toolsEl.querySelectorAll('[data-tool-id]').forEach(card => {
+                    const toolId = card.dataset.toolId;
+                    if (toolsWithState.has(toolId)) {
+                        existingCards.set(toolId, card);
+                    }
+                });
+
+                // Clear and rebuild, reinserting preserved cards
                 toolsEl.innerHTML = '';
                 for (const tool of finalToolUses) {
-                    const toolHtml = this.renderToolCall(tool);
-                    toolsEl.insertAdjacentHTML('beforeend', toolHtml);
+                    if (tool.id && existingCards.has(tool.id)) {
+                        // Reinsert the preserved card (maintains user state)
+                        toolsEl.appendChild(existingCards.get(tool.id));
+                    } else {
+                        // Render fresh
+                        const toolHtml = this.renderToolCall(tool);
+                        toolsEl.insertAdjacentHTML('beforeend', toolHtml);
+                    }
                 }
             }
         }
@@ -500,6 +594,12 @@ const TerminalConversation = {
      * @param {number} options.timestamp - Optional timestamp
      */
     addUserMessage(text, options = {}) {
+        // Guard against null container
+        if (!this.container) {
+            console.warn('[TerminalConversation] Cannot add user message - container is null');
+            return;
+        }
+
         const timestamp = options.timestamp || (typeof options === 'number' ? options : null);
         const time = timestamp ? this.formatTime(new Date(timestamp)) : this.formatTime(new Date());
         const isConsecutive = this.lastRole === 'user' && this.lastSource === 'main';

@@ -7225,3 +7225,133 @@ details.tool-call-card[open] .tool-expand-icon {
     content: '⚡';
     font-size: 10px;
 }
+
+/* ===== Restart Modal ===== */
+.modal-restart {
+    z-index: 10000;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(4px);
+}
+
+.modal-restart .modal-content {
+    pointer-events: none;
+}
+
+.modal-restart-content {
+    max-width: 400px;
+    width: 90%;
+    background: var(--bg-primary);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.restart-modal-body {
+    padding: var(--spacing-xl);
+    text-align: center;
+}
+
+.restart-spinner {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto var(--spacing-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.restart-spinner-icon {
+    width: 48px;
+    height: 48px;
+    color: var(--accent-color);
+    animation: restart-spin 1.5s ease-in-out infinite;
+}
+
+@keyframes restart-spin {
+    0% { transform: rotate(0deg); }
+    50% { transform: rotate(180deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.restart-title {
+    font-size: var(--font-size-xl);
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 var(--spacing-sm);
+}
+
+.restart-message {
+    font-size: var(--font-size-md);
+    color: var(--text-secondary);
+    margin: 0 0 var(--spacing-lg);
+    line-height: 1.5;
+}
+
+.restart-progress {
+    height: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: var(--spacing-md);
+}
+
+.restart-progress-bar {
+    height: 100%;
+    background: var(--accent-color);
+    border-radius: 2px;
+    width: 0%;
+    transition: width 300ms ease-out;
+}
+
+.restart-progress-bar.indeterminate {
+    width: 30%;
+    animation: restart-progress-indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes restart-progress-indeterminate {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+}
+
+.restart-status {
+    font-size: var(--font-size-sm);
+    color: var(--text-muted);
+    margin: 0;
+    font-family: var(--font-mono);
+}
+
+/* Restart error state */
+.modal-restart.error .restart-spinner-icon {
+    color: var(--error-color);
+    animation: none;
+}
+
+.modal-restart.error .restart-title {
+    color: var(--error-color);
+}
+
+.modal-restart.error .restart-progress-bar {
+    background: var(--error-color);
+}
+
+/* Restart success state */
+.modal-restart.success .restart-spinner-icon {
+    color: var(--success-color);
+    animation: restart-success-pulse 0.5s ease-out;
+}
+
+.modal-restart.success .restart-title {
+    color: var(--success-color);
+}
+
+.modal-restart.success .restart-progress-bar {
+    background: var(--success-color);
+    width: 100%;
+}
+
+@keyframes restart-success-pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}

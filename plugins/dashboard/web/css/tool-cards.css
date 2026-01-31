@@ -652,6 +652,188 @@ details.tool-card > summary.tool-card-header:focus-visible {
     background: var(--bg-tertiary);
 }
 
+/* ===== Question Tabs Interface ===== */
+.tool-card-question-tabbed .tool-card-body-interactive {
+    padding: 0;
+}
+
+.tool-question-tabs-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.tool-question-tabs-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tool-question-tabs-nav {
+    display: flex;
+    gap: var(--spacing-xs);
+    flex-wrap: wrap;
+}
+
+.tool-question-tab {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.tool-question-tab:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.tool-question-tab.active {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: white;
+}
+
+.tool-question-tab .tab-label {
+    font-weight: 500;
+}
+
+.tool-question-tab .tab-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 0.15s ease;
+}
+
+.tool-question-tab.answered .tab-status {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.tool-question-tab .tab-check {
+    color: currentColor;
+}
+
+.tool-question-tab.active .tab-check {
+    color: white;
+}
+
+.tool-question-tab:not(.active).answered {
+    border-color: var(--success-color);
+    color: var(--success-color);
+}
+
+.tool-question-tab:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Progress indicator */
+.tool-question-progress {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-size: var(--font-size-xs);
+    color: var(--text-secondary);
+}
+
+.tool-question-progress .progress-text {
+    white-space: nowrap;
+}
+
+.tool-question-progress .progress-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 2px;
+    overflow: hidden;
+    min-width: 80px;
+}
+
+.tool-question-progress .progress-fill {
+    height: 100%;
+    background: var(--accent-color);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+/* Tab panels */
+.tool-question-tabs-content {
+    padding: var(--spacing-md);
+}
+
+.tool-question-panel {
+    display: none;
+}
+
+.tool-question-panel.active {
+    display: block;
+    animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Adjust question item in tabbed view */
+.tool-card-question-tabbed .tool-question-item-interactive {
+    padding: 0;
+    border: none;
+    background: transparent;
+}
+
+.tool-card-question-tabbed .tool-question-item-interactive:last-of-type {
+    margin-bottom: 0;
+}
+
+/* Actions in tabbed view */
+.tool-card-question-tabbed .tool-question-actions {
+    padding: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .tool-question-tabs-header {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="dark"] .tool-question-tab {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .tool-question-tab:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .tool-question-tabs-content {
+    background: transparent;
+}
+
+[data-theme="dark"] .tool-question-progress .progress-bar {
+    background: rgba(255, 255, 255, 0.1);
+}
+
 /* ===== Legacy Compatibility ===== */
 /* Keep existing tool-call-card styles for backward compatibility */
 .tool-call-card {

@@ -1103,14 +1103,8 @@ const Dashboard = {
 
         if (restartBtn) {
             restartBtn.addEventListener('click', async () => {
-                if (!confirm('Restart the dashboard server? The page will reload.')) return;
                 menu.classList.remove('open');
-                try {
-                    await fetch('/api/server/restart', { method: 'POST' });
-                    setTimeout(() => window.location.reload(), 1500);
-                } catch (e) {
-                    setTimeout(() => window.location.reload(), 1500);
-                }
+                this.initiateRestart();
             });
         }
 
@@ -1134,6 +1128,122 @@ const Dashboard = {
                 this.openProcessManager();
             });
         }
+    },
+
+    // ==================== Server Restart ====================
+    async initiateRestart() {
+        const modal = document.getElementById('restartModal');
+        const title = document.getElementById('restartTitle');
+        const message = document.getElementById('restartMessage');
+        const status = document.getElementById('restartStatus');
+        const progressBar = document.getElementById('restartProgressBar');
+
+        // Reset modal state
+        modal.classList.remove('error', 'success');
+        title.textContent = 'System Restarting';
+        message.textContent = 'Please wait while the dashboard server restarts...';
+        status.textContent = 'Sending restart signal...';
+        progressBar.style.width = '0%';
+        progressBar.classList.add('indeterminate');
+
+        // Show modal (uncancellable)
+        modal.classList.add('open');
+
+        try {
+            // Send restart request
+            status.textContent = 'Shutting down server...';
+            await fetch('/api/server/restart', { method: 'POST' });
+        } catch (e) {
+            // Request may fail as server shuts down - this is expected
+        }
+
+        // Wait for server to go down
+        status.textContent = 'Waiting for server to restart...';
+        await this.sleep(1000);
+
+        // Start polling for server health
+        const maxAttempts = 30; // 30 seconds max wait
+        const pollInterval = 1000; // 1 second between polls
+        let attempts = 0;
+        let serverUp = false;
+
+        progressBar.classList.remove('indeterminate');
+
+        while (attempts < maxAttempts && !serverUp) {
+            attempts++;
+            const progress = Math.min((attempts / maxAttempts) * 100, 95);
+            progressBar.style.width = `${progress}%`;
+            status.textContent = `Checking server status... (${attempts}/${maxAttempts})`;
+
+            try {
+                const response = await fetch('/api/health', {
+                    method: 'GET',
+                    signal: AbortSignal.timeout(2000) // 2 second timeout per request
+                });
+                if (response.ok) {
+                    serverUp = true;
+                }
+            } catch (e) {
+                // Server not ready yet
+            }
+
+            if (!serverUp) {
+                await this.sleep(pollInterval);
+            }
+        }
+
+        if (serverUp) {
+            // Success - server is back
+            modal.classList.add('success');
+            title.textContent = 'Restart Complete';
+            message.textContent = 'Dashboard server has restarted successfully.';
+            status.textContent = 'Reloading page...';
+            progressBar.style.width = '100%';
+
+            // Brief pause to show success state, then reload
+            await this.sleep(800);
+            window.location.reload();
+        } else {
+            // Error - server didn't come back
+            modal.classList.add('error');
+            title.textContent = 'Restart Failed';
+            message.textContent = 'The server did not respond within the expected time. You may need to restart it manually.';
+            status.textContent = 'Server unreachable after 30 seconds';
+            progressBar.style.width = '100%';
+
+            // Allow closing after error - add a retry button dynamically
+            const body = modal.querySelector('.restart-modal-body');
+            const existingButtons = body.querySelector('.restart-actions');
+            if (existingButtons) existingButtons.remove();
+
+            const actions = document.createElement('div');
+            actions.className = 'restart-actions';
+            actions.style.cssText = 'margin-top: 16px; display: flex; gap: 8px; justify-content: center;';
+
+            const retryBtn = document.createElement('button');
+            retryBtn.textContent = 'Retry';
+            retryBtn.style.cssText = 'padding: 8px 16px; border-radius: 4px; border: none; background: var(--accent-color); color: white; cursor: pointer;';
+            retryBtn.onclick = () => {
+                actions.remove();
+                this.initiateRestart();
+            };
+
+            const closeBtn = document.createElement('button');
+            closeBtn.textContent = 'Close';
+            closeBtn.style.cssText = 'padding: 8px 16px; border-radius: 4px; border: 1px solid var(--border-color); background: transparent; color: var(--text-primary); cursor: pointer;';
+            closeBtn.onclick = () => {
+                modal.classList.remove('open', 'error');
+                actions.remove();
+            };
+
+            actions.appendChild(retryBtn);
+            actions.appendChild(closeBtn);
+            body.appendChild(actions);
+        }
+    },
+
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     },
 
     // ==================== Version ====================
