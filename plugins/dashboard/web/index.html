@@ -185,11 +185,26 @@
                                     <span>Claude SDK Terminal</span>
                                 </div>
                                 <div class="terminal-controls">
+                                    <div class="terminal-view-toggle">
+                                        <button class="view-toggle-btn active" data-view="conversation" title="Conversation View">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                            </svg>
+                                        </button>
+                                        <button class="view-toggle-btn" data-view="terminal" title="Terminal View">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                                <polyline points="4 17 10 11 4 5"></polyline>
+                                                <line x1="12" y1="19" x2="20" y2="19"></line>
+                                            </svg>
+                                        </button>
+                                    </div>
                                     <span id="terminalConnectionStatus" class="terminal-status connected">SDK Ready</span>
                                 </div>
                             </div>
-                            <!-- Terminal Output Area -->
-                            <div class="terminal-output" id="terminalOutput">
+                            <!-- Terminal Output Area (wrapper for both views) -->
+                            <div class="terminal-output-wrapper">
+                                <!-- Classic Terminal View -->
+                                <div class="terminal-output terminal-view hidden" id="terminalOutput">
                                 <pre class="terminal-welcome">
  ██████╗██╗       █████╗ ██╗   ██╗██████╗ ███████╗
 ██╔════╝██║      ██╔══██╗██║   ██║██╔══██╗██╔════╝
@@ -210,6 +225,21 @@
   Powered by Claude Agent SDK
   Type a message and press Enter to query Claude.
 </pre>
+                                </div>
+                                <!-- Conversation View (default) -->
+                                <div class="terminal-conversation conversation-container" id="terminalConversation">
+                                    <div class="terminal-conversation-welcome">
+                                        <div class="welcome-content">
+                                            <div class="welcome-icon">
+                                                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                                                </svg>
+                                            </div>
+                                            <h3>Claude SDK Terminal</h3>
+                                            <p>Type a message and press Enter to start a conversation with Claude.</p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                             <!-- Terminal Input Area -->
                             <div class="terminal-input-area">
@@ -562,6 +592,7 @@
     <script src="js/token-meter.js"></script>
     <script src="js/conversation.js"></script>
     <script src="js/timeline.js"></script>
+    <script src="js/terminal-conversation.js"></script>
     <script src="js/terminal.js"></script>
 </body>
 </html>
