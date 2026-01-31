@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import queue
 import sys
 import threading
 from flask import Blueprint, request, jsonify, Response
@@ -88,7 +89,7 @@ def get_sdk_bridge():
 
 @input_bp.route('/api/input/sdk/query', methods=['POST'])
 def sdk_query():
-    """Send a prompt to Claude via the SDK and return a streaming response.
+    """Send a prompt to Claude via the SDK and return a TRUE streaming response.
 
     Request Body (JSON):
         {
@@ -96,7 +97,7 @@ def sdk_query():
         }
 
     Returns:
-        SSE stream of Claude's response
+        SSE stream of Claude's response (real-time, not batched)
     """
     bridge = get_sdk_bridge()
     if not bridge:
@@ -110,27 +111,47 @@ def sdk_query():
 
     prompt = data['prompt']
 
-    # Collect all messages first to avoid asyncio cancel scope issues
-    async def collect_messages():
-        messages = []
-        try:
-            async for msg in bridge.stream_query(prompt):
-                messages.append(msg)
-        except Exception as e:
-            messages.append({'type': 'error', 'content': str(e)})
-        return messages
+    # Use a thread-safe queue to bridge async SDK to sync Flask SSE
+    # This enables TRUE streaming - messages sent as they arrive!
+    msg_queue = queue.Queue()
 
-    # Run async collection
-    try:
-        messages = asyncio.run(collect_messages())
-    except Exception as e:
-        return jsonify({'error': f'SDK error: {str(e)}'}), 500
+    def run_async_in_thread():
+        """Run the async SDK query in a separate thread."""
+        async def stream_to_queue():
+            try:
+                async for msg in bridge.stream_query(prompt):
+                    msg_queue.put(msg)
+            except Exception as e:
+                msg_queue.put({'type': 'error', 'content': str(e)})
+            finally:
+                msg_queue.put(None)  # Signal completion
+
+        # Create a new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            loop.run_until_complete(stream_to_queue())
+        finally:
+            loop.close()
+
+    # Start async collection in background thread
+    thread = threading.Thread(target=run_async_in_thread, daemon=True)
+    thread.start()
 
     def generate():
-        """Generate SSE events from collected messages."""
-        for msg in messages:
-            sse_data = json.dumps(msg)
-            yield f"event: message\ndata: {sse_data}\n\n"
+        """Generate SSE events from queue AS THEY ARRIVE (true streaming)."""
+        while True:
+            try:
+                # Block until a message arrives (with timeout for safety)
+                msg = msg_queue.get(timeout=300)  # 5 minute timeout
+                if msg is None:
+                    # Completion signal
+                    break
+                sse_data = json.dumps(msg)
+                yield f"data: {sse_data}\n\n"
+            except queue.Empty:
+                # Timeout - send keepalive and continue
+                yield ": keepalive\n\n"
         yield "event: done\ndata: {}\n\n"
 
     return Response(
