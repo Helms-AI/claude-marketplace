@@ -6139,6 +6139,79 @@ details.tool-call-card[open] .tool-expand-icon {
 /* ===== Terminal Conversation View ===== */
 
 /* View Toggle Buttons */
+/* Model Selector (Phase 1.1) */
+.terminal-model-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: var(--spacing-sm);
+}
+
+.terminal-model-selector .model-label {
+    font-size: var(--font-size-xs);
+    color: var(--term-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.terminal-model-selector .model-select {
+    background: var(--term-bg);
+    color: var(--term-text);
+    border: 1px solid var(--term-border);
+    border-radius: var(--radius-sm);
+    padding: 4px 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: var(--font-size-xs);
+    cursor: pointer;
+    min-width: 80px;
+}
+
+.terminal-model-selector .model-select:focus {
+    outline: none;
+    border-color: var(--term-accent);
+    box-shadow: 0 0 4px rgba(189, 147, 249, 0.3);
+}
+
+.terminal-model-selector .model-select option {
+    background: var(--term-header-bg);
+    color: var(--term-text);
+}
+
+/* Cost Display (Phase 1.3) */
+.terminal-cost-display {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--font-size-xs);
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--term-text-dim);
+    padding: 4px 8px;
+    background: var(--term-bg);
+    border: 1px solid var(--term-border);
+    border-radius: var(--radius-sm);
+    margin-right: var(--spacing-sm);
+}
+
+.terminal-cost-display.has-cost {
+    display: flex;
+}
+
+.terminal-cost-display .cost-label {
+    color: var(--term-text-dim);
+    text-transform: uppercase;
+    font-size: 10px;
+}
+
+.terminal-cost-display .cost-value {
+    color: var(--term-accent);
+    font-weight: 500;
+}
+
+.terminal-cost-display .cost-separator {
+    color: var(--term-border);
+    margin: 0 2px;
+}
+
 .terminal-view-toggle {
     display: flex;
     gap: 4px;
@@ -6429,46 +6502,39 @@ details.tool-call-card[open] .tool-expand-icon {
 }
 
 /* Streaming Indicator in Terminal Conversation */
+/* Minimal design: tool cards above, status line below, no avatar */
 .terminal-streaming-indicator {
     display: flex;
-    gap: var(--spacing-md);
-    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    margin-left: 48px; /* Align with message content (avatar width + gap) */
+    padding: var(--spacing-sm) 0;
+}
+
+/* Tool cards container - appears above status line */
+.terminal-streaming-indicator .streaming-tool-cards {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+/* Simple status line at the bottom */
+.terminal-streaming-indicator .streaming-status-line {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    color: var(--term-text-dim);
     animation: pulse 1.5s ease-in-out infinite;
 }
 
-.terminal-streaming-indicator .message-avatar {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: var(--font-size-sm);
-    font-weight: 600;
-    flex-shrink: 0;
-    background: var(--domain-color, var(--term-accent));
-    color: var(--term-bg);
-}
-
 .terminal-streaming-indicator .streaming-spinner {
-    font-family: var(--font-mono);
-    animation: none; /* Override inherited animations */
-}
-
-.terminal-streaming-indicator .message-body {
-    flex: 1;
-}
-
-.terminal-streaming-indicator .streaming-status-content {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    padding: var(--spacing-sm) 0;
+    color: var(--term-accent);
 }
 
 .terminal-streaming-indicator .streaming-status {
     font-size: var(--font-size-sm);
-    color: var(--term-text-dim);
 }
 
 .terminal-streaming-indicator .streaming-status.status-thinking {
@@ -6483,10 +6549,15 @@ details.tool-call-card[open] .tool-expand-icon {
     color: var(--term-success);
 }
 
+.terminal-streaming-indicator .streaming-status.status-agent {
+    color: var(--term-info, #60a5fa);
+}
+
 .terminal-streaming-indicator .streaming-time {
     font-family: var(--font-mono);
     font-size: var(--font-size-xs);
     color: var(--term-text-dim);
+    opacity: 0.7;
 }
 
 /* Tools List in Streaming Indicator */
@@ -6553,6 +6624,96 @@ details.tool-call-card[open] .tool-expand-icon {
     margin-left: 4px;
 }
 
+/* Streaming Tool Preview - Semantic compact cards from ToolRendererRegistry */
+.streaming-tool-preview {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    background: color-mix(in oklch, var(--tool-color, #6366f1) 8%, transparent);
+    border-left: 2px solid var(--tool-color, #6366f1);
+    font-size: var(--font-size-xs);
+    font-family: var(--font-mono);
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.streaming-tool-preview .preview-icon {
+    flex-shrink: 0;
+    color: var(--tool-color, #6366f1);
+    font-size: 12px;
+    line-height: 1;
+}
+
+.streaming-tool-preview .preview-icon svg {
+    width: 12px;
+    height: 12px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+}
+
+.streaming-tool-preview .preview-text {
+    color: var(--term-text, #f4f4f5);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.streaming-tool-preview .preview-badge {
+    flex-shrink: 0;
+    font-size: 9px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    background: color-mix(in oklch, var(--tool-color, #6366f1) 20%, transparent);
+    color: var(--tool-color, #6366f1);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.streaming-tool-preview .preview-badge-accent {
+    background: var(--tool-color, #6366f1);
+    color: white;
+}
+
+/* Tool-specific preview colors */
+.streaming-tool-bash { --tool-color: #4ade80; }
+.streaming-tool-file { --tool-color: #22d3ee; }
+.streaming-tool-search { --tool-color: #facc15; }
+.streaming-tool-web { --tool-color: #60a5fa; }
+.streaming-tool-task { --tool-color: #a78bfa; }
+.streaming-tool-skill { --tool-color: #f472b6; }
+.streaming-tool-mode { --tool-color: #fbbf24; }
+.streaming-tool-question { --tool-color: #6e6e73; }
+
+/* Integration with streaming-tool status wrapper */
+.streaming-tool .streaming-tool-preview {
+    padding: 0;
+    background: none;
+    border-left: none;
+}
+
+.streaming-tool.tool-running .streaming-tool-preview {
+    animation: preview-pulse 1.5s ease-in-out infinite;
+}
+
+.streaming-tool.tool-complete .streaming-tool-preview {
+    opacity: 0.8;
+}
+
+.streaming-tool.tool-error .streaming-tool-preview {
+    opacity: 0.7;
+}
+
+@keyframes preview-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
 @keyframes tool-pulse {
     0%, 100% {
         box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.4);
@@ -6570,6 +6731,92 @@ details.tool-call-card[open] .tool-expand-icon {
 @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
+}
+
+/* Extended Thinking Block (Phase 1.4) */
+.thinking-block {
+    margin: var(--spacing-md) 0;
+    margin-left: 44px; /* Align with message content */
+    border: 1px solid var(--term-border);
+    border-radius: var(--radius-md);
+    background: rgba(139, 92, 246, 0.05);
+    overflow: hidden;
+    transition: all var(--transition-normal);
+}
+
+.thinking-block.complete {
+    border-color: rgba(139, 92, 246, 0.3);
+}
+
+.thinking-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: rgba(139, 92, 246, 0.1);
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--transition-fast);
+}
+
+.thinking-header:hover {
+    background: rgba(139, 92, 246, 0.15);
+}
+
+.thinking-icon {
+    font-size: var(--font-size-md);
+}
+
+.thinking-label {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--term-accent);
+    flex: 1;
+}
+
+.thinking-toggle {
+    font-size: var(--font-size-xs);
+    color: var(--term-text-dim);
+    transition: transform var(--transition-fast);
+}
+
+.thinking-content {
+    padding: var(--spacing-md);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    line-height: 1.6;
+    color: var(--term-text-dim);
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.thinking-block.collapsed .thinking-content {
+    display: none;
+}
+
+.thinking-block.collapsed .thinking-toggle {
+    transform: rotate(0deg);
+}
+
+.thinking-block:not(.collapsed) .thinking-toggle {
+    transform: rotate(90deg);
+}
+
+/* Scrollbar for thinking content */
+.thinking-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.thinking-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.thinking-content::-webkit-scrollbar-thumb {
+    background: var(--term-accent);
+    border-radius: 3px;
+    opacity: 0.5;
 }
 
 /* Avatar pulse animation for terminal */
@@ -6616,4 +6863,365 @@ details.tool-call-card[open] .tool-expand-icon {
     opacity: 0;
     transition: opacity 0.2s ease;
     margin-left: var(--spacing-sm);
+}
+
+/* ============================================================================
+   Phase 4: Advanced Features & Polish
+   ============================================================================ */
+
+/* Retry Status Indicator (Phase 4.1) */
+.streaming-status.status-retry {
+    color: var(--term-warning, #f59e0b);
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.terminal-streaming-indicator.retry-mode {
+    border-left: 3px solid var(--term-warning, #f59e0b);
+    padding-left: var(--spacing-md);
+}
+
+.terminal-streaming-indicator.retry-mode .streaming-status-line {
+    animation: none;
+}
+
+.terminal-streaming-indicator.retry-mode .streaming-spinner {
+    color: var(--term-warning, #f59e0b);
+    animation: rotate 1s linear infinite;
+}
+
+.terminal-streaming-indicator .error-code {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--term-error, #f87171);
+    background: rgba(248, 113, 113, 0.1);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    margin-left: auto;
+}
+
+/* ============================================================================
+   Real-Time Streaming Message Styles
+   ============================================================================ */
+
+/* Streaming message container */
+.streaming-message {
+    position: relative;
+}
+
+.streaming-message .streaming-text {
+    min-height: 1.5em;
+}
+
+.streaming-message .streaming-tools {
+    margin-top: var(--spacing-sm);
+}
+
+.streaming-message .streaming-tools:empty {
+    display: none;
+}
+
+/* Blinking cursor at end of streaming text */
+.streaming-cursor {
+    display: inline;
+    color: var(--term-accent, #6366f1);
+    animation: cursor-blink 1s step-end infinite;
+    font-weight: 300;
+    margin-left: 2px;
+}
+
+@keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* Pulsing avatar indicator during streaming */
+.streaming-pulse {
+    position: absolute;
+    inset: -2px;
+    border-radius: 50%;
+    border: 2px solid var(--domain-color, var(--term-accent, #6366f1));
+    animation: avatar-stream-pulse 1.5s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes avatar-stream-pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+    50% {
+        transform: scale(1.15);
+        opacity: 0;
+    }
+}
+
+/* Hide cursor when message is finalized */
+.chat-message:not(.streaming-message) .streaming-cursor {
+    display: none;
+}
+
+/* Smooth text appearance */
+.streaming-message .streaming-text p,
+.streaming-message .streaming-text li,
+.streaming-message .streaming-text pre,
+.streaming-message .streaming-text code {
+    animation: text-fade-in 0.15s ease-out;
+}
+
+@keyframes text-fade-in {
+    from { opacity: 0.7; }
+    to { opacity: 1; }
+}
+
+/* Cost Display (Phase 1.3 polish) */
+.terminal-cost-display {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    color: var(--term-text-dim);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    transition: all var(--transition-fast);
+}
+
+.terminal-cost-display.has-cost {
+    background: rgba(74, 222, 128, 0.1);
+    color: var(--term-success, #4ade80);
+}
+
+.terminal-cost-display .cost-label {
+    color: var(--term-text-dim);
+}
+
+.terminal-cost-display .cost-value {
+    font-weight: 500;
+}
+
+.terminal-cost-display .cost-separator {
+    color: var(--term-border);
+    margin: 0 var(--spacing-xs);
+}
+
+/* Session Indicator (Phase 3.2) */
+.terminal-session-indicator {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    font-size: var(--font-size-xs);
+    color: var(--term-text-dim);
+    padding: 2px 6px;
+    border-radius: var(--radius-sm);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.terminal-session-indicator .session-icon {
+    font-size: 10px;
+}
+
+.terminal-session-indicator .session-id {
+    font-family: var(--font-mono);
+    color: var(--term-accent);
+}
+
+/* Enhanced thinking block animations */
+.thinking-block {
+    animation: thinking-fade-in 0.3s ease-out;
+}
+
+@keyframes thinking-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.thinking-block:not(.collapsed) .thinking-content {
+    animation: thinking-expand 0.2s ease-out;
+}
+
+@keyframes thinking-expand {
+    from {
+        opacity: 0;
+        max-height: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 400px;
+    }
+}
+
+/* Tool progress enhanced animations */
+.streaming-tool {
+    animation: tool-appear 0.2s ease-out;
+}
+
+@keyframes tool-appear {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.streaming-tool.tool-complete {
+    animation: tool-complete 0.3s ease-out;
+}
+
+@keyframes tool-complete {
+    0% {
+        background: rgba(74, 222, 128, 0.3);
+    }
+    100% {
+        background: rgba(74, 222, 128, 0.05);
+    }
+}
+
+/* Error message styling (Phase 4.1) */
+.error-message-card {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: rgba(248, 113, 113, 0.1);
+    border: 1px solid rgba(248, 113, 113, 0.3);
+    border-radius: var(--radius-md);
+    margin: var(--spacing-md) 0;
+}
+
+.error-message-card .error-icon {
+    color: var(--term-error, #f87171);
+    font-size: var(--font-size-lg);
+    flex-shrink: 0;
+}
+
+.error-message-card .error-content {
+    flex: 1;
+}
+
+.error-message-card .error-title {
+    font-weight: 600;
+    color: var(--term-error, #f87171);
+    margin-bottom: var(--spacing-xs);
+}
+
+.error-message-card .error-details {
+    font-size: var(--font-size-sm);
+    color: var(--term-text-dim);
+    font-family: var(--font-mono);
+}
+
+.error-message-card .error-code {
+    display: inline-block;
+    margin-top: var(--spacing-xs);
+    padding: 2px 6px;
+    background: rgba(248, 113, 113, 0.2);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xs);
+    color: var(--term-error);
+}
+
+.error-message-card.retryable {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.error-message-card.retryable .error-icon,
+.error-message-card.retryable .error-title {
+    color: var(--term-warning, #f59e0b);
+}
+
+/* Subagent context styling enhancements */
+.subagent-context {
+    position: relative;
+    padding: var(--spacing-sm) 0;
+    margin: var(--spacing-md) 0;
+}
+
+.subagent-context-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(
+        to right,
+        transparent,
+        var(--agent-color, var(--term-border)),
+        transparent
+    );
+}
+
+.subagent-context-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    padding: 4px 12px;
+    font-size: var(--font-size-xs);
+    color: var(--agent-color, var(--term-text-dim));
+    background: var(--term-bg);
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+}
+
+.subagent-context-label svg {
+    opacity: 0.7;
+}
+
+.subagent-context-start .subagent-context-label {
+    animation: context-start 0.3s ease-out;
+}
+
+@keyframes context-start {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.subagent-context-end .subagent-context-label {
+    animation: context-end 0.3s ease-out;
+}
+
+@keyframes context-end {
+    from {
+        opacity: 0;
+        transform: translateX(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* MCP Tool indicator (Phase 3.1) */
+.mcp-tool-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px;
+    font-size: var(--font-size-xs);
+    color: var(--term-accent);
+    background: rgba(139, 92, 246, 0.1);
+    border-radius: var(--radius-sm);
+    margin-left: var(--spacing-xs);
+}
+
+.mcp-tool-indicator::before {
+    content: '⚡';
+    font-size: 10px;
 }

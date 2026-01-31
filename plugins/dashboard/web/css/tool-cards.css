@@ -397,6 +397,263 @@ details.tool-card > summary.tool-card-header:focus-visible {
 
 /* ===== Legacy Compatibility ===== */
 /* Keep existing tool-call-card styles for backward compatibility */
+/* ===== Interactive Question Styles ===== */
+
+/* Interactive question card - auto-open */
+.tool-card-question-interactive {
+    --tool-color: var(--domain-devops);
+}
+
+.tool-card-question-interactive[open] {
+    border-color: var(--tool-color);
+}
+
+.tool-card-body-interactive {
+    padding: var(--spacing-md);
+}
+
+/* Interactive question item */
+.tool-question-item-interactive {
+    background: var(--bg-primary);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+    margin-bottom: var(--spacing-md);
+    border: 1px solid var(--border-color);
+}
+
+.tool-question-item-interactive:last-of-type {
+    margin-bottom: var(--spacing-md);
+}
+
+/* Interactive options container */
+.tool-question-options-interactive {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+/* Interactive option - clickable label */
+.tool-question-option-interactive {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.tool-question-option-interactive:hover {
+    border-color: color-mix(in srgb, var(--tool-color) 50%, var(--border-color));
+    background: var(--bg-hover);
+}
+
+/* Hide the actual input */
+.tool-question-input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Custom checkbox/radio visual */
+.option-checkbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    transition: all var(--transition-fast);
+    margin-top: 2px;
+}
+
+/* Radio button style */
+.tool-question-input[type="radio"] ~ .option-checkbox {
+    border-radius: 50%;
+}
+
+.option-radio-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+    transition: background var(--transition-fast);
+}
+
+/* Checked states */
+.tool-question-input:checked ~ .option-checkbox {
+    border-color: var(--tool-color);
+    background: var(--tool-color);
+}
+
+.tool-question-input:checked ~ .option-checkbox svg {
+    color: white;
+}
+
+.tool-question-input[type="radio"]:checked ~ .option-checkbox .option-radio-dot {
+    background: white;
+}
+
+/* Selected option highlight */
+.tool-question-input:checked ~ .option-content .option-label {
+    color: var(--tool-color);
+    font-weight: 600;
+}
+
+/* Focus states for accessibility */
+.tool-question-option-interactive:focus-within {
+    outline: 2px solid var(--accent-color);
+    outline-offset: 2px;
+}
+
+/* Option content */
+.option-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.tool-question-option-interactive .option-label {
+    font-weight: 500;
+    color: var(--text-primary);
+    transition: color var(--transition-fast);
+}
+
+.tool-question-option-interactive .option-desc {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* "Other" option styling */
+.tool-question-option-other {
+    border-style: dashed;
+}
+
+.tool-question-other-input {
+    margin-top: var(--spacing-sm);
+    margin-left: 28px;
+}
+
+.tool-question-text-input {
+    width: 100%;
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-family: var(--font-sans);
+    font-size: var(--font-size-sm);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    transition: border-color var(--transition-fast);
+}
+
+.tool-question-text-input:focus {
+    outline: none;
+    border-color: var(--tool-color);
+}
+
+.tool-question-text-input::placeholder {
+    color: var(--text-muted);
+}
+
+/* Submit button and actions */
+.tool-question-actions {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: var(--spacing-md);
+    border-top: 1px solid var(--border-color);
+    margin-top: var(--spacing-sm);
+}
+
+.tool-question-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    font-family: var(--font-sans);
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: white;
+    background: var(--accent-color);
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.tool-question-submit:hover:not(:disabled) {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+}
+
+.tool-question-submit:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.tool-question-submit:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.tool-question-submit svg {
+    width: 14px;
+    height: 14px;
+}
+
+/* Submitted state */
+.tool-question-submit.submitted {
+    background: var(--success-color);
+    cursor: default;
+}
+
+.tool-card-question-submitted {
+    opacity: 0.8;
+}
+
+.tool-card-question-submitted .tool-question-option-interactive {
+    cursor: default;
+    pointer-events: none;
+}
+
+.tool-card-question-submitted .tool-question-option-interactive:hover {
+    border-color: var(--border-color);
+    background: var(--bg-secondary);
+}
+
+/* Disabled inputs in submitted state */
+.tool-card-question-submitted .tool-question-input:disabled ~ .option-checkbox {
+    opacity: 0.7;
+}
+
+.tool-card-question-submitted .tool-question-text-input:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Dark theme adjustments */
+[data-theme="dark"] .tool-question-option-interactive {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .tool-question-item-interactive {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .option-checkbox {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .tool-question-text-input {
+    background: var(--bg-tertiary);
+}
+
+/* ===== Legacy Compatibility ===== */
+/* Keep existing tool-call-card styles for backward compatibility */
 .tool-call-card {
     --tool-color: var(--text-muted);
 }
