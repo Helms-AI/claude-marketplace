@@ -248,6 +248,8 @@ class MarketplaceSDKBridge:
             plugins=self.plugins,
             agents=self.agents,
             setting_sources=["user", "project"],
+            # CRITICAL: Enable streaming events for lifecycle visibility
+            include_partial_messages=True,
             allowed_tools=[
                 # Core tools
                 "Read", "Write", "Edit", "Bash",
@@ -293,75 +295,199 @@ class MarketplaceSDKBridge:
             }
 
     def _message_to_dict(self, message: Any) -> dict:
-        """Convert SDK message to dictionary."""
+        """Convert SDK message to dictionary.
+
+        Handles all SDK message types including:
+        - AssistantMessage: Complete assistant responses with content blocks
+        - UserMessage: User input and tool results
+        - SystemMessage: System metadata
+        - ResultMessage: Final result with cost/usage
+        - StreamEvent: Real-time streaming events (when include_partial_messages=True)
+        """
         msg_type = getattr(message, 'type', None)
+        msg_type_str = str(msg_type) if msg_type else ''
 
-        # Debug: print message structure
-        print(f"[SDK Bridge] Message type: {msg_type}, attrs: {dir(message)}", file=sys.stderr)
+        # Debug: print message structure for development
+        print(f"[SDK Bridge] Message type: {msg_type}, class: {type(message).__name__}", file=sys.stderr)
 
-        # Handle different message types
-        if msg_type == 'assistant' or str(msg_type) == 'MessageType.ASSISTANT':
-            # Extract text from content blocks
+        # Handle StreamEvent (partial messages during streaming)
+        # These provide real-time lifecycle visibility
+        if type(message).__name__ == 'StreamEvent' or 'StreamEvent' in msg_type_str:
+            event = getattr(message, 'event', {})
+            event_type = event.get('type', '') if isinstance(event, dict) else ''
+            parent_tool_use_id = getattr(message, 'parent_tool_use_id', None)
+
+            # Extract event details
+            result = {
+                "type": "stream_event",
+                "event_type": event_type,
+                "parent_tool_use_id": parent_tool_use_id,
+                "session_id": getattr(message, 'session_id', None),
+            }
+
+            # Handle specific stream event types
+            if event_type == 'content_block_start':
+                content_block = event.get('content_block', {})
+                block_type = content_block.get('type', '')
+                result['block_type'] = block_type
+                result['block_index'] = event.get('index', 0)
+
+                if block_type == 'tool_use':
+                    result['tool_name'] = content_block.get('name', '')
+                    result['tool_id'] = content_block.get('id', '')
+                elif block_type == 'thinking':
+                    result['thinking_start'] = True
+
+            elif event_type == 'content_block_delta':
+                delta = event.get('delta', {})
+                delta_type = delta.get('type', '')
+                result['delta_type'] = delta_type
+                result['block_index'] = event.get('index', 0)
+
+                if delta_type == 'text_delta':
+                    result['text'] = delta.get('text', '')
+                elif delta_type == 'input_json_delta':
+                    result['partial_json'] = delta.get('partial_json', '')
+                elif delta_type == 'thinking_delta':
+                    result['thinking'] = delta.get('thinking', '')
+
+            elif event_type == 'content_block_stop':
+                result['block_index'] = event.get('index', 0)
+                result['block_complete'] = True
+
+            elif event_type == 'message_start':
+                msg = event.get('message', {})
+                result['model'] = msg.get('model', '')
+                result['message_id'] = msg.get('id', '')
+
+            elif event_type == 'message_delta':
+                delta = event.get('delta', {})
+                result['stop_reason'] = delta.get('stop_reason', '')
+                usage = event.get('usage', {})
+                if usage:
+                    result['usage'] = usage
+
+            elif event_type == 'message_stop':
+                result['message_complete'] = True
+
+            return result
+
+        # Handle AssistantMessage (complete responses)
+        if msg_type == 'assistant' or 'ASSISTANT' in msg_type_str:
             content = getattr(message, 'content', [])
             text_parts = []
             tool_uses = []
+            thinking_blocks = []
 
             if isinstance(content, list):
                 for block in content:
+                    block_type = getattr(block, 'type', None) or type(block).__name__
+
                     if hasattr(block, 'text'):
                         text_parts.append(block.text)
-                    elif hasattr(block, 'type') and block.type == 'tool_use':
+                    elif block_type == 'tool_use' or 'ToolUse' in str(type(block)):
                         tool_uses.append({
+                            'id': getattr(block, 'id', None),
                             'name': getattr(block, 'name', None),
                             'input': getattr(block, 'input', None),
+                        })
+                    elif block_type == 'thinking' or hasattr(block, 'thinking'):
+                        thinking_blocks.append({
+                            'thinking': getattr(block, 'thinking', ''),
+                            'signature': getattr(block, 'signature', ''),
                         })
 
             return {
                 "type": "assistant",
-                "content": '\n'.join(text_parts) if text_parts else str(content),
-                "tool_uses": tool_uses if tool_uses else None
+                "content": '\n'.join(text_parts) if text_parts else '',
+                "tool_uses": tool_uses if tool_uses else None,
+                "thinking": thinking_blocks if thinking_blocks else None,
+                "model": getattr(message, 'model', None)
             }
 
-        elif msg_type == 'user':
+        # Handle UserMessage (user input and tool results)
+        elif msg_type == 'user' or 'USER' in msg_type_str:
             content = getattr(message, 'content', [])
             if isinstance(content, list):
                 # Tool results
                 results = []
+                text_parts = []
                 for block in content:
-                    if hasattr(block, 'type') and block.type == 'tool_result':
+                    block_type = getattr(block, 'type', None) or type(block).__name__
+
+                    if block_type == 'tool_result' or 'ToolResult' in str(type(block)):
+                        result_content = getattr(block, 'content', None)
+                        # Handle content that may be a list of blocks
+                        if isinstance(result_content, list):
+                            result_text = []
+                            for item in result_content:
+                                if hasattr(item, 'text'):
+                                    result_text.append(item.text)
+                                elif isinstance(item, dict) and 'text' in item:
+                                    result_text.append(item['text'])
+                            result_content = '\n'.join(result_text)
+
                         results.append({
                             'tool_use_id': getattr(block, 'tool_use_id', None),
-                            'content': getattr(block, 'content', None),
+                            'content': str(result_content) if result_content else None,
                             'is_error': getattr(block, 'is_error', False),
                         })
+                    elif hasattr(block, 'text'):
+                        text_parts.append(block.text)
+
                 if results:
-                    return {"type": "tool_result", "results": results}
+                    return {
+                        "type": "tool_result",
+                        "results": results,
+                        "text": '\n'.join(text_parts) if text_parts else None
+                    }
 
             return {"type": "user", "content": str(content)}
 
-        elif msg_type == 'system':
+        # Handle SystemMessage
+        elif msg_type == 'system' or 'SYSTEM' in msg_type_str:
             return {
                 "type": "system",
                 "subtype": getattr(message, 'subtype', None),
                 "data": getattr(message, 'data', None)
             }
 
-        elif msg_type == 'result':
+        # Handle ResultMessage (final result with cost info)
+        elif msg_type == 'result' or type(message).__name__ == 'ResultMessage':
             return {
                 "type": "result",
+                "subtype": getattr(message, 'subtype', None),
                 "result": getattr(message, 'result', None),
-                "subagent": getattr(message, 'subagent', None)
+                "is_error": getattr(message, 'is_error', False),
+                "num_turns": getattr(message, 'num_turns', None),
+                "duration_ms": getattr(message, 'duration_ms', None),
+                "duration_api_ms": getattr(message, 'duration_api_ms', None),
+                "total_cost_usd": getattr(message, 'total_cost_usd', None),
+                "session_id": getattr(message, 'session_id', None),
+                "usage": getattr(message, 'usage', None),
             }
 
-        # Fallback for unknown types
+        # Fallback for unknown types - still try to extract useful info
         result = {"type": str(msg_type) if msg_type else "unknown"}
 
         if hasattr(message, 'content'):
             content = message.content
             if isinstance(content, list):
-                # Try to extract text
-                texts = [getattr(b, 'text', str(b)) for b in content]
-                result['content'] = '\n'.join(texts)
+                texts = []
+                tool_uses = []
+                for b in content:
+                    if hasattr(b, 'text'):
+                        texts.append(b.text)
+                    elif hasattr(b, 'name') and hasattr(b, 'input'):
+                        tool_uses.append({
+                            'name': b.name,
+                            'input': b.input,
+                            'id': getattr(b, 'id', None)
+                        })
+                if texts:
+                    result['content'] = '\n'.join(texts)
+                if tool_uses:
+                    result['tool_uses'] = tool_uses
             else:
                 result['content'] = str(content)
 
