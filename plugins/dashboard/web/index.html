@@ -11,6 +11,25 @@
     <link rel="stylesheet" href="css/tool-cards.css">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- Import Map for ES Modules (Lit Web Components + Preact Signals) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "lit": "https://cdn.jsdelivr.net/npm/lit@3/+esm",
+            "lit/": "https://cdn.jsdelivr.net/npm/lit@3/",
+            "lit/decorators.js": "https://cdn.jsdelivr.net/npm/lit@3/decorators.js/+esm",
+            "lit/directives/repeat.js": "https://cdn.jsdelivr.net/npm/lit@3/directives/repeat.js/+esm",
+            "lit/directives/class-map.js": "https://cdn.jsdelivr.net/npm/lit@3/directives/class-map.js/+esm",
+            "lit/directives/style-map.js": "https://cdn.jsdelivr.net/npm/lit@3/directives/style-map.js/+esm",
+            "lit/directives/when.js": "https://cdn.jsdelivr.net/npm/lit@3/directives/when.js/+esm",
+            "lit/directives/guard.js": "https://cdn.jsdelivr.net/npm/lit@3/directives/guard.js/+esm",
+            "lit/directives/unsafe-html.js": "https://cdn.jsdelivr.net/npm/lit@3/directives/unsafe-html.js/+esm",
+            "@preact/signals-core": "https://cdn.jsdelivr.net/npm/@preact/signals-core@1/+esm",
+            "@lit-labs/signals": "https://cdn.jsdelivr.net/npm/@lit-labs/signals@1/+esm"
+        }
+    }
+    </script>
 </head>
 <body>
     <div class="app">
@@ -628,5 +647,8 @@
     <script src="js/conversation-storage.js"></script>
     <script src="js/terminal-conversation.js"></script>
     <script src="js/terminal.js"></script>
+
+    <!-- Lit Web Components (ES Modules) -->
+    <script type="module" src="js/app.js"></script>
 </body>
 </html>

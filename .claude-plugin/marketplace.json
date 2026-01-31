@@ -285,7 +285,7 @@
       "name": "dashboard",
       "source": "./plugins/dashboard",
       "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration. Features agent explorer, skill browser, changeset viewer with live SSE, inline subagent conversations, D3.js domain graph with agent clustering and live activity pulse, handoff timeline, semantic tool renderers, extended thinking indicator, error stream panel, token usage meter with cost tracking, Claude Agent SDK integration with rich conversation view (tool cards, avatars, markdown rendering, full lifecycle event streaming), model selection, max turns/budget safety limits, security hooks, interrupt support, file checkpointing/undo, session management (create/continue/fork) with IndexedDB-based session persistence across browser refreshes, custom MCP tools for marketplace operations, retry logic with exponential backoff, beta features support, sandbox configuration, interactive AskUserQuestion handling (selectable options, multi-select, other text input, form submission to continue conversation with session continuity), and 58 marketplace agents across 11 domains.",
-      "version": "2.22.11",
+      "version": "2.23.0",
       "author": {
         "name": "Platform Team"
       },
