@@ -1,0 +1,406 @@
+/* Tool Cards CSS - Semantic, conversation-centric tool visualization */
+
+/* ===== Tool Card Base Styles ===== */
+.tool-card {
+    --tool-color: var(--text-muted);
+    margin: var(--spacing-xs) 0;
+    border-radius: var(--radius-md);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--tool-color);
+    font-size: var(--font-size-sm);
+    overflow: hidden;
+}
+
+.tool-card-simple {
+    padding: var(--spacing-sm) var(--spacing-md);
+}
+
+.tool-card-expandable,
+details.tool-card {
+    /* Expandable cards don't have padding on container */
+}
+
+/* ===== Tool Card Header ===== */
+.tool-card-header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    cursor: default;
+    flex-wrap: wrap;
+}
+
+.tool-card-simple .tool-card-header {
+    padding: 0;
+}
+
+details.tool-card > summary.tool-card-header {
+    cursor: pointer;
+    list-style: none;
+}
+
+details.tool-card > summary.tool-card-header::-webkit-details-marker {
+    display: none;
+}
+
+.tool-card-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--tool-color);
+    flex-shrink: 0;
+}
+
+.tool-card-icon svg {
+    width: 14px;
+    height: 14px;
+}
+
+.tool-card-primary {
+    flex: 1;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.tool-card-expand {
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+    margin-left: auto;
+    transition: transform var(--transition-fast);
+}
+
+details.tool-card[open] > summary .tool-card-expand {
+    transform: rotate(180deg);
+}
+
+/* ===== Tool Card Secondary (Preview) ===== */
+.tool-card-secondary {
+    padding: var(--spacing-xs) var(--spacing-md);
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    border-top: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+}
+
+.tool-card-simple .tool-card-secondary {
+    margin-top: var(--spacing-xs);
+    padding: var(--spacing-xs) 0 0 0;
+    border-top: none;
+    background: transparent;
+}
+
+/* ===== Tool Card Body (Expandable Content) ===== */
+.tool-card-body {
+    padding: var(--spacing-sm) var(--spacing-md);
+    background: var(--bg-tertiary);
+    border-top: 1px solid var(--border-color);
+    font-size: var(--font-size-xs);
+}
+
+.tool-card-body pre {
+    margin: 0;
+    padding: var(--spacing-sm);
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-x: auto;
+}
+
+/* ===== Badge Styles ===== */
+.tool-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    font-size: var(--font-size-xs);
+    font-family: var(--font-mono);
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+}
+
+.tool-badge-default {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+}
+
+.tool-badge-accent {
+    background: color-mix(in srgb, var(--tool-color) 15%, transparent);
+    color: var(--tool-color);
+}
+
+.tool-badge-muted {
+    background: var(--bg-tertiary);
+    color: var(--text-muted);
+}
+
+/* ===== Inline Diff Styles ===== */
+.tool-inline-diff {
+    font-family: var(--font-mono);
+    font-size: var(--font-size-xs);
+    line-height: 1.5;
+}
+
+.diff-line {
+    padding: 2px var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.diff-line.diff-remove {
+    background: rgba(248, 113, 113, 0.15);
+    color: var(--error-color);
+}
+
+.diff-line.diff-add {
+    background: rgba(74, 222, 128, 0.15);
+    color: var(--success-color);
+}
+
+[data-theme="dark"] .diff-line.diff-remove {
+    background: rgba(248, 113, 113, 0.1);
+}
+
+[data-theme="dark"] .diff-line.diff-add {
+    background: rgba(74, 222, 128, 0.1);
+}
+
+/* ===== Tool-Specific Styles ===== */
+
+/* Bash */
+.tool-card-bash .tool-bash-command {
+    color: var(--success-color);
+}
+
+.tool-card-bash .tool-bash-description {
+    font-style: italic;
+}
+
+.tool-bash-full-command {
+    color: var(--text-primary);
+}
+
+/* File Operations */
+.tool-file-path {
+    color: var(--domain-data);
+}
+
+.tool-content-preview {
+    font-family: var(--font-mono);
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.tool-edit-full {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.tool-edit-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.tool-edit-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+}
+
+.tool-edit-content {
+    margin: 0;
+}
+
+/* Search Operations */
+.tool-search-pattern {
+    color: var(--domain-architecture);
+    font-weight: 500;
+}
+
+.tool-grep-options {
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+}
+
+.tool-pattern-full {
+    margin-top: var(--spacing-sm);
+}
+
+/* Web Operations */
+.tool-web-url {
+    color: var(--domain-frontend);
+}
+
+.tool-web-full-url {
+    color: var(--domain-frontend);
+    font-family: var(--font-mono);
+    word-break: break-all;
+    margin-bottom: var(--spacing-sm);
+}
+
+.tool-web-full-prompt {
+    color: var(--text-secondary);
+}
+
+.tool-domain-list {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.tool-domain-list strong {
+    color: var(--text-primary);
+}
+
+/* Task (Subagent) */
+.tool-card-task .tool-agent-type {
+    color: var(--domain-architecture);
+    font-weight: 500;
+}
+
+.tool-task-prompt {
+    color: var(--text-secondary);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Plan Mode */
+.tool-card-mode .tool-mode-action {
+    font-weight: 500;
+}
+
+.tool-prompts-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.tool-prompt-item {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-xs);
+    font-family: var(--font-mono);
+}
+
+/* Skill */
+.tool-card-skill .tool-skill-name {
+    color: var(--domain-user-experience);
+    font-weight: 600;
+}
+
+.tool-skill-args {
+    font-family: var(--font-mono);
+}
+
+/* Question */
+.tool-card-question .tool-question-preview {
+    color: var(--domain-devops);
+}
+
+.tool-question-item {
+    padding: var(--spacing-sm);
+    background: var(--bg-primary);
+    border-radius: var(--radius-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.tool-question-item:last-child {
+    margin-bottom: 0;
+}
+
+.tool-question-header {
+    font-weight: 600;
+    color: var(--tool-color);
+    margin-bottom: var(--spacing-xs);
+    text-transform: uppercase;
+    font-size: 10px;
+    letter-spacing: 0.5px;
+}
+
+.tool-question-text {
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.tool-question-options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.tool-question-option {
+    display: flex;
+    flex-direction: column;
+    padding: var(--spacing-xs) var(--spacing-sm);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.option-label {
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.option-desc {
+    font-size: 10px;
+    color: var(--text-muted);
+}
+
+/* ===== Hover and Focus States ===== */
+.tool-card:hover {
+    border-color: var(--tool-color);
+}
+
+details.tool-card > summary.tool-card-header:hover {
+    background: var(--bg-hover);
+}
+
+details.tool-card > summary.tool-card-header:focus {
+    outline: none;
+    background: var(--bg-hover);
+}
+
+details.tool-card > summary.tool-card-header:focus-visible {
+    outline: 2px solid var(--accent-color);
+    outline-offset: -2px;
+}
+
+/* ===== Animation ===== */
+.tool-card {
+    animation: toolCardFadeIn 0.2s ease-out;
+}
+
+@keyframes toolCardFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===== Legacy Compatibility ===== */
+/* Keep existing tool-call-card styles for backward compatibility */
+.tool-call-card {
+    --tool-color: var(--text-muted);
+}
+
+.tool-call-card .tool-icon {
+    color: var(--tool-color);
+}

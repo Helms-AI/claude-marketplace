@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="css/tool-cards.css">
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
@@ -428,6 +429,20 @@
     <script src="js/changesets.js"></script>
     <script src="js/graph.js"></script>
     <script src="js/tasks.js"></script>
+
+    <!-- Tool Renderers (must load before conversation.js) -->
+    <script src="js/tool-icons.js"></script>
+    <script src="js/tool-renderers/base-renderer.js"></script>
+    <script src="js/tool-renderers/index.js"></script>
+    <script src="js/tool-renderers/bash-renderer.js"></script>
+    <script src="js/tool-renderers/file-renderer.js"></script>
+    <script src="js/tool-renderers/search-renderer.js"></script>
+    <script src="js/tool-renderers/web-renderer.js"></script>
+    <script src="js/tool-renderers/task-renderer.js"></script>
+    <script src="js/tool-renderers/mode-renderer.js"></script>
+    <script src="js/tool-renderers/skill-renderer.js"></script>
+    <script src="js/tool-renderers/question-renderer.js"></script>
+
     <script src="js/conversation.js"></script>
     <script src="js/timeline.js"></script>
 </body>
