@@ -185,6 +185,17 @@
                                     <span>Claude SDK Terminal</span>
                                 </div>
                                 <div class="terminal-controls">
+                                    <!-- Model Selector (Phase 1.1) -->
+                                    <div class="terminal-model-selector">
+                                        <label for="terminalModelSelector" class="model-label">Model:</label>
+                                        <select id="terminalModelSelector" class="model-select">
+                                            <option value="sonnet" selected>Sonnet</option>
+                                            <option value="opus">Opus</option>
+                                            <option value="haiku">Haiku</option>
+                                        </select>
+                                    </div>
+                                    <!-- Cost Display (Phase 1.3) -->
+                                    <div id="terminalCostDisplay" class="terminal-cost-display"></div>
                                     <div class="terminal-view-toggle">
                                         <button class="view-toggle-btn active" data-view="conversation" title="Conversation View">
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -246,6 +257,7 @@
                                 <span class="terminal-prompt">$</span>
                                 <input type="text" id="terminalInput" class="terminal-input" placeholder="Ask Claude something...">
                                 <div class="terminal-actions">
+                                    <button class="terminal-action-btn" data-action="interrupt" title="Interrupt (Ctrl+C)" disabled id="terminalInterruptBtn">⏹</button>
                                     <button class="terminal-action-btn" data-action="clear" title="Clear output (^L)">CLR</button>
                                 </div>
                             </div>
@@ -592,6 +604,7 @@
     <script src="js/token-meter.js"></script>
     <script src="js/conversation.js"></script>
     <script src="js/timeline.js"></script>
+    <script src="js/conversation-storage.js"></script>
     <script src="js/terminal-conversation.js"></script>
     <script src="js/terminal.js"></script>
 </body>

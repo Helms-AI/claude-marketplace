@@ -19,7 +19,20 @@ const Terminal = {
         streamingLineEl: null,
         toolsInProgress: [],
         // View mode: 'conversation' | 'terminal'
-        viewMode: 'conversation'
+        viewMode: 'conversation',
+        // SDK configuration (Phase 1.1-1.4)
+        sdkConfig: {
+            availableModels: ['sonnet', 'opus', 'haiku'],
+            currentModel: 'sonnet',
+            maxTurns: 50,
+            maxBudgetUsd: 5.0,
+            enableThinking: true
+        },
+        // Cost tracking (Phase 1.3)
+        sessionCost: 0,
+        lastQueryCost: 0,
+        // Session management for conversation continuity
+        sessionId: null
     },
 
     elements: {
@@ -30,7 +43,10 @@ const Terminal = {
         actionBtns: null,
         container: null,
         agentInfo: null,
-        viewToggleBtns: null
+        viewToggleBtns: null,
+        modelSelector: null,
+        costDisplay: null,
+        interruptBtn: null
     },
 
     /**
@@ -49,10 +65,11 @@ const Terminal = {
         }
     },
 
-    init() {
+    async init() {
         this.cacheElements();
         this.setupEventListeners();
         this.setupViewToggle();
+        this.setupModelSelector();
 
         // Detect OS and apply styling class
         this.state.detectedOS = this.detectOS();
@@ -68,9 +85,20 @@ const Terminal = {
         // Set initial view mode
         this.setViewMode(this.state.viewMode);
 
+        // Initialize conversation storage and restore session if available
+        if (typeof ConversationStorage !== 'undefined') {
+            try {
+                await ConversationStorage.init();
+                await this.restoreSession();
+            } catch (e) {
+                console.error('[Terminal] Failed to initialize storage:', e);
+            }
+        }
+
         // Fetch version and SDK info
         this.loadVersion();
         this.loadSDKInfo();
+        this.loadSDKConfig();
 
         // Enable input immediately (SDK is always available)
         this.enableInput(true);
@@ -134,6 +162,226 @@ const Terminal = {
         }
     },
 
+    /**
+     * Load SDK configuration from the server
+     */
+    async loadSDKConfig() {
+        try {
+            const response = await fetch('/api/input/sdk/config');
+            if (response.ok) {
+                const data = await response.json();
+                if (data.config) {
+                    this.state.sdkConfig = {
+                        availableModels: data.config.available_models || ['sonnet', 'opus', 'haiku'],
+                        currentModel: data.config.current_model || 'sonnet',
+                        maxTurns: data.config.max_turns || 50,
+                        maxBudgetUsd: data.config.max_budget_usd || 5.0,
+                        enableThinking: data.config.enable_thinking !== false
+                    };
+                    this.updateModelSelectorDisplay();
+                    console.log('[Terminal] SDK config loaded:', this.state.sdkConfig);
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load SDK config:', e);
+        }
+    },
+
+    /**
+     * Setup model selector dropdown
+     */
+    setupModelSelector() {
+        // The model selector is created dynamically, so we check if it exists
+        // and create click handler
+        const selector = this.elements.modelSelector;
+        if (selector) {
+            selector.addEventListener('change', (e) => {
+                this.setModel(e.target.value);
+            });
+        }
+    },
+
+    /**
+     * Update model selector display
+     */
+    updateModelSelectorDisplay() {
+        const selector = this.elements.modelSelector;
+        if (!selector) return;
+
+        // Clear existing options
+        selector.innerHTML = '';
+
+        // Add options for each available model
+        for (const model of this.state.sdkConfig.availableModels) {
+            const option = document.createElement('option');
+            option.value = model;
+            option.textContent = model.charAt(0).toUpperCase() + model.slice(1);
+            option.selected = model === this.state.sdkConfig.currentModel;
+            selector.appendChild(option);
+        }
+    },
+
+    /**
+     * Set the current model
+     * @param {string} model - The model to use ('sonnet', 'opus', 'haiku')
+     */
+    setModel(model) {
+        if (this.state.sdkConfig.availableModels.includes(model)) {
+            this.state.sdkConfig.currentModel = model;
+            console.log(`[Terminal] Model set to: ${model}`);
+
+            // Persist model selection
+            if (typeof ConversationStorage !== 'undefined') {
+                ConversationStorage.setModel(model);
+            }
+        }
+    },
+
+    /**
+     * Restore session from storage on page load
+     * Retrieves session ID, model, and conversation history
+     */
+    async restoreSession() {
+        if (typeof ConversationStorage === 'undefined') return;
+
+        try {
+            const sessionState = await ConversationStorage.getSessionState();
+
+            if (!sessionState) {
+                console.log('[Terminal] No valid session to restore');
+                return;
+            }
+
+            const { sessionId, model, messages } = sessionState;
+
+            // Restore session ID
+            this.state.sessionId = sessionId;
+            console.log(`[Terminal] Restoring session: ${sessionId}`);
+
+            // Restore model selection
+            if (model && this.state.sdkConfig.availableModels.includes(model)) {
+                this.state.sdkConfig.currentModel = model;
+                this.updateModelSelectorDisplay();
+            }
+
+            // Restore conversation history
+            if (messages && messages.length > 0) {
+                this.replayMessages(messages);
+                console.log(`[Terminal] Restored ${messages.length} messages`);
+            }
+        } catch (e) {
+            console.error('[Terminal] Failed to restore session:', e);
+            // Clear potentially corrupted storage
+            ConversationStorage.clearSessionStorage();
+        }
+    },
+
+    /**
+     * Replay stored messages into the conversation view
+     * @param {Array} messages - Array of stored messages
+     */
+    replayMessages(messages) {
+        if (!messages || messages.length === 0) return;
+
+        // Remove welcome message before replaying
+        const welcome = this.elements.conversation?.querySelector('.terminal-conversation-welcome');
+        if (welcome) {
+            welcome.remove();
+        }
+
+        for (const msg of messages) {
+            if (msg.type === 'user') {
+                if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+                    TerminalConversation.addUserMessage(msg.content, { skipStorage: true, timestamp: msg.timestamp });
+                } else {
+                    this.appendLine(`> ${msg.content}`, 'command');
+                }
+            } else if (msg.type === 'assistant') {
+                if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+                    TerminalConversation.addAssistantMessage(
+                        msg.text,
+                        msg.toolUses || [],
+                        { skipStorage: true, timestamp: msg.timestamp, source: msg.source || 'main' }
+                    );
+                } else {
+                    if (msg.text) {
+                        this.appendLine('', 'output');
+                        const lines = msg.text.split('\n');
+                        for (const line of lines) {
+                            this.appendLine(line, 'output');
+                        }
+                    }
+                }
+            }
+        }
+
+        // Scroll to bottom after replay
+        if (this.elements.conversation) {
+            this.elements.conversation.scrollTop = this.elements.conversation.scrollHeight;
+        }
+    },
+
+    /**
+     * Save a user message to storage
+     * @param {string} content - The message content
+     */
+    async saveUserMessage(content) {
+        if (typeof ConversationStorage === 'undefined' || !this.state.sessionId) return;
+
+        try {
+            await ConversationStorage.saveMessage(this.state.sessionId, {
+                type: 'user',
+                content
+            });
+        } catch (e) {
+            console.warn('[Terminal] Failed to save user message:', e);
+        }
+    },
+
+    /**
+     * Save an assistant message to storage
+     * @param {string} text - The response text
+     * @param {Array} toolUses - Array of tool uses
+     * @param {string} source - 'main' or agent ID
+     */
+    async saveAssistantMessage(text, toolUses = [], source = 'main') {
+        if (typeof ConversationStorage === 'undefined' || !this.state.sessionId) return;
+
+        try {
+            await ConversationStorage.saveMessage(this.state.sessionId, {
+                type: 'assistant',
+                text,
+                toolUses,
+                source
+            });
+        } catch (e) {
+            console.warn('[Terminal] Failed to save assistant message:', e);
+        }
+    },
+
+    /**
+     * Display cost summary after a query
+     * @param {number} cost - Cost in USD
+     */
+    displayCostSummary(cost) {
+        this.state.lastQueryCost = cost || 0;
+        this.state.sessionCost += this.state.lastQueryCost;
+
+        // Update cost display if it exists
+        if (this.elements.costDisplay) {
+            this.elements.costDisplay.innerHTML = `
+                <span class="cost-label">Query:</span>
+                <span class="cost-value">$${this.state.lastQueryCost.toFixed(4)}</span>
+                <span class="cost-separator">|</span>
+                <span class="cost-label">Session:</span>
+                <span class="cost-value">$${this.state.sessionCost.toFixed(4)}</span>
+            `;
+            this.elements.costDisplay.classList.add('has-cost');
+        }
+
+        console.log(`[Terminal] Cost: $${cost?.toFixed(4) || '0.0000'} (Session: $${this.state.sessionCost.toFixed(4)})`);
+    },
+
     cacheElements() {
         this.elements.container = document.querySelector('.terminal-container');
         this.elements.connectionStatus = document.getElementById('terminalConnectionStatus');
@@ -142,6 +390,9 @@ const Terminal = {
         this.elements.input = document.getElementById('terminalInput');
         this.elements.actionBtns = document.querySelectorAll('.terminal-action-btn');
         this.elements.viewToggleBtns = document.querySelectorAll('.terminal-view-toggle .view-toggle-btn');
+        this.elements.modelSelector = document.getElementById('terminalModelSelector');
+        this.elements.costDisplay = document.getElementById('terminalCostDisplay');
+        this.elements.interruptBtn = document.getElementById('terminalInterruptBtn');
     },
 
     setupEventListeners() {
@@ -209,6 +460,10 @@ const Terminal = {
         } else if (e.key === 'l' && e.ctrlKey) {
             e.preventDefault();
             this.handleAction('clear');
+        } else if (e.key === 'c' && e.ctrlKey && this.state.waitingForResponse) {
+            // Ctrl+C to interrupt (Phase 2.2)
+            e.preventDefault();
+            this.handleAction('interrupt');
         }
     },
 
@@ -242,107 +497,12 @@ const Terminal = {
         // Clear input
         input.value = '';
 
-        // Disable input while processing
-        this.elements.input.disabled = true;
-        this.state.waitingForResponse = true;
+        // Save user message to storage (session ID will be set after first response)
+        // We defer this until we have a session ID
+        this._pendingUserMessage = command;
 
-        // Start streaming progress indicator
-        this.startStreamingProgress();
-
-        try {
-            const response = await fetch('/api/input/sdk/query', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: command })
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                this.stopStreamingProgress();
-                this.displayError(error.error || 'Failed to send command');
-                return;
-            }
-
-            // Stream SSE response with live updates
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            let currentContent = '';
-            let toolsUsed = [];
-            let hasStartedResponse = false;
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                buffer += decoder.decode(value, { stream: true });
-
-                // Parse SSE events from buffer
-                const lines = buffer.split('\n');
-                buffer = lines.pop() || '';
-
-                for (const line of lines) {
-                    if (line.startsWith('data: ')) {
-                        try {
-                            const data = JSON.parse(line.slice(6));
-
-                            // Handle different message types from the SDK
-                            this.handleStreamMessage(data, {
-                                onContent: (content) => {
-                                    currentContent = content;
-                                    if (!hasStartedResponse) {
-                                        hasStartedResponse = true;
-                                        this.updateStreamingStatus('receiving');
-                                    }
-                                    this.updateStreamingContent(currentContent);
-                                },
-                                onToolUse: (tool) => {
-                                    if (tool.name && !toolsUsed.find(t => t.name === tool.name && t.id === tool.id)) {
-                                        toolsUsed.push(tool);
-                                        this.addToolInProgress(tool);
-                                    }
-                                },
-                                onToolResult: (result) => {
-                                    this.markToolComplete(result.tool_use_id, result.is_error);
-                                    if (result.is_error) {
-                                        this.displayError(`[Tool Error] ${result.content}`);
-                                    }
-                                },
-                                onError: (error) => {
-                                    this.stopStreamingProgress();
-                                    this.displayError(error);
-                                },
-                                onResult: (result) => {
-                                    if (result.subagent) {
-                                        console.log(`[Terminal] Subagent returned result`, result);
-                                    }
-                                }
-                            });
-                        } catch (e) {
-                            // Ignore parse errors
-                            console.debug('[Terminal] Parse error:', e, line);
-                        }
-                    }
-                }
-            }
-
-            // Stop streaming progress and display final content
-            this.stopStreamingProgress();
-
-            // Display response based on view mode
-            if (currentContent || toolsUsed.length > 0) {
-                this.displayResponse(currentContent, toolsUsed);
-            }
-
-        } catch (error) {
-            this.stopStreamingProgress();
-            this.displayError(error.message);
-        } finally {
-            this.elements.input.disabled = false;
-            this.elements.input.focus();
-            this.state.waitingForResponse = false;
-            this.updateConnectionStatus('connected');
-        }
+        // Process the command using shared logic
+        await this.processUserInput(command);
     },
 
     /**
@@ -490,18 +650,39 @@ const Terminal = {
      * @param {string|Object} tool - Tool name or full tool object
      */
     addToolInProgress(tool) {
-        const toolName = typeof tool === 'string' ? tool : tool.name;
-        const existingTool = this.state.toolsInProgress.find(t =>
-            (typeof t === 'string' ? t : t.name) === toolName
-        );
+        const toolObj = typeof tool === 'string' ? { name: tool } : tool;
+        const toolId = toolObj.id;
 
-        if (!existingTool) {
-            // Store full tool object if available
-            this.state.toolsInProgress.push(tool);
+        // Check if tool already exists (by ID if available, otherwise by name)
+        const existingIndex = this.state.toolsInProgress.findIndex(t => {
+            if (toolId && typeof t === 'object' && t.id) {
+                return t.id === toolId;
+            }
+            return (typeof t === 'string' ? t : t.name) === toolObj.name;
+        });
+
+        if (existingIndex === -1) {
+            // Store full tool object
+            this.state.toolsInProgress.push(toolObj);
 
             // Update appropriate indicator with full tool object
             if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
-                TerminalConversation.addToolInProgress(tool);
+                TerminalConversation.addToolInProgress(toolObj);
+            } else {
+                this.updateStreamingTimer();
+            }
+        } else {
+            // Update existing tool with new data (especially input)
+            const existing = this.state.toolsInProgress[existingIndex];
+            if (typeof existing === 'object') {
+                Object.assign(existing, toolObj);
+            } else {
+                this.state.toolsInProgress[existingIndex] = toolObj;
+            }
+
+            // Update appropriate indicator
+            if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+                TerminalConversation.addToolInProgress(toolObj);
             } else {
                 this.updateStreamingTimer();
             }
@@ -520,6 +701,15 @@ const Terminal = {
         switch (data.type) {
             // StreamEvent - Real-time lifecycle events
             case 'stream_event':
+                // Capture session ID from stream events for conversation continuity
+                if (data.session_id && !this.state.sessionId) {
+                    this.state.sessionId = data.session_id;
+                    console.log(`[Terminal] Session captured from stream: ${this.state.sessionId}`);
+                    // Persist session ID
+                    if (typeof ConversationStorage !== 'undefined') {
+                        ConversationStorage.setSessionId(data.session_id);
+                    }
+                }
                 this.handleStreamEvent(data, callbacks);
                 break;
 
@@ -559,21 +749,43 @@ const Terminal = {
                 }
                 break;
 
-            // Final result with cost/usage
+            // Final result with cost/usage (Phase 1.3)
             case 'result':
                 onResult?.(data);
-                // Log usage info
-                if (data.total_cost_usd) {
-                    console.log(`[Terminal] Cost: $${data.total_cost_usd.toFixed(4)}`);
+                // Display cost summary
+                if (data.total_cost_usd !== undefined) {
+                    this.displayCostSummary(data.total_cost_usd);
                 }
                 if (data.duration_ms) {
                     console.log(`[Terminal] Duration: ${data.duration_ms}ms`);
+                }
+                // Capture session ID from result message for conversation continuity
+                if (data.session_id && !this.state.sessionId) {
+                    this.state.sessionId = data.session_id;
+                    console.log(`[Terminal] Session captured from result: ${this.state.sessionId}`);
+                    // Persist session ID
+                    if (typeof ConversationStorage !== 'undefined') {
+                        ConversationStorage.setSessionId(data.session_id);
+                    }
                 }
                 break;
 
             // System messages
             case 'system':
                 console.log(`[Terminal] System (${data.subtype}):`, data.data);
+                // Handle retry notifications (Phase 4.1)
+                if (data.subtype === 'retry') {
+                    this.handleRetryNotification(data.data);
+                }
+                // Capture session ID from init message for conversation continuity
+                if (data.subtype === 'init' && data.data?.session_id) {
+                    this.state.sessionId = data.data.session_id;
+                    console.log(`[Terminal] Session started: ${this.state.sessionId}`);
+                    // Persist session ID
+                    if (typeof ConversationStorage !== 'undefined') {
+                        ConversationStorage.setSessionId(data.data.session_id);
+                    }
+                }
                 break;
 
             // Error messages
@@ -588,18 +800,31 @@ const Terminal = {
     },
 
     /**
+     * Track partial tool input JSON being streamed
+     * Maps block_index -> { jsonString: string, toolName: string, toolId: string }
+     */
+    streamingToolInputs: {},
+
+    /**
      * Handle StreamEvent messages - these provide real-time lifecycle visibility
      * @param {Object} data - The stream event data
      * @param {Object} callbacks - Callback functions
      */
     handleStreamEvent(data, callbacks) {
-        const { onContent, onToolUse } = callbacks;
+        const { onContent, onTextDelta, onToolUse } = callbacks;
 
         switch (data.event_type) {
             // A new content block is starting
             case 'content_block_start':
                 if (data.block_type === 'tool_use') {
-                    // Tool is starting - show it immediately
+                    // Initialize tracking for this tool's streaming input (keyed by block_index)
+                    const blockIndex = data.block_index;
+                    this.streamingToolInputs[blockIndex] = {
+                        jsonString: '',
+                        toolName: data.tool_name,
+                        toolId: data.tool_id
+                    };
+                    // Tool is starting - show it immediately (input will update as it streams)
                     const tool = {
                         id: data.tool_id,
                         name: data.tool_name,
@@ -609,11 +834,20 @@ const Terminal = {
                     onToolUse?.(tool);
                     console.log(`[Terminal] Tool starting: ${data.tool_name}`);
                 } else if (data.block_type === 'thinking') {
-                    // Extended thinking is starting
+                    // Extended thinking is starting (Phase 1.4)
                     this.updateStreamingStatus('thinking');
+                    if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+                        TerminalConversation.startThinkingBlock();
+                    }
                     console.log('[Terminal] Thinking started');
                 } else if (data.block_type === 'text') {
                     this.updateStreamingStatus('receiving');
+                    // Start streaming message immediately when text block begins
+                    if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+                        if (!TerminalConversation.isStreamingMessage()) {
+                            TerminalConversation.startStreamingMessage('main');
+                        }
+                    }
                 }
                 break;
 
@@ -623,23 +857,55 @@ const Terminal = {
                     // Accumulate streaming text
                     this.streamingText = (this.streamingText || '') + data.text;
                     onContent?.(this.streamingText);
+                    // NEW: Call onTextDelta with just the delta for real-time streaming
+                    onTextDelta?.(data.text);
                 } else if (data.delta_type === 'thinking_delta' && data.thinking) {
-                    // Could show thinking progress
+                    // Extended thinking content (Phase 1.4)
+                    if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+                        TerminalConversation.appendThinkingContent(data.thinking);
+                    }
                     console.debug('[Terminal] Thinking:', data.thinking.substring(0, 50) + '...');
-                } else if (data.delta_type === 'input_json_delta') {
-                    // Tool input being built incrementally
-                    console.debug('[Terminal] Tool input delta');
+                } else if (data.delta_type === 'input_json_delta' && data.partial_json) {
+                    // Tool input being built incrementally - accumulate and try to parse
+                    const blockIndex = data.block_index;
+                    const toolInfo = this.streamingToolInputs[blockIndex];
+                    if (toolInfo) {
+                        toolInfo.jsonString += data.partial_json;
+
+                        // Try to parse the accumulated JSON
+                        try {
+                            const input = JSON.parse(toolInfo.jsonString);
+                            // Successfully parsed! Update the tool with real input data
+                            const tool = {
+                                id: toolInfo.toolId,
+                                name: toolInfo.toolName,
+                                input: input,
+                                status: 'running'
+                            };
+                            onToolUse?.(tool);
+                            console.debug('[Terminal] Tool input updated:', Object.keys(input));
+                        } catch (e) {
+                            // JSON not complete yet, keep accumulating
+                        }
+                    }
                 }
                 break;
 
             // A content block is complete
             case 'content_block_stop':
+                // End thinking block if we were in thinking mode (Phase 1.4)
+                if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+                    if (TerminalConversation.isThinking) {
+                        TerminalConversation.endThinkingBlock();
+                    }
+                }
                 console.debug(`[Terminal] Block ${data.block_index} complete`);
                 break;
 
             // Message is starting
             case 'message_start':
                 this.streamingText = ''; // Reset for new message
+                this.streamingToolInputs = {}; // Reset tool input tracking
                 if (data.model) {
                     console.log(`[Terminal] Using model: ${data.model}`);
                 }
@@ -747,6 +1013,56 @@ const Terminal = {
     handleAction(action) {
         if (action === 'clear') {
             this.clearOutput();
+        } else if (action === 'interrupt') {
+            this.interruptQuery();
+        }
+    },
+
+    /**
+     * Handle retry notification (Phase 4.1)
+     * @param {Object} data - Retry data with attempt, max_retries, delay, error
+     */
+    handleRetryNotification(data) {
+        const { attempt, max_retries, delay, error } = data;
+        const errorCode = error?.code || 'unknown';
+        const message = `Retrying (${attempt}/${max_retries}) in ${delay.toFixed(1)}s - ${errorCode}`;
+
+        console.log(`[Terminal] ${message}`);
+
+        // Update streaming indicator to show retry
+        if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+            TerminalConversation.showRetryIndicator(attempt, max_retries, delay, errorCode);
+        } else if (this.state.streamingLineEl) {
+            this.state.streamingLineEl.innerHTML = `
+                <span class="streaming-status status-retry">
+                    ⟳ ${message}
+                </span>
+            `;
+        }
+    },
+
+    /**
+     * Interrupt the current query (Phase 2.2)
+     */
+    async interruptQuery() {
+        if (!this.state.waitingForResponse) return;
+
+        try {
+            const response = await fetch('/api/input/sdk/interrupt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.interrupted) {
+                    console.log('[Terminal] Query interrupted');
+                    this.stopStreamingProgress();
+                    this.displayError('Query interrupted by user');
+                }
+            }
+        } catch (e) {
+            console.error('Failed to interrupt:', e);
         }
     },
 
@@ -763,6 +1079,25 @@ const Terminal = {
     },
 
     clearOutput() {
+        // Clear session storage and IndexedDB
+        if (typeof ConversationStorage !== 'undefined') {
+            if (this.state.sessionId) {
+                ConversationStorage.clearSession(this.state.sessionId).catch(e =>
+                    console.warn('[Terminal] Failed to clear session storage:', e)
+                );
+            }
+            ConversationStorage.clearSessionStorage();
+        }
+
+        // Reset session for new conversation
+        if (this.state.sessionId) {
+            console.log(`[Terminal] Ending session: ${this.state.sessionId}`);
+            this.state.sessionId = null;
+        }
+        // Reset cost tracking for new session
+        this.state.sessionCost = 0;
+        this.state.lastQueryCost = 0;
+
         // Clear terminal output
         const output = this.elements.output;
         if (output) {
@@ -848,6 +1183,229 @@ const Terminal = {
     onTabActivated() {
         if (this.elements.input) {
             this.elements.input.focus();
+        }
+    },
+
+    /**
+     * Continue the conversation with a user response (e.g., from AskUserQuestion)
+     * @param {string} responseText - The user's response text
+     */
+    continueWithUserResponse(responseText) {
+        if (!responseText) return;
+        if (this.state.waitingForResponse) {
+            console.warn('[Terminal] Cannot continue - already waiting for response');
+            return;
+        }
+
+        // Display the user response in the conversation
+        if (this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined') {
+            // Remove welcome message if present
+            const welcome = this.elements.conversation?.querySelector('.terminal-conversation-welcome');
+            if (welcome) {
+                welcome.remove();
+            }
+            TerminalConversation.addUserMessage(responseText);
+        } else {
+            this.appendLine(`> ${responseText}`, 'command');
+        }
+
+        // Add to history
+        if (this.state.commandHistory.length === 0 ||
+            this.state.commandHistory[this.state.commandHistory.length - 1] !== responseText) {
+            this.state.commandHistory.push(responseText);
+        }
+
+        // Process the response as a new command
+        this.processUserInput(responseText);
+    },
+
+    /**
+     * Process user input and send to SDK
+     * Separated from sendCommand to allow programmatic submission
+     * @param {string} text - The text to send
+     */
+    async processUserInput(text) {
+        if (!text) return;
+
+        // Disable input while processing
+        this.elements.input.disabled = true;
+        this.state.waitingForResponse = true;
+
+        // Enable interrupt button (Phase 2.2)
+        if (this.elements.interruptBtn) {
+            this.elements.interruptBtn.disabled = false;
+        }
+
+        // Start streaming progress indicator
+        this.startStreamingProgress();
+
+        try {
+            // Build request body with SDK options (Phase 1.1-1.4)
+            const requestBody = {
+                prompt: text,
+                model: this.state.sdkConfig.currentModel,
+                max_turns: this.state.sdkConfig.maxTurns,
+                max_budget_usd: this.state.sdkConfig.maxBudgetUsd,
+                enable_thinking: this.state.sdkConfig.enableThinking
+            };
+
+            // Add session ID for conversation continuity if we have one
+            if (this.state.sessionId) {
+                requestBody.resume = this.state.sessionId;
+                console.log(`[Terminal] Resuming session: ${this.state.sessionId}`);
+            } else {
+                console.log('[Terminal] Starting new session');
+            }
+
+            const response = await fetch('/api/input/sdk/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                this.stopStreamingProgress();
+                this.displayError(error.error || 'Failed to send command');
+                return;
+            }
+
+            // Stream SSE response with live updates
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let currentContent = '';
+            let toolsUsed = [];
+            let hasStartedResponse = false;
+
+            // Check if we're in conversation mode for real-time streaming
+            const isConversationMode = this.state.viewMode === 'conversation' && typeof TerminalConversation !== 'undefined';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+
+                // Parse SSE events from buffer
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const data = JSON.parse(line.slice(6));
+
+                            // Handle different message types from the SDK
+                            this.handleStreamMessage(data, {
+                                onContent: (content) => {
+                                    currentContent = content;
+                                    if (!hasStartedResponse) {
+                                        hasStartedResponse = true;
+                                        this.updateStreamingStatus('receiving');
+                                    }
+                                    // In conversation mode, content is streamed via onTextDelta
+                                    if (!isConversationMode) {
+                                        this.updateStreamingContent(currentContent);
+                                    }
+                                },
+                                onTextDelta: (delta) => {
+                                    // Real-time text streaming for conversation mode
+                                    if (isConversationMode) {
+                                        // Stop the streaming indicator on first text
+                                        if (!hasStartedResponse) {
+                                            hasStartedResponse = true;
+                                            this.stopStreamingProgress();
+                                        }
+                                        TerminalConversation.appendStreamingText(delta);
+                                    }
+                                },
+                                onToolUse: (tool) => {
+                                    // Check if this tool already exists (from streaming events)
+                                    const existingTool = toolsUsed.find(t => t.id === tool.id);
+                                    const isStreaming = typeof TerminalConversation !== 'undefined' && TerminalConversation.isStreamingMessage();
+
+                                    if (existingTool) {
+                                        // Update existing tool with complete data (especially input)
+                                        Object.assign(existingTool, tool);
+                                        // Also update the streaming message so tool cards show data
+                                        if (isConversationMode && isStreaming) {
+                                            TerminalConversation.addStreamingTool(tool);
+                                        }
+                                    } else if (tool.name) {
+                                        toolsUsed.push(tool);
+                                        // In conversation mode, add tool to streaming message
+                                        if (isConversationMode && isStreaming) {
+                                            TerminalConversation.addStreamingTool(tool);
+                                        } else {
+                                            this.addToolInProgress(tool);
+                                        }
+                                    }
+                                },
+                                onToolResult: (result) => {
+                                    this.markToolComplete(result.tool_use_id, result.is_error);
+                                    if (result.is_error) {
+                                        this.displayError(`[Tool Error] ${result.content}`);
+                                    }
+                                },
+                                onError: (error) => {
+                                    this.stopStreamingProgress();
+                                    if (isConversationMode) {
+                                        TerminalConversation.finalizeStreamingMessage(toolsUsed);
+                                    }
+                                    this.displayError(error);
+                                },
+                                onResult: (result) => {
+                                    if (result.subagent) {
+                                        console.log(`[Terminal] Subagent returned result`, result);
+                                    }
+                                }
+                            });
+                        } catch (e) {
+                            // Ignore parse errors
+                            console.debug('[Terminal] Parse error:', e, line);
+                        }
+                    }
+                }
+            }
+
+            // Stop streaming progress and display final content
+            this.stopStreamingProgress();
+
+            // Finalize streaming message in conversation mode
+            if (isConversationMode && TerminalConversation.isStreamingMessage()) {
+                TerminalConversation.finalizeStreamingMessage(toolsUsed);
+            } else if (currentContent || toolsUsed.length > 0) {
+                // Non-streaming fallback: display response at end
+                this.displayResponse(currentContent, toolsUsed);
+            }
+
+            // Save messages to storage now that we have a session ID
+            if (this.state.sessionId && typeof ConversationStorage !== 'undefined') {
+                // Save the pending user message first
+                if (this._pendingUserMessage) {
+                    this.saveUserMessage(this._pendingUserMessage);
+                    this._pendingUserMessage = null;
+                }
+                // Save the assistant response
+                if (currentContent || toolsUsed.length > 0) {
+                    this.saveAssistantMessage(currentContent, toolsUsed, 'main');
+                }
+            }
+
+        } catch (error) {
+            this.stopStreamingProgress();
+            this.displayError(error.message);
+        } finally {
+            this.elements.input.disabled = false;
+            this.elements.input.focus();
+            this.state.waitingForResponse = false;
+            this.updateConnectionStatus('connected');
+
+            // Disable interrupt button (Phase 2.2)
+            if (this.elements.interruptBtn) {
+                this.elements.interruptBtn.disabled = true;
+            }
         }
     }
 };

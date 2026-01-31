@@ -16,6 +16,10 @@ const TerminalConversation = {
     toolsInProgress: [],
     currentSubagent: null,
     agentMetadata: {},
+    // Extended thinking state (Phase 1.4)
+    thinkingContent: '',
+    thinkingBlock: null,
+    isThinking: false,
 
     // Domain initials for avatars (matching Conversation module)
     domainInitials: {
@@ -98,11 +102,314 @@ const TerminalConversation = {
         this.lastRole = null;
         this.lastSource = 'main';
         this.currentSubagent = null;
+        this.thinkingContent = '';
+        this.thinkingBlock = null;
+        this.isThinking = false;
         if (this.container) {
             this.container.innerHTML = '';
         }
         this.stopStreamingIndicator();
     },
+
+    /**
+     * Start a thinking block (extended thinking - Phase 1.4)
+     */
+    startThinkingBlock() {
+        this.isThinking = true;
+        this.thinkingContent = '';
+
+        // Create collapsible thinking container
+        if (!this.thinkingBlock && this.streamingIndicator) {
+            const thinkingEl = document.createElement('div');
+            thinkingEl.className = 'thinking-block collapsed';
+            thinkingEl.innerHTML = `
+                <div class="thinking-header" onclick="TerminalConversation.toggleThinking()">
+                    <span class="thinking-icon">💭</span>
+                    <span class="thinking-label">Extended Thinking</span>
+                    <span class="thinking-toggle">▶</span>
+                </div>
+                <div class="thinking-content"></div>
+            `;
+            this.thinkingBlock = thinkingEl;
+
+            // Insert before the streaming indicator
+            if (this.streamingIndicator.parentNode) {
+                this.streamingIndicator.parentNode.insertBefore(
+                    thinkingEl,
+                    this.streamingIndicator
+                );
+            }
+        }
+    },
+
+    /**
+     * Append content to the current thinking block
+     * @param {string} text - The thinking text to append
+     */
+    appendThinkingContent(text) {
+        if (!text) return;
+
+        this.thinkingContent += text;
+
+        if (this.thinkingBlock) {
+            const contentEl = this.thinkingBlock.querySelector('.thinking-content');
+            if (contentEl) {
+                contentEl.textContent = this.thinkingContent;
+            }
+        }
+    },
+
+    /**
+     * End the current thinking block
+     */
+    endThinkingBlock() {
+        this.isThinking = false;
+
+        if (this.thinkingBlock) {
+            // Mark as complete
+            this.thinkingBlock.classList.add('complete');
+
+            // Update the label with character count
+            const labelEl = this.thinkingBlock.querySelector('.thinking-label');
+            if (labelEl) {
+                const charCount = this.thinkingContent.length;
+                labelEl.textContent = `Extended Thinking (${this.formatCharCount(charCount)})`;
+            }
+        }
+    },
+
+    /**
+     * Toggle thinking block visibility
+     */
+    toggleThinking() {
+        if (this.thinkingBlock) {
+            this.thinkingBlock.classList.toggle('collapsed');
+            const toggleEl = this.thinkingBlock.querySelector('.thinking-toggle');
+            if (toggleEl) {
+                toggleEl.textContent = this.thinkingBlock.classList.contains('collapsed') ? '▶' : '▼';
+            }
+        }
+    },
+
+    /**
+     * Format character count for display
+     * @param {number} count - Character count
+     * @returns {string} Formatted string
+     */
+    formatCharCount(count) {
+        if (count < 1000) return `${count} chars`;
+        if (count < 10000) return `${(count / 1000).toFixed(1)}k chars`;
+        return `${Math.round(count / 1000)}k chars`;
+    },
+
+    // ========================================
+    // REAL-TIME STREAMING MESSAGE METHODS
+    // ========================================
+
+    /**
+     * Streaming message state
+     */
+    streamingMessage: null,
+    streamingMessageContent: '',
+    streamingMessageTools: [],
+
+    /**
+     * Start a new streaming assistant message
+     * Creates the message bubble immediately so text can be appended in real-time
+     * @param {string} source - 'main' or agent ID
+     */
+    startStreamingMessage(source = 'main') {
+        // Don't start if already streaming
+        if (this.streamingMessage) return;
+
+        const time = this.formatTime(new Date());
+        const isSubagent = source !== 'main';
+        const agentInfo = this.getAgentInfo(source);
+
+        // Reset streaming state
+        this.streamingMessageContent = '';
+        this.streamingMessageTools = [];
+
+        // Handle subagent context transitions
+        let contextHtml = '';
+        if (isSubagent && this.currentSubagent !== source) {
+            if (this.currentSubagent) {
+                contextHtml = this.renderSubagentContextEnd(this.currentSubagent);
+                this.container.insertAdjacentHTML('beforeend', contextHtml);
+            }
+            contextHtml = this.renderSubagentContextStart(source);
+            this.container.insertAdjacentHTML('beforeend', contextHtml);
+            this.currentSubagent = source;
+        } else if (!isSubagent && this.currentSubagent) {
+            contextHtml = this.renderSubagentContextEnd(this.currentSubagent);
+            this.container.insertAdjacentHTML('beforeend', contextHtml);
+            this.currentSubagent = null;
+        }
+
+        // Create the streaming message element
+        const subagentClass = isSubagent ? 'is-subagent subagent-indent subagent-message' : '';
+
+        const messageEl = document.createElement('div');
+        messageEl.className = `chat-message transcript-message agent-message terminal-message streaming-message ${subagentClass}`;
+        messageEl.dataset.source = source;
+        messageEl.innerHTML = `
+            <div class="message-avatar ${isSubagent ? 'subagent-avatar' : ''}" style="--domain-color: ${agentInfo.color}">
+                <span class="avatar-initial">${agentInfo.initial}</span>
+                <span class="avatar-pulse streaming-pulse"></span>
+            </div>
+            <div class="message-body">
+                <div class="message-header">
+                    <span class="message-domain" style="--domain-color: ${agentInfo.color}">
+                        ${isSubagent ? this.escapeHtml(agentInfo.name) : 'Claude'}
+                    </span>
+                    <span class="message-time">${time}</span>
+                </div>
+                <div class="message-content">
+                    <div class="transcript-text streaming-text"></div>
+                    <div class="transcript-tools streaming-tools"></div>
+                    <span class="streaming-cursor">▊</span>
+                </div>
+            </div>
+        `;
+
+        this.streamingMessage = messageEl;
+        this.container.appendChild(messageEl);
+
+        // Move streaming indicator to be AFTER the message (at the bottom)
+        // This ensures "Thinking..." always appears below the current message
+        if (this.streamingIndicator && this.streamingIndicator.parentNode === this.container) {
+            this.container.appendChild(this.streamingIndicator);
+        }
+
+        // Animate in
+        messageEl.classList.add('animate-in', 'new-message');
+
+        // Auto-scroll
+        if (this.autoScrollEnabled) {
+            this.container.scrollTo({
+                top: this.container.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+
+        this.lastRole = 'assistant';
+        this.lastSource = source;
+    },
+
+    /**
+     * Append text delta to the streaming message
+     * @param {string} text - The text delta to append
+     */
+    appendStreamingText(text) {
+        if (!text) return;
+
+        // Auto-start message if not already started
+        if (!this.streamingMessage) {
+            this.startStreamingMessage('main');
+        }
+
+        this.streamingMessageContent += text;
+
+        // Update the text content with markdown rendering
+        const textEl = this.streamingMessage?.querySelector('.streaming-text');
+        if (textEl) {
+            textEl.innerHTML = this.formatMarkdown(this.streamingMessageContent);
+        }
+
+        // Auto-scroll to keep up with new content
+        if (this.autoScrollEnabled && this.container) {
+            this.container.scrollTop = this.container.scrollHeight;
+        }
+    },
+
+    /**
+     * Add a tool use to the streaming message
+     * @param {Object} tool - The tool use object
+     */
+    addStreamingTool(tool) {
+        if (!tool) return;
+
+        // Auto-start message if not already started
+        if (!this.streamingMessage) {
+            this.startStreamingMessage('main');
+        }
+
+        // Check if tool already exists
+        const existingIndex = this.streamingMessageTools.findIndex(t => t.id === tool.id);
+        const newHasInput = tool.input && Object.keys(tool.input).length > 0;
+
+        if (existingIndex !== -1) {
+            // Update existing tool with new data
+            Object.assign(this.streamingMessageTools[existingIndex], tool);
+        } else {
+            // Add new tool
+            this.streamingMessageTools.push(tool);
+        }
+
+        // ALWAYS re-render tools when called - ensures updates are displayed immediately
+        // This is especially important for real-time streaming of tool input data
+        const toolsEl = this.streamingMessage?.querySelector('.streaming-tools');
+        if (toolsEl) {
+            toolsEl.innerHTML = '';
+            for (const t of this.streamingMessageTools) {
+                const toolHtml = this.renderToolCall(t);
+                toolsEl.insertAdjacentHTML('beforeend', toolHtml);
+            }
+        }
+
+        // Auto-scroll
+        if (this.autoScrollEnabled && this.container) {
+            this.container.scrollTop = this.container.scrollHeight;
+        }
+    },
+
+    /**
+     * Finalize the streaming message
+     * Removes cursor and streaming classes, makes it a permanent message
+     * @param {Array} finalToolUses - Final array of tool uses (for reconciliation)
+     */
+    finalizeStreamingMessage(finalToolUses = []) {
+        if (!this.streamingMessage) return;
+
+        // Remove streaming indicators
+        this.streamingMessage.classList.remove('streaming-message');
+        const cursor = this.streamingMessage.querySelector('.streaming-cursor');
+        if (cursor) cursor.remove();
+
+        const pulse = this.streamingMessage.querySelector('.streaming-pulse');
+        if (pulse) pulse.classList.remove('streaming-pulse');
+
+        // Always re-render tools with final complete data
+        // This ensures tool inputs (which may have been empty during streaming) are now displayed
+        if (finalToolUses.length > 0) {
+            const toolsEl = this.streamingMessage.querySelector('.streaming-tools');
+            if (toolsEl) {
+                // Clear and re-render all tools with complete data
+                toolsEl.innerHTML = '';
+                for (const tool of finalToolUses) {
+                    const toolHtml = this.renderToolCall(tool);
+                    toolsEl.insertAdjacentHTML('beforeend', toolHtml);
+                }
+            }
+        }
+
+        // Clear streaming state
+        this.streamingMessage = null;
+        this.streamingMessageContent = '';
+        this.streamingMessageTools = [];
+    },
+
+    /**
+     * Check if currently streaming a message
+     * @returns {boolean} True if streaming
+     */
+    isStreamingMessage() {
+        return this.streamingMessage !== null;
+    },
+
+    // ========================================
+    // END REAL-TIME STREAMING MESSAGE METHODS
+    // ========================================
 
     /**
      * Get agent information for display
@@ -188,9 +495,12 @@ const TerminalConversation = {
     /**
      * Add a user command message
      * @param {string} text - The command text
-     * @param {number} timestamp - Optional timestamp
+     * @param {Object} options - Optional settings
+     * @param {boolean} options.skipStorage - Don't save to storage (used during replay)
+     * @param {number} options.timestamp - Optional timestamp
      */
-    addUserMessage(text, timestamp = null) {
+    addUserMessage(text, options = {}) {
+        const timestamp = options.timestamp || (typeof options === 'number' ? options : null);
         const time = timestamp ? this.formatTime(new Date(timestamp)) : this.formatTime(new Date());
         const isConsecutive = this.lastRole === 'user' && this.lastSource === 'main';
 
@@ -204,10 +514,22 @@ const TerminalConversation = {
      * Add an assistant response message
      * @param {string} content - The text content
      * @param {Array} toolUses - Array of tool use objects
-     * @param {number} timestamp - Optional timestamp
-     * @param {string} source - 'main' or agent ID
+     * @param {Object} options - Optional settings
+     * @param {boolean} options.skipStorage - Don't save to storage (used during replay)
+     * @param {number} options.timestamp - Optional timestamp
+     * @param {string} options.source - 'main' or agent ID
      */
-    addAssistantMessage(content, toolUses = [], timestamp = null, source = 'main') {
+    addAssistantMessage(content, toolUses = [], options = {}) {
+        // Handle legacy signature: (content, toolUses, timestamp, source)
+        let timestamp, source;
+        if (typeof options === 'number' || options === null) {
+            timestamp = options;
+            source = arguments[3] || 'main';
+        } else {
+            timestamp = options.timestamp || null;
+            source = options.source || 'main';
+        }
+
         const time = timestamp ? this.formatTime(new Date(timestamp)) : this.formatTime(new Date());
         const isSubagent = source !== 'main';
 
@@ -460,6 +782,7 @@ const TerminalConversation = {
 
     /**
      * Start showing the streaming indicator
+     * Creates a minimal status line (no avatar) with tools appearing above the status
      */
     startStreamingIndicator() {
         this.streamStartTime = Date.now();
@@ -467,9 +790,9 @@ const TerminalConversation = {
 
         if (!this.container) return;
 
-        // Create streaming indicator element
+        // Create streaming indicator element - minimal design without avatar
         this.streamingIndicator = document.createElement('div');
-        this.streamingIndicator.className = 'terminal-streaming-indicator chat-message agent-message';
+        this.streamingIndicator.className = 'terminal-streaming-indicator';
         this.streamingIndicator.innerHTML = this.getStreamingHTML('thinking', 0);
 
         this.container.appendChild(this.streamingIndicator);
@@ -506,6 +829,7 @@ const TerminalConversation = {
 
     /**
      * Get HTML for streaming indicator
+     * Minimal design: tools render above, status line at bottom, no avatar
      * @param {string} status - 'thinking' | 'tools' | 'receiving' | 'agent'
      * @param {number} elapsed - Elapsed time in ms
      * @returns {string} HTML string
@@ -523,18 +847,11 @@ const TerminalConversation = {
                 statusClass = 'status-thinking';
                 break;
             case 'tools':
-                const tools = this.toolsInProgress.map(t => {
-                    // Handle Task tool specially to show agent type
-                    if (t.name === 'Task' && t.input?.subagent_type) {
-                        return `Task(${t.input.subagent_type})`;
-                    }
-                    return t.name || t;
-                }).join(', ');
-                statusText = `Using: ${tools}`;
+                statusText = 'Working...';
                 statusClass = 'status-tools';
                 break;
             case 'receiving':
-                statusText = 'Receiving response...';
+                statusText = 'Receiving...';
                 statusClass = 'status-receiving';
                 break;
             case 'agent':
@@ -545,42 +862,33 @@ const TerminalConversation = {
                 break;
         }
 
-        // Build tools list HTML if there are tools in progress
-        let toolsHtml = '';
+        // Build tool cards HTML - these appear ABOVE the status line
+        let toolCardsHtml = '';
         if (this.toolsInProgress && this.toolsInProgress.length > 0) {
-            toolsHtml = '<div class="streaming-tools-list">';
+            toolCardsHtml = '<div class="streaming-tool-cards">';
             for (const tool of this.toolsInProgress) {
-                const statusClass = tool.status === 'complete' ? 'tool-complete' :
-                                   tool.status === 'error' ? 'tool-error' : 'tool-running';
-                const statusIcon = tool.status === 'complete' ? '✓' :
-                                  tool.status === 'error' ? '✗' : '⋯';
-
-                // Format tool name
-                let displayName = tool.name || 'Tool';
-                if (tool.name === 'Task' && tool.input?.subagent_type) {
-                    displayName = `Task(${tool.input.subagent_type})`;
+                // Use the full tool renderer for rich display
+                if (typeof ToolRendererRegistry !== 'undefined') {
+                    toolCardsHtml += ToolRendererRegistry.render(tool);
+                } else {
+                    // Fallback to simple display
+                    let displayName = tool.name || 'Tool';
+                    if (tool.name === 'Task' && tool.input?.subagent_type) {
+                        displayName = `Task(${tool.input.subagent_type})`;
+                    }
+                    toolCardsHtml += `<div class="tool-card tool-card-simple"><span class="tool-name">${this.escapeHtml(displayName)}</span></div>`;
                 }
-
-                toolsHtml += `
-                    <div class="streaming-tool ${statusClass}">
-                        <span class="tool-name">${this.escapeHtml(displayName)}</span>
-                        <span class="tool-status-icon">${statusIcon}</span>
-                    </div>
-                `;
             }
-            toolsHtml += '</div>';
+            toolCardsHtml += '</div>';
         }
 
+        // Simple status line without avatar - aligned with message content
         return `
-            <div class="message-avatar" style="--domain-color: #6366f1">
-                <span class="avatar-initial streaming-spinner">${spinner}</span>
-            </div>
-            <div class="message-body">
-                <div class="streaming-status-content">
-                    <span class="streaming-status ${statusClass}">${statusText}</span>
-                    <span class="streaming-time">${seconds}s</span>
-                </div>
-                ${toolsHtml}
+            ${toolCardsHtml}
+            <div class="streaming-status-line">
+                <span class="streaming-spinner">${spinner}</span>
+                <span class="streaming-status ${statusClass}">${statusText}</span>
+                <span class="streaming-time">${seconds}s</span>
             </div>
         `;
     },
@@ -622,6 +930,9 @@ const TerminalConversation = {
         });
 
         if (!existingTool) {
+            // Add preview text (Phase 1.5)
+            toolObj.preview = this.getToolPreview(toolObj);
+
             // Add new tool with tracking info
             this.toolsInProgress.push({
                 ...toolObj,
@@ -638,11 +949,114 @@ const TerminalConversation = {
 
             // Also render the tool in the streaming indicator
             this.renderToolsInIndicator();
-        } else if (toolObj.status && existingTool.status !== toolObj.status) {
-            // Update existing tool's status
-            existingTool.status = toolObj.status;
+        } else {
+            // Update existing tool with new data (especially input which may now be available)
+            const hadInput = existingTool.input && Object.keys(existingTool.input).length > 0;
+            Object.assign(existingTool, toolObj);
+
+            // Regenerate preview if we now have input data
+            if (!hadInput && toolObj.input && Object.keys(toolObj.input).length > 0) {
+                existingTool.preview = this.getToolPreview(existingTool);
+            }
+
+            // Update status if changed
+            if (toolObj.status) {
+                existingTool.status = toolObj.status;
+            }
+
+            // Re-render to show updated data
             this.renderToolsInIndicator();
         }
+    },
+
+    /**
+     * Get a preview string for a tool (Phase 1.5)
+     * @param {Object} tool - Tool object with name and input
+     * @returns {string} Human-readable preview
+     */
+    getToolPreview(tool) {
+        const input = tool.input || {};
+
+        switch (tool.name) {
+            case 'Read':
+                return `📖 ${this.truncatePath(input.file_path)}`;
+
+            case 'Write':
+                return `✏️ ${this.truncatePath(input.file_path)}`;
+
+            case 'Edit':
+                return `🔧 ${this.truncatePath(input.file_path)}`;
+
+            case 'Bash':
+                const cmd = input.command || '';
+                const desc = input.description || '';
+                return `💻 ${desc || this.truncateCmd(cmd, 40)}`;
+
+            case 'Grep':
+                return `🔍 "${input.pattern}" in ${input.path || '.'}`;
+
+            case 'Glob':
+                return `📁 ${input.pattern}`;
+
+            case 'WebFetch':
+                try {
+                    const url = new URL(input.url || '');
+                    return `🌐 ${url.hostname}`;
+                } catch {
+                    return `🌐 ${this.truncateCmd(input.url || '', 30)}`;
+                }
+
+            case 'WebSearch':
+                return `🔎 "${input.query}"`;
+
+            case 'Task':
+                return `🤖 ${input.subagent_type}: ${input.description || 'running'}`;
+
+            case 'Skill':
+                return `⚡ /${input.skill || 'skill'}`;
+
+            case 'AskUserQuestion':
+                return `❓ Asking user question`;
+
+            case 'EnterPlanMode':
+                return `📋 Entering plan mode`;
+
+            case 'ExitPlanMode':
+                return `✅ Exiting plan mode`;
+
+            case 'TodoWrite':
+                const todoCount = (input.todos || []).length;
+                return `📝 Updating ${todoCount} tasks`;
+
+            default:
+                return `⚙️ ${tool.name}`;
+        }
+    },
+
+    /**
+     * Truncate a file path for display
+     * @param {string} path - The full path
+     * @returns {string} Truncated path showing last 2 segments
+     */
+    truncatePath(path) {
+        if (!path) return '';
+        const parts = path.split('/');
+        if (parts.length > 3) {
+            return `.../${parts.slice(-2).join('/')}`;
+        }
+        return path;
+    },
+
+    /**
+     * Truncate a command for display
+     * @param {string} cmd - The command
+     * @param {number} max - Maximum length
+     * @returns {string} Truncated command
+     */
+    truncateCmd(cmd, max) {
+        if (!cmd) return '';
+        if (cmd.length <= max) return cmd;
+        return cmd.substring(0, max) + '...';
     },
 
     /**
@@ -661,53 +1075,47 @@ const TerminalConversation = {
     },
 
     /**
-     * Render tools in the streaming indicator with status badges
+     * Render tools in the streaming indicator
+     * Re-renders the entire indicator with tool cards above status line
      */
     renderToolsInIndicator() {
+        if (!this.streamingIndicator || !this.streamStartTime) return;
+
+        // Re-render the entire streaming indicator with updated tools
+        const elapsed = Date.now() - this.streamStartTime;
+        const status = this.toolsInProgress.length > 0 ? 'tools' : 'thinking';
+        this.streamingIndicator.innerHTML = this.getStreamingHTML(status, elapsed);
+
+        // Auto-scroll to show new tools
+        if (this.autoScrollEnabled && this.container) {
+            this.container.scrollTop = this.container.scrollHeight;
+        }
+    },
+
+    /**
+     * Show retry indicator (Phase 4.1)
+     * @param {number} attempt - Current retry attempt
+     * @param {number} maxRetries - Maximum retries
+     * @param {number} delay - Delay before retry in seconds
+     * @param {string} errorCode - Error code that caused retry
+     */
+    showRetryIndicator(attempt, maxRetries, delay, errorCode) {
         if (!this.streamingIndicator) return;
 
-        const toolsContainer = this.streamingIndicator.querySelector('.streaming-tools-list');
-        if (!toolsContainer) {
-            // Create tools container if it doesn't exist
-            const bodyEl = this.streamingIndicator.querySelector('.message-body');
-            if (bodyEl) {
-                const toolsEl = document.createElement('div');
-                toolsEl.className = 'streaming-tools-list';
-                bodyEl.appendChild(toolsEl);
-                this.renderToolsInIndicator(); // Re-run now that container exists
-            }
-            return;
-        }
+        const elapsed = Date.now() - this.streamStartTime;
+        const seconds = (elapsed / 1000).toFixed(1);
 
-        // Render each tool with status
-        const toolsHtml = this.toolsInProgress.map(tool => {
-            const statusClass = tool.status === 'complete' ? 'tool-complete' :
-                               tool.status === 'error' ? 'tool-error' : 'tool-running';
-            const statusIcon = tool.status === 'complete' ? '✓' :
-                              tool.status === 'error' ? '✗' : '⋯';
+        this.streamingIndicator.innerHTML = `
+            <div class="streaming-status-line retry-status-line">
+                <span class="streaming-spinner">⟳</span>
+                <span class="streaming-status status-retry">Retrying (${attempt}/${maxRetries}) in ${delay.toFixed(1)}s</span>
+                <span class="streaming-time">${seconds}s</span>
+                <span class="error-code">${this.escapeHtml(errorCode)}</span>
+            </div>
+        `;
 
-            // Get tool icon
-            const iconHtml = typeof ToolIcons !== 'undefined'
-                ? ToolIcons.getIcon(tool.name)
-                : `<span class="tool-icon-fallback">${(tool.name || 'T').charAt(0)}</span>`;
-
-            // Format tool name (handle Task with subagent_type)
-            let displayName = tool.name;
-            if (tool.name === 'Task' && tool.input?.subagent_type) {
-                displayName = `Task(${tool.input.subagent_type})`;
-            }
-
-            return `
-                <div class="streaming-tool ${statusClass}" data-tool-id="${this.escapeHtml(tool.id || '')}">
-                    ${iconHtml}
-                    <span class="tool-name">${this.escapeHtml(displayName)}</span>
-                    <span class="tool-status-icon">${statusIcon}</span>
-                    ${tool.duration ? `<span class="tool-duration">${(tool.duration / 1000).toFixed(1)}s</span>` : ''}
-                </div>
-            `;
-        }).join('');
-
-        toolsContainer.innerHTML = toolsHtml;
+        // Add animation class
+        this.streamingIndicator.classList.add('retry-mode');
     },
 
     /**
