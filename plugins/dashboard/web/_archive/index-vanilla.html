@@ -1,0 +1,1105 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Claude Code Console Dashboard XXXXXX</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+            rel="stylesheet"
+        />
+        <link rel="stylesheet" href="css/dashboard.css" />
+        <link rel="stylesheet" href="css/tool-cards.css" />
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+        <!-- Lit Web Components - Import Map for CDN (No Build Step) -->
+        <script type="importmap">
+            {
+                "imports": {
+                    "lit": "https://cdn.jsdelivr.net/npm/lit@3/+esm",
+                    "lit/": "https://cdn.jsdelivr.net/npm/lit@3/",
+                    "lit/decorators.js": "https://cdn.jsdelivr.net/npm/lit@3/decorators.js/+esm",
+                    "lit/directives/repeat.js": "https://cdn.jsdelivr.net/npm/lit@3/directives/repeat.js/+esm",
+                    "lit/directives/class-map.js": "https://cdn.jsdelivr.net/npm/lit@3/directives/class-map.js/+esm",
+                    "lit/directives/style-map.js": "https://cdn.jsdelivr.net/npm/lit@3/directives/style-map.js/+esm",
+                    "lit/directives/unsafe-html.js": "https://cdn.jsdelivr.net/npm/lit@3/directives/unsafe-html.js/+esm",
+                    "lit/directives/until.js": "https://cdn.jsdelivr.net/npm/lit@3/directives/until.js/+esm",
+                    "lit/directives/ref.js": "https://cdn.jsdelivr.net/npm/lit@3/directives/ref.js/+esm",
+                    "@preact/signals-core": "https://cdn.jsdelivr.net/npm/@preact/signals-core@1/+esm"
+                }
+            }
+        </script>
+    </head>
+    <body>
+        <div class="app">
+            <!-- Title Bar -->
+            <header class="titlebar">
+                <div class="titlebar-left">
+                    <button
+                        class="hamburger-menu"
+                        id="hamburgerMenu"
+                        title="Toggle sidebar"
+                    >
+                        <svg
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
+                    </button>
+                    <h1 class="logo">Claude Code Console</h1>
+                </div>
+                <div class="titlebar-center">
+                    <button
+                        class="command-palette-trigger"
+                        id="commandPaletteTrigger"
+                    >
+                        <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <path d="M21 21l-4.35-4.35"></path>
+                        </svg>
+                        <span>Search agents, skills, commands...</span>
+                        <kbd>⌘K</kbd>
+                    </button>
+                </div>
+                <div class="titlebar-right">
+                    <div class="connection-status" id="connectionStatus">
+                        <span class="status-dot"></span>
+                        <span class="status-text">Connecting...</span>
+                    </div>
+                    <button
+                        class="titlebar-btn"
+                        id="themeToggle"
+                        title="Toggle theme"
+                    >
+                        <span class="theme-icon">☽</span>
+                    </button>
+                    <div class="profile-menu" id="profileMenu">
+                        <button
+                            class="titlebar-btn"
+                            id="profileBtn"
+                            title="Settings"
+                        >
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path
+                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                                ></path>
+                            </svg>
+                        </button>
+                        <div class="profile-dropdown" id="profileDropdown">
+                            <div class="dropdown-header">Server</div>
+                            <button class="dropdown-item" id="restartServer">
+                                <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                >
+                                    <path d="M23 4v6h-6"></path>
+                                    <path d="M1 20v-6h6"></path>
+                                    <path
+                                        d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                                    ></path>
+                                </svg>
+                                Restart Server
+                            </button>
+                            <button
+                                class="dropdown-item dropdown-item-danger"
+                                id="killServer"
+                            >
+                                <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                >
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line
+                                        x1="4.93"
+                                        y1="4.93"
+                                        x2="19.07"
+                                        y2="19.07"
+                                    ></line>
+                                </svg>
+                                Kill Server
+                            </button>
+                            <div class="dropdown-divider"></div>
+                            <button class="dropdown-item" id="processManager">
+                                <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    stroke-width="2"
+                                >
+                                    <rect
+                                        x="4"
+                                        y="4"
+                                        width="16"
+                                        height="16"
+                                        rx="2"
+                                        ry="2"
+                                    ></rect>
+                                    <rect
+                                        x="9"
+                                        y="9"
+                                        width="6"
+                                        height="6"
+                                    ></rect>
+                                    <line x1="9" y1="1" x2="9" y2="4"></line>
+                                    <line x1="15" y1="1" x2="15" y2="4"></line>
+                                    <line x1="9" y1="20" x2="9" y2="23"></line>
+                                    <line
+                                        x1="15"
+                                        y1="20"
+                                        x2="15"
+                                        y2="23"
+                                    ></line>
+                                    <line x1="20" y1="9" x2="23" y2="9"></line>
+                                    <line
+                                        x1="20"
+                                        y1="14"
+                                        x2="23"
+                                        y2="14"
+                                    ></line>
+                                    <line x1="1" y1="9" x2="4" y2="9"></line>
+                                    <line x1="1" y1="14" x2="4" y2="14"></line>
+                                </svg>
+                                Process Manager
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <div class="main-container">
+                <!-- Primary Sidebar -->
+                <aside class="sidebar" id="sidebar">
+                    <div class="sidebar-content">
+                        <!-- Explorer Section with Tabs -->
+                        <div class="sidebar-section" id="explorerSection">
+                            <div class="section-header">
+                                <span class="section-title">EXPLORER</span>
+                                <button
+                                    class="section-action"
+                                    id="refreshExplorer"
+                                    title="Refresh"
+                                >
+                                    <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        stroke-width="2"
+                                    >
+                                        <path d="M23 4v6h-6"></path>
+                                        <path d="M1 20v-6h6"></path>
+                                        <path
+                                            d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                                        ></path>
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <!-- Explorer Tab Bar -->
+                            <div class="explorer-tabs">
+                                <button
+                                    class="explorer-tab active"
+                                    data-tab="work"
+                                >
+                                    Work
+                                    <span
+                                        class="explorer-tab-count"
+                                        id="workTabCount"
+                                        >0</span
+                                    >
+                                </button>
+                                <button class="explorer-tab" data-tab="agents">
+                                    Agents
+                                    <span
+                                        class="explorer-tab-count"
+                                        id="agentsTabCount"
+                                        >0</span
+                                    >
+                                </button>
+                                <button class="explorer-tab" data-tab="skills">
+                                    Skills
+                                    <span
+                                        class="explorer-tab-count"
+                                        id="skillsTabCount"
+                                        >0</span
+                                    >
+                                </button>
+                            </div>
+
+                            <!-- Work Tab (Changesets) - Now using Lit component -->
+                            <div
+                                class="explorer-tab-content active"
+                                id="workTabContent"
+                            >
+                                <div class="sidebar-search">
+                                    <input
+                                        type="text"
+                                        class="tree-search"
+                                        id="workSearch"
+                                        placeholder="Filter changesets..."
+                                    />
+                                </div>
+                                <changeset-tree
+                                    id="changesetTree"
+                                ></changeset-tree>
+                            </div>
+
+                            <!-- Agents Tab - Now using Lit component -->
+                            <div
+                                class="explorer-tab-content"
+                                id="agentsTabContent"
+                            >
+                                <div class="sidebar-search">
+                                    <input
+                                        type="text"
+                                        class="tree-search"
+                                        id="agentsSearch"
+                                        placeholder="Filter agents..."
+                                    />
+                                </div>
+                                <agent-tree id="agentsTreeContent"></agent-tree>
+                            </div>
+
+                            <!-- Skills Tab - Now using Lit component -->
+                            <div
+                                class="explorer-tab-content"
+                                id="skillsTabContent"
+                            >
+                                <div class="sidebar-search">
+                                    <input
+                                        type="text"
+                                        class="tree-search"
+                                        id="skillsSearch"
+                                        placeholder="Filter skills..."
+                                    />
+                                </div>
+                                <skill-tree id="skillsTreeContent"></skill-tree>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sidebar Resize Handle -->
+                    <div
+                        class="sidebar-resize-handle"
+                        id="sidebarResizeHandle"
+                    ></div>
+                </aside>
+
+                <!-- Editor Area -->
+                <main class="editor-area" id="editorArea">
+                    <!-- Tab Bar -->
+                    <div class="tab-bar" id="tabBar">
+                        <div class="tab-list" id="tabList">
+                            <!-- Tabs will be dynamically added here -->
+                        </div>
+                        <button
+                            class="tab-action"
+                            id="newTabBtn"
+                            title="New Tab"
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Breadcrumb Bar -->
+                    <div class="breadcrumb-bar" id="breadcrumbBar">
+                        <span class="breadcrumb-item">Dashboard</span>
+                    </div>
+
+                    <!-- Editor Content -->
+                    <div class="editor-content" id="editorContent">
+                        <!-- Terminal Tab -->
+                        <div class="editor-tab-content" id="terminalTab">
+                            <div class="terminal-container">
+                                <!-- Terminal Header -->
+                                <div class="terminal-header">
+                                    <div class="terminal-title">
+                                        <span class="terminal-icon">&gt;_</span>
+                                        <span>Claude SDK Terminal</span>
+                                    </div>
+                                    <div class="terminal-controls">
+                                        <!-- Model Selector (Phase 1.1) -->
+                                        <div class="terminal-model-selector">
+                                            <label
+                                                for="terminalModelSelector"
+                                                class="model-label"
+                                                >Model:</label
+                                            >
+                                            <select
+                                                id="terminalModelSelector"
+                                                class="model-select"
+                                            >
+                                                <option value="sonnet" selected>
+                                                    Sonnet
+                                                </option>
+                                                <option value="opus">
+                                                    Opus
+                                                </option>
+                                                <option value="haiku">
+                                                    Haiku
+                                                </option>
+                                            </select>
+                                        </div>
+                                        <!-- Cost Display (Phase 1.3) -->
+                                        <div
+                                            id="terminalCostDisplay"
+                                            class="terminal-cost-display"
+                                        ></div>
+                                        <div class="terminal-view-toggle">
+                                            <button
+                                                class="view-toggle-btn active"
+                                                data-view="conversation"
+                                                title="Conversation View"
+                                            >
+                                                <svg
+                                                    width="14"
+                                                    height="14"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                >
+                                                    <path
+                                                        d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                                                    ></path>
+                                                </svg>
+                                            </button>
+                                            <button
+                                                class="view-toggle-btn"
+                                                data-view="terminal"
+                                                title="Terminal View"
+                                            >
+                                                <svg
+                                                    width="14"
+                                                    height="14"
+                                                    viewBox="0 0 24 24"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    stroke-width="2"
+                                                >
+                                                    <polyline
+                                                        points="4 17 10 11 4 5"
+                                                    ></polyline>
+                                                    <line
+                                                        x1="12"
+                                                        y1="19"
+                                                        x2="20"
+                                                        y2="19"
+                                                    ></line>
+                                                </svg>
+                                            </button>
+                                        </div>
+                                        <span
+                                            id="terminalConnectionStatus"
+                                            class="terminal-status connected"
+                                            >SDK Ready</span
+                                        >
+                                    </div>
+                                </div>
+                                <!-- Terminal Output Area (wrapper for both views) -->
+                                <div class="terminal-output-wrapper">
+                                    <!-- Classic Terminal View -->
+                                    <div
+                                        class="terminal-output terminal-view hidden"
+                                        id="terminalOutput"
+                                    >
+                                        <pre class="terminal-welcome">
+ ██████╗██╗       █████╗ ██╗   ██╗██████╗ ███████╗
+██╔════╝██║      ██╔══██╗██║   ██║██╔══██╗██╔════╝
+██║     ██║      ███████║██║   ██║██║  ██║█████╗
+██║     ██║      ██╔══██║██║   ██║██║  ██║██╔══╝
+╚██████╗███████╗ ██║  ██║╚██████╔╝██████╔╝███████╗
+ ╚═════╝╚══════╝ ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚══════╝
+   ██████╗ ██████╗ ██████╗ ███████╗
+  ██╔════╝██╔═══██╗██╔══██╗██╔════╝
+  ██║     ██║   ██║██║  ██║█████╗
+  ██║     ██║   ██║██║  ██║██╔══╝
+  ╚██████╗╚██████╔╝██████╔╝███████╗
+   ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝
+
+  Claude Code Terminal v?.?.?
+  ─────────────────────────────
+
+  Powered by Claude Agent SDK
+  Type a message and press Enter to query Claude.
+</pre
+                                        >
+                                    </div>
+                                    <!-- Conversation View (default) -->
+                                    <div
+                                        class="terminal-conversation conversation-container"
+                                        id="terminalConversation"
+                                    >
+                                        <div
+                                            class="terminal-conversation-welcome"
+                                        >
+                                            <div class="welcome-content">
+                                                <div class="welcome-icon">
+                                                    <svg
+                                                        width="48"
+                                                        height="48"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        stroke-width="1.5"
+                                                    >
+                                                        <path
+                                                            d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                                                        ></path>
+                                                    </svg>
+                                                </div>
+                                                <h3>Claude SDK Terminal</h3>
+                                                <p>
+                                                    Type a message and press
+                                                    Enter to start a
+                                                    conversation with Claude.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Terminal Input Area -->
+                                <div class="terminal-input-area">
+                                    <span class="terminal-prompt">$</span>
+                                    <input
+                                        type="text"
+                                        id="terminalInput"
+                                        class="terminal-input"
+                                        placeholder="Ask Claude something..."
+                                    />
+                                    <div class="terminal-actions">
+                                        <button
+                                            class="terminal-action-btn"
+                                            data-action="interrupt"
+                                            title="Interrupt (Ctrl+C)"
+                                            disabled
+                                            id="terminalInterruptBtn"
+                                        >
+                                            ⏹
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Welcome View (default) -->
+                        <div class="editor-tab-content active" id="welcomeTab">
+                            <div class="welcome-view">
+                                <div class="welcome-header">
+                                    <h2>Claude Code Console Dashboard</h2>
+                                    <p>
+                                        Select an agent, skill, or changeset
+                                        from the sidebar to get started.
+                                    </p>
+                                </div>
+                                <div class="welcome-shortcuts">
+                                    <h3>Keyboard Shortcuts</h3>
+                                    <div class="shortcut-grid">
+                                        <div class="shortcut-item">
+                                            <kbd>⌘K</kbd>
+                                            <span>Command Palette</span>
+                                        </div>
+                                        <div class="shortcut-item">
+                                            <kbd>⌘B</kbd>
+                                            <span>Toggle Sidebar</span>
+                                        </div>
+                                        <div class="shortcut-item">
+                                            <kbd>⌘J</kbd>
+                                            <span>Toggle Panel</span>
+                                        </div>
+                                        <div class="shortcut-item">
+                                            <kbd>⌘W</kbd>
+                                            <span>Close Tab</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="welcome-stats" id="welcomeStats">
+                                    <!-- Stats will be populated dynamically -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Conversation Tab Content (for changesets) -->
+                        <div class="editor-tab-content" id="conversationTab">
+                            <div
+                                class="conversation-header"
+                                id="conversationHeader"
+                            >
+                                <div class="header-placeholder">
+                                    <span class="placeholder-icon">◈</span>
+                                    <span
+                                        >Select a changeset to view
+                                        conversation</span
+                                    >
+                                </div>
+                            </div>
+                            <div
+                                class="conversation-container"
+                                id="conversationContainer"
+                            >
+                                <div class="conversation-empty">
+                                    <div class="empty-terminal">
+                                        <div class="terminal-line">
+                                            $ awaiting changeset selection...
+                                        </div>
+                                        <div class="terminal-cursor"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Graph Tab Content -->
+                        <div class="editor-tab-content" id="graphTab">
+                            <div class="graph-toolbar">
+                                <div class="toolbar-left">
+                                    <button class="toolbar-btn" id="resetGraph">
+                                        <svg
+                                            width="14"
+                                            height="14"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                        >
+                                            <path
+                                                d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"
+                                            ></path>
+                                            <path d="M3 3v5h5"></path>
+                                        </svg>
+                                        Reset View
+                                    </button>
+                                    <button
+                                        class="toolbar-btn mode-toggle"
+                                        id="toggleGraphMode"
+                                    >
+                                        <svg
+                                            width="14"
+                                            height="14"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            stroke-width="2"
+                                        >
+                                            <circle
+                                                cx="12"
+                                                cy="12"
+                                                r="3"
+                                            ></circle>
+                                            <circle
+                                                cx="6"
+                                                cy="6"
+                                                r="1.5"
+                                            ></circle>
+                                            <circle
+                                                cx="18"
+                                                cy="6"
+                                                r="1.5"
+                                            ></circle>
+                                            <circle
+                                                cx="6"
+                                                cy="18"
+                                                r="1.5"
+                                            ></circle>
+                                            <circle
+                                                cx="18"
+                                                cy="18"
+                                                r="1.5"
+                                            ></circle>
+                                        </svg>
+                                        <span id="graphModeLabel"
+                                            >Show Agents</span
+                                        >
+                                    </button>
+                                </div>
+                                <div class="zoom-controls">
+                                    <button class="toolbar-btn" id="zoomOut">
+                                        −
+                                    </button>
+                                    <span class="zoom-level" id="zoomLevel"
+                                        >100%</span
+                                    >
+                                    <button class="toolbar-btn" id="zoomIn">
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="graph-container" id="graphContainer">
+                                <svg id="graphSvg"></svg>
+                                <div class="graph-tooltip" id="graphTooltip">
+                                    <div class="graph-tooltip-title"></div>
+                                    <div class="graph-tooltip-role"></div>
+                                </div>
+                            </div>
+                            <div class="graph-legend" id="graphLegend"></div>
+                        </div>
+
+                        <!-- Agent Detail Tab Content -->
+                        <div class="editor-tab-content" id="agentDetailTab">
+                            <div class="detail-view" id="agentDetailView"></div>
+                        </div>
+
+                        <!-- Skill Detail Tab Content -->
+                        <div class="editor-tab-content" id="skillDetailTab">
+                            <div class="detail-view" id="skillDetailView"></div>
+                        </div>
+
+                        <!-- Artifact Tab Content -->
+                        <div class="editor-tab-content" id="artifactTab">
+                            <div class="artifact-view" id="artifactView">
+                                <div class="artifact-placeholder">
+                                    <span class="placeholder-icon">📄</span>
+                                    <span
+                                        >Select an artifact to view its
+                                        contents</span
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+
+                <!-- Activity Bar (Left Side) -->
+                <nav class="activity-bar" id="activityBar">
+                    <div class="activity-bar-top">
+                        <button
+                            class="activity-btn active"
+                            data-panel="explorer"
+                            title="Explorer (⌘⇧E)"
+                        >
+                            <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                            >
+                                <path
+                                    d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+                                ></path>
+                            </svg>
+                        </button>
+                        <button
+                            class="activity-btn"
+                            data-panel="changesets"
+                            title="Changesets (⌘⇧G)"
+                        >
+                            <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                            >
+                                <circle cx="18" cy="18" r="3"></circle>
+                                <circle cx="6" cy="6" r="3"></circle>
+                                <path d="M6 21V9a9 9 0 0 0 9 9"></path>
+                            </svg>
+                        </button>
+                        <button
+                            class="activity-btn"
+                            data-panel="search"
+                            title="Search (⌘⇧F)"
+                        >
+                            <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                            >
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <path d="M21 21l-4.35-4.35"></path>
+                            </svg>
+                        </button>
+                        <button
+                            class="activity-btn"
+                            data-panel="graph"
+                            title="Graph (⌘⇧D)"
+                        >
+                            <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                            >
+                                <circle cx="12" cy="12" r="2"></circle>
+                                <circle cx="12" cy="5" r="2"></circle>
+                                <circle cx="19" cy="12" r="2"></circle>
+                                <circle cx="5" cy="12" r="2"></circle>
+                                <circle cx="12" cy="19" r="2"></circle>
+                                <line x1="12" y1="7" x2="12" y2="10"></line>
+                                <line x1="14" y1="12" x2="17" y2="12"></line>
+                                <line x1="7" y1="12" x2="10" y2="12"></line>
+                                <line x1="12" y1="14" x2="12" y2="17"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="activity-bar-bottom">
+                        <button
+                            class="activity-btn"
+                            data-action="settings"
+                            title="Settings"
+                        >
+                            <svg
+                                width="20"
+                                height="20"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                            >
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <path
+                                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+                                ></path>
+                            </svg>
+                        </button>
+                    </div>
+                </nav>
+            </div>
+
+            <!-- Bottom Panel -->
+            <div class="bottom-panel" id="bottomPanel">
+                <div class="panel-header">
+                    <div class="panel-tabs">
+                        <button class="panel-tab active" data-tab="activity">
+                            Activity
+                        </button>
+                        <button class="panel-tab" data-tab="timeline">
+                            Timeline
+                        </button>
+                        <button class="panel-tab" data-tab="errors">
+                            Errors
+                            <span
+                                class="tab-badge has-errors"
+                                id="errorsBadge"
+                                style="display: none"
+                                >0</span
+                            >
+                        </button>
+                        <button class="panel-tab" data-tab="console">
+                            Console
+                        </button>
+                    </div>
+                    <div class="panel-actions">
+                        <button
+                            class="panel-action-btn"
+                            id="maximizePanel"
+                            title="Maximize"
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <polyline points="15 3 21 3 21 9"></polyline>
+                                <polyline points="9 21 3 21 3 15"></polyline>
+                                <line x1="21" y1="3" x2="14" y2="10"></line>
+                                <line x1="3" y1="21" x2="10" y2="14"></line>
+                            </svg>
+                        </button>
+                        <button
+                            class="panel-action-btn"
+                            id="closePanel"
+                            title="Close Panel (⌘J)"
+                        >
+                            <svg
+                                width="14"
+                                height="14"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                stroke-width="2"
+                            >
+                                <line x1="18" y1="6" x2="6" y2="18"></line>
+                                <line x1="6" y1="6" x2="18" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="panel-resize-handle" id="panelResizeHandle"></div>
+                <div class="panel-content">
+                    <!-- Activity Tab -->
+                    <div class="panel-tab-content active" id="activityPanel">
+                        <div class="activity-list" id="activityList"></div>
+                    </div>
+                    <!-- Timeline Tab -->
+                    <div class="panel-tab-content" id="timelinePanel">
+                        <div class="timeline-view" id="timelineView">
+                            <div class="timeline-placeholder">
+                                Timeline visualization coming soon...
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Console Tab -->
+                    <div class="panel-tab-content" id="consolePanel">
+                        <div class="console-output" id="consoleOutput"></div>
+                    </div>
+                    <!-- Errors Tab -->
+                    <div class="panel-tab-content" id="errorsPanel">
+                        <div class="errors-list" id="errorsList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Bar -->
+            <footer class="status-bar" id="statusBar">
+                <div class="status-left">
+                    <div class="status-item clickable" id="statusConnection">
+                        <span class="status-dot"></span>
+                        <span>Connected</span>
+                    </div>
+                    <div class="status-item" id="statusPM">
+                        <span>PM: Idle</span>
+                    </div>
+                </div>
+                <div class="status-center">
+                    <div class="status-item" id="statusDomains">
+                        <span>Domains: 0</span>
+                    </div>
+                    <div
+                        class="status-item clickable token-meter"
+                        id="tokenMeterStatus"
+                        title="Token Usage"
+                    >
+                        <svg
+                            width="12"
+                            height="12"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 6v6l4 2"></path>
+                        </svg>
+                        <span class="token-count">0</span>
+                        <span class="token-cost">$0.00</span>
+                    </div>
+                    <!-- Token Meter Expanded Panel -->
+                    <div class="token-meter-panel" id="tokenMeterPanel"></div>
+                </div>
+                <div class="status-right">
+                    <div
+                        class="status-item clickable"
+                        id="statusTasks"
+                        title="Click to view tasks"
+                    >
+                        <span>Tasks: 0/0</span>
+                        <!-- Task List Panel -->
+                        <div class="task-list-panel" id="taskListPanel">
+                            <div class="task-list-header">
+                                <span class="task-list-title">Tasks</span>
+                                <span class="task-list-count" id="taskListCount"
+                                    >0/0</span
+                                >
+                                <button
+                                    class="task-list-close"
+                                    id="closeTaskListPanel"
+                                >
+                                    &times;
+                                </button>
+                            </div>
+                            <div class="task-list-progress">
+                                <div
+                                    class="task-list-progress-bar"
+                                    id="taskListProgressBar"
+                                ></div>
+                            </div>
+                            <div class="task-list-body" id="taskListBody">
+                                <div class="panel-empty">
+                                    <span class="empty-icon">☐</span>
+                                    <span>No tasks in this session</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div
+                        class="status-item clickable"
+                        id="statusTheme"
+                        title="Toggle Theme"
+                    >
+                        <span>☽</span>
+                    </div>
+                    <div class="status-item" id="statusVersion">
+                        <span id="dashboardVersion">v2.3.0</span>
+                    </div>
+                </div>
+            </footer>
+        </div>
+
+        <!-- Command Palette Modal -->
+        <div class="command-palette-overlay" id="commandPaletteOverlay">
+            <div class="command-palette" id="commandPalette">
+                <div class="palette-input-container">
+                    <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="M21 21l-4.35-4.35"></path>
+                    </svg>
+                    <input
+                        type="text"
+                        class="palette-input"
+                        id="paletteInput"
+                        placeholder="Search agents, skills, commands..."
+                    />
+                    <kbd>ESC</kbd>
+                </div>
+                <div class="palette-results" id="paletteResults">
+                    <!-- Results will be populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Agent Detail Modal (fallback) -->
+        <div class="modal" id="agentModal">
+            <div class="modal-content">
+                <button class="modal-close" id="closeAgentModal">
+                    &times;
+                </button>
+                <div class="modal-body" id="agentModalBody"></div>
+            </div>
+        </div>
+
+        <!-- Skill Detail Modal (fallback) -->
+        <div class="modal" id="skillModal">
+            <div class="modal-content">
+                <button class="modal-close" id="closeSkillModal">
+                    &times;
+                </button>
+                <div class="modal-body" id="skillModalBody"></div>
+            </div>
+        </div>
+
+        <!-- Process Manager Modal -->
+        <div class="modal" id="processModal">
+            <div class="modal-content modal-process-manager">
+                <button class="modal-close" id="closeProcessModal">
+                    &times;
+                </button>
+                <div class="modal-body" id="processModalBody"></div>
+            </div>
+        </div>
+
+        <!-- Restart Modal (Uncancellable) -->
+        <div class="modal modal-restart" id="restartModal">
+            <div class="modal-content modal-restart-content">
+                <div class="restart-modal-body">
+                    <div class="restart-spinner">
+                        <svg
+                            class="restart-spinner-icon"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                        >
+                            <path d="M23 4v6h-6"></path>
+                            <path d="M1 20v-6h6"></path>
+                            <path
+                                d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+                            ></path>
+                        </svg>
+                    </div>
+                    <h2 class="restart-title" id="restartTitle">
+                        System Restarting
+                    </h2>
+                    <p class="restart-message" id="restartMessage">
+                        Please wait while the dashboard server restarts...
+                    </p>
+                    <div class="restart-progress">
+                        <div
+                            class="restart-progress-bar"
+                            id="restartProgressBar"
+                        ></div>
+                    </div>
+                    <p class="restart-status" id="restartStatus">
+                        Initializing restart...
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scripts -->
+        <script src="js/dashboard.js"></script>
+        <script src="js/agents.js"></script>
+        <script src="js/skills.js"></script>
+        <script src="js/changesets.js"></script>
+        <script src="js/graph.js"></script>
+        <script src="js/tasks.js"></script>
+
+        <!-- Tool Icons (used by Lit components) -->
+        <script src="js/tool-icons.js"></script>
+
+        <!-- Legacy scripts (conversation/tool-renderers replaced by Lit components) -->
+        <script src="js/error-stream.js"></script>
+        <script src="js/token-meter.js"></script>
+        <script src="js/timeline.js"></script>
+        <script src="js/conversation-storage.js"></script>
+        <script src="js/terminal-conversation.js"></script>
+        <script src="js/terminal.js"></script>
+
+        <!-- Lit Web Components - Module Entry Point -->
+        <script type="module" src="js/app.js"></script>
+    </body>
+</html>
