@@ -1,0 +1,57 @@
+{
+  "description": "PM Plugin collaboration hooks - coordinates cross-domain handoffs and workflow state",
+  "hooks": {
+    "SubagentStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-handoff.sh",
+            "timeout": 10,
+            "statusMessage": "Validating handoff context..."
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/update-changeset.sh",
+            "timeout": 15,
+            "statusMessage": "Updating changeset state..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/track-artifact.sh",
+            "timeout": 5,
+            "statusMessage": "Tracking artifact..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/load-workflow-context.sh",
+            "timeout": 5,
+            "statusMessage": "Loading workflow context..."
+          }
+        ]
+      }
+    ]
+  }
+}

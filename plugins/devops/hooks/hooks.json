@@ -1,0 +1,43 @@
+{
+  "description": "DevOps plugin hooks - deployment safety, infrastructure validation, CI/CD checks",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-devops-command.sh",
+            "timeout": 10,
+            "statusMessage": "Validating DevOps command..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-infra-changes.sh",
+            "timeout": 10,
+            "statusMessage": "Validating infrastructure changes..."
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/devops-summary.sh",
+            "timeout": 10,
+            "statusMessage": "Generating DevOps summary..."
+          }
+        ]
+      }
+    ]
+  }
+}

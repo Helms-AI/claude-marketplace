@@ -1,6 +1,7 @@
 {
   "name": "devops",
-  "description": "DevOps team with 5 specialized agents for CI/CD, deployment, infrastructure, monitoring, and containerization",
-  "version": "1.0.0",
-  "skills": ["./skills/"]
+  "description": "DevOps and infrastructure including CI/CD, containerization, orchestration, and cloud infrastructure.",
+  "version": "1.2.0",
+  "skills": ["./skills/"],
+  "hooks": "./hooks/hooks.json"
 }

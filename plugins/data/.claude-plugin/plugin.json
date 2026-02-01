@@ -1,6 +1,7 @@
 {
   "name": "data",
-  "description": "Data team with 5 specialized agents for data modeling, pipelines, analytics, warehousing, and governance",
-  "version": "1.0.0",
-  "skills": ["./skills/"]
+  "description": "Data engineering including pipelines, warehousing, ETL/ELT, and analytics infrastructure.",
+  "version": "1.1.0",
+  "skills": ["./skills/"],
+  "hooks": "./hooks/hooks.json"
 }
