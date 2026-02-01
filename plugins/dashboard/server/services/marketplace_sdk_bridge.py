@@ -468,6 +468,7 @@ class MarketplaceSDKBridge:
         enable_sandbox: Optional[bool] = None,
         session_id: Optional[str] = None,
         continue_conversation: bool = False,
+        max_thinking_tokens: Optional[int] = None,
     ) -> Any:
         """Get ClaudeAgentOptions with all marketplace configuration.
 
@@ -484,6 +485,7 @@ class MarketplaceSDKBridge:
             enable_sandbox: Enable sandbox configuration (Phase 3.4)
             session_id: Session ID for continuation (Phase 3.2)
             continue_conversation: Whether to continue an existing conversation (Phase 3.2)
+            max_thinking_tokens: Token budget for extended thinking (overrides default)
 
         Returns:
             ClaudeAgentOptions configured for marketplace use
@@ -556,7 +558,7 @@ class MarketplaceSDKBridge:
             max_turns=use_max_turns,
             max_budget_usd=use_max_budget,
             # Extended thinking (Phase 1.4)
-            max_thinking_tokens=self.DEFAULT_MAX_THINKING_TOKENS if use_thinking else None,
+            max_thinking_tokens=(max_thinking_tokens or self.DEFAULT_MAX_THINKING_TOKENS) if use_thinking else None,
             # Allowed tools including MCP tools
             allowed_tools=allowed_tools,
         )
@@ -605,6 +607,14 @@ class MarketplaceSDKBridge:
         enable_checkpointing: Optional[bool] = None,
         retry_config: Optional[RetryConfig] = None,
         resume_session_id: Optional[str] = None,
+        # Additional settings from frontend settings panel
+        permission_mode: Optional[str] = None,
+        sandbox_mode: Optional[bool] = None,
+        mcp_tools: Optional[bool] = None,
+        beta_features: Optional[bool] = None,
+        max_retries: Optional[int] = None,
+        max_thinking_tokens: Optional[int] = None,
+        continue_conversation: Optional[bool] = None,
     ) -> AsyncIterator[dict]:
         """Stream a query through the SDK with marketplace agents/skills.
 
@@ -618,6 +628,13 @@ class MarketplaceSDKBridge:
             enable_checkpointing: Enable file checkpointing (Phase 2.4)
             retry_config: Retry configuration for transient errors (Phase 4.1)
             resume_session_id: Session ID to resume for conversation continuity
+            permission_mode: Permission mode ('default', 'acceptEdits', 'bypassPermissions')
+            sandbox_mode: Enable sandbox mode for file operations
+            mcp_tools: Enable MCP tools
+            beta_features: Enable beta features
+            max_retries: Max retry attempts for transient errors
+            max_thinking_tokens: Token budget for extended thinking
+            continue_conversation: Whether to continue existing conversation
 
         Yields:
             Message dictionaries with type, content, tool info, etc.
@@ -633,6 +650,15 @@ class MarketplaceSDKBridge:
             }
             return
 
+        # Build retry config from max_retries if provided
+        effective_retry_config = retry_config
+        if max_retries is not None and effective_retry_config is None:
+            effective_retry_config = RetryConfig(max_retries=max_retries)
+
+        # Override instance settings with request-level settings
+        if permission_mode:
+            self.permission_mode = permission_mode
+
         options = self.get_options(
             model=model,
             max_turns=max_turns,
@@ -641,6 +667,11 @@ class MarketplaceSDKBridge:
             output_format=output_format,
             enable_checkpointing=enable_checkpointing,
             session_id=resume_session_id,
+            enable_mcp_tools=mcp_tools,
+            enable_betas=beta_features,
+            enable_sandbox=sandbox_mode,
+            continue_conversation=continue_conversation or False,
+            max_thinking_tokens=max_thinking_tokens,
         )
 
         if resume_session_id:

@@ -52,59 +52,247 @@ The dashboard will be available at `http://localhost:24282`
 
 ## Architecture
 
+### Backend (Flask)
+
+```
+plugins/dashboard/server/
+├── app.py               # Flask application entry
+├── auth.py              # Token-based authentication
+├── sse.py               # Server-Sent Events manager
+├── models.py            # Data models
+├── parsers/             # File parsers
+│   ├── agent_parser.py
+│   ├── skill_parser.py
+│   └── capability_parser.py
+├── services/            # Core services
+│   ├── agent_registry.py
+│   ├── skill_registry.py
+│   ├── changeset_tracker.py
+│   ├── event_store.py
+│   ├── file_watcher.py
+│   ├── marketplace_sdk_bridge.py  # SDK integration
+│   ├── marketplace_mcp.py         # MCP tools
+│   └── sdk_hooks.py               # Security hooks
+└── routes/              # API endpoints
+    ├── agents.py
+    ├── skills.py
+    ├── changesets.py
+    ├── events.py
+    ├── stream.py
+    ├── input.py         # SDK terminal endpoints
+    └── capabilities.py
+```
+
+### Frontend (Lit + Preact Signals)
+
+The frontend uses **Atomic Design** with **Lit Web Components** and **Preact Signals** for state management.
+
+#### Technology Stack
+
+| Technology | Purpose |
+|------------|---------|
+| **Lit 3.x** | Web Components framework |
+| **Preact Signals** | Reactive state management |
+| **Lucide** | Icon library |
+| **D3.js** | Graph visualizations |
+| **Marked** | Markdown parsing |
+
+All dependencies load via CDN (zero-build).
+
+#### Component Hierarchy
+
+```
+web/js/components/
+├── atoms/              # 22 basic building blocks
+│   ├── button.js       # dash-button
+│   ├── icon.js         # dash-icon (Lucide-powered)
+│   ├── input.js        # dash-input
+│   ├── spinner.js      # dash-spinner
+│   ├── avatar.js       # dash-avatar
+│   ├── tag.js          # dash-tag
+│   ├── toggle.js       # dash-toggle
+│   ├── slider.js       # dash-slider
+│   ├── progress-bar.js # dash-progress
+│   ├── tab.js          # dash-tab, dash-tab-panel, dash-tab-group
+│   └── ...             # 22 total
+│
+├── molecules/          # 20 atom combinations
+│   ├── search-input.js     # Search with icon
+│   ├── dropdown-menu.js    # Menu with items
+│   ├── modal-header.js     # Modal title bar
+│   ├── stat-card.js        # Stat display
+│   ├── activity-list.js    # Activity timeline
+│   ├── tag-list.js         # Tag collection
+│   ├── keyboard-shortcut.js
+│   └── ...                 # 20 total
+│
+├── organisms/          # 14 complex sections
+│   ├── command-palette.js      # Cmd+K palette
+│   ├── agent-detail-modal.js   # Agent modal view
+│   ├── skill-detail-modal.js   # Skill modal view
+│   ├── domain-graph.js         # D3 visualization
+│   ├── token-meter.js          # Cost tracking
+│   ├── process-manager.js      # Task panel
+│   └── ...                     # 14 total
+│
+├── layout/             # 7 page structures
+│   ├── dashboard-shell.js  # Root container
+│   ├── titlebar.js         # Top navigation
+│   ├── sidebar-panel.js    # Left sidebar
+│   ├── editor-area.js      # Main content
+│   ├── tab-bar.js          # Tab navigation
+│   ├── status-bar.js       # Bottom bar
+│   └── index.js
+│
+├── explorer/           # 7 tree components
+│   ├── tree-item-base.js   # Base styles
+│   ├── agent-tree.js       # Agent explorer
+│   ├── agent-item.js       # Agent row
+│   ├── skill-tree.js       # Skill explorer
+│   ├── skill-item.js       # Skill row
+│   ├── changeset-tree.js   # Changeset list
+│   └── changeset-item.js   # Changeset row
+│
+├── terminal/           # 6 SDK terminal
+│   ├── terminal-view.js    # Main container
+│   ├── terminal-input.js   # User input
+│   ├── model-selector.js   # Model picker
+│   ├── session-controls.js # Session mgmt
+│   └── settings-panel.js   # Config panel
+│
+├── tool-cards/         # 11 tool renderers
+│   ├── tool-card-base.js   # Base class (400+ lines CSS)
+│   ├── bash-tool-card.js   # Bash execution
+│   ├── read-tool-card.js   # File reading
+│   ├── edit-tool-card.js   # File editing
+│   ├── write-tool-card.js  # File writing
+│   ├── glob-tool-card.js   # File globbing
+│   ├── grep-tool-card.js   # Text search
+│   ├── task-tool-card.js   # Task mgmt
+│   ├── web-tool-card.js    # Web fetch
+│   └── question-tool-card.js
+│
+├── conversation/       # 3 transcript viewers
+│   ├── conversation-stream.js
+│   ├── message-bubble.js
+│   └── changeset-viewer.js
+│
+├── indicators/         # 2 status displays
+│   ├── connection-status.js
+│   └── thinking-indicator.js
+│
+└── core/               # 3 base classes
+    ├── signal-watcher.js   # Store subscription mixin
+    ├── icon-button.js
+    └── badge.js
+```
+
+#### State Management
+
+State is centralized in `store/app-state.js` using Preact Signals:
+
+```javascript
+// Store structure
+AppStore = {
+    // UI State
+    theme: signal('dark'),
+    sidebarVisible: signal(true),
+    activeTabId: signal('welcome'),
+
+    // Data State
+    agents: signal([]),
+    skills: signal([]),
+    changesets: signal([]),
+
+    // Selection State
+    selectedAgent: signal(null),
+    selectedSkill: signal(null),
+
+    // Terminal State
+    terminalMessages: signal([]),
+    isStreaming: signal(false),
+    tokenUsage: signal({ input: 0, output: 0 }),
+
+    // Connection State
+    connectionState: signal('connecting')
+};
+
+// Computed values (auto-update)
+const filteredAgents = computed(() => /* filter logic */);
+const agentsByDomain = computed(() => /* grouping logic */);
+
+// Actions (state mutations)
+Actions.setSelectedAgent(agent);
+Actions.toggleSidebar();
+Actions.addTerminalMessage(msg);
+```
+
+#### Service Layer
+
+```
+web/js/services/
+├── api-service.js        # HTTP client
+├── sse-service.js        # Real-time events
+├── sdk-client.js         # Claude SDK bridge
+├── agent-service.js      # Agent data + caching
+├── skill-service.js      # Skill data + caching
+├── changeset-service.js  # Changeset data
+├── theme-service.js      # Light/dark theme
+├── modal-service.js      # Modal state
+├── tab-service.js        # Tab management
+├── keyboard-service.js   # Shortcuts
+└── formatters.js         # Date/time utils
+```
+
+#### Key Patterns
+
+**1. SignalWatcher Mixin** - Components auto-update when signals change:
+```javascript
+class MyComponent extends SignalWatcher(LitElement) {
+    render() {
+        return html`Agents: ${AppStore.agents.value.length}`;
+    }
+}
+```
+
+**2. Domain Colors** - Consistent coloring across all domains:
+```javascript
+const domainClass = `domain-${agent.domain}`;
+return html`<span class="${domainClass}">${agent.name}</span>`;
+```
+
+**3. Self-Registering Components**:
+```javascript
+customElements.define('dash-button', DashButton);
+export { DashButton };
+```
+
+### File Structure
+
 ```
 plugins/dashboard/
 ├── .claude-plugin/
 │   ├── plugin.json           # Plugin manifest
 │   └── capabilities.json     # Capability declarations
-├── server/
-│   ├── app.py               # Flask application
-│   ├── auth.py              # Token-based authentication
-│   ├── sse.py               # Server-Sent Events manager
-│   ├── models.py            # Data models
-│   ├── parsers/             # File parsers
-│   │   ├── agent_parser.py
-│   │   ├── skill_parser.py
-│   │   └── capability_parser.py
-│   ├── services/            # Core services
-│   │   ├── agent_registry.py
-│   │   ├── skill_registry.py
-│   │   ├── changeset_tracker.py
-│   │   ├── event_store.py
-│   │   ├── file_watcher.py
-│   │   ├── marketplace_sdk_bridge.py  # SDK integration
-│   │   ├── marketplace_mcp.py         # MCP tools
-│   │   └── sdk_hooks.py               # Security hooks
-│   └── routes/              # API endpoints
-│       ├── agents.py
-│       ├── skills.py
-│       ├── changesets.py
-│       ├── events.py
-│       ├── stream.py
-│       ├── input.py         # SDK terminal endpoints
-│       └── capabilities.py
+├── server/                   # Backend (Flask)
 ├── web/
-│   ├── index.html           # Dashboard SPA
+│   ├── index.html            # SPA entry (import map)
 │   ├── css/
-│   │   ├── dashboard.css    # Styles with theme support
-│   │   └── tool-cards.css   # Tool card rendering
+│   │   ├── dashboard.css     # 4800+ lines, theme support
+│   │   └── tool-cards.css    # Tool card styles
 │   └── js/
-│       ├── dashboard.js     # Main app + SSE client
-│       ├── terminal.js      # SDK terminal
-│       ├── terminal-conversation.js  # Conversation view
-│       ├── agents.js        # Agent explorer
-│       ├── skills.js        # Skill browser
-│       ├── changesets.js    # Changeset viewer
-│       ├── conversation.js  # Transcript rendering
-│       ├── timeline.js      # Handoff timeline
-│       └── graph.js         # D3.js visualization
+│       ├── app.js            # Bootstrap & initialization
+│       ├── store/
+│       │   └── app-state.js  # Preact Signals store
+│       ├── services/         # Service layer (14 services)
+│       └── components/       # Lit components (95+ total)
 ├── tests/
-│   ├── test_sdk_bridge.py   # SDK bridge tests
-│   ├── test_terminal_e2e.py # E2E terminal tests
-│   └── test_input_routes.py # API tests
+│   ├── test_sdk_bridge.py
+│   ├── test_terminal_e2e.py
+│   └── test_input_routes.py
 └── skills/
     └── dashboard/
-        └── SKILL.md         # /dashboard skill
+        └── SKILL.md          # /dashboard skill
 ```
 
 ## API Reference
@@ -370,4 +558,4 @@ Environment variables:
 
 ## Version
 
-2.21.0
+2.25.0

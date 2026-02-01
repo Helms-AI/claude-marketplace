@@ -122,9 +122,17 @@ def sdk_query():
     enable_thinking = data.get('enable_thinking')  # bool
     # Phase 2.3 & 2.4
     output_format = data.get('output_format')  # dict with JSON schema
-    enable_checkpointing = data.get('enable_checkpointing')  # bool
+    enable_checkpointing = data.get('enable_checkpointing', data.get('file_checkpointing'))  # bool
     # Session resumption for conversation continuity
     resume_session_id = data.get('resume')  # session ID to resume
+    # Additional settings from frontend settings panel
+    permission_mode = data.get('permission_mode')  # 'default', 'acceptEdits', 'bypassPermissions'
+    sandbox_mode = data.get('sandbox_mode')  # bool
+    mcp_tools = data.get('mcp_tools')  # bool
+    beta_features = data.get('beta_features')  # bool
+    max_retries = data.get('max_retries')  # int
+    max_thinking_tokens = data.get('max_thinking_tokens')  # int
+    continue_conversation = data.get('continue_conversation')  # bool
 
     # Use a thread-safe queue to bridge async SDK to sync Flask SSE
     # This enables TRUE streaming - messages sent as they arrive!
@@ -143,6 +151,14 @@ def sdk_query():
                     output_format=output_format,
                     enable_checkpointing=enable_checkpointing,
                     resume_session_id=resume_session_id,
+                    # Additional settings from frontend
+                    permission_mode=permission_mode,
+                    sandbox_mode=sandbox_mode,
+                    mcp_tools=mcp_tools,
+                    beta_features=beta_features,
+                    max_retries=max_retries,
+                    max_thinking_tokens=max_thinking_tokens,
+                    continue_conversation=continue_conversation,
                 ):
                     msg_queue.put(msg)
             except Exception as e:

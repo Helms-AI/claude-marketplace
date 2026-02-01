@@ -15,8 +15,10 @@ import argparse
 import atexit
 import json
 import os
+import shutil
 import signal
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -30,6 +32,77 @@ sys.path.insert(0, plugin_root)
 
 # Global shutdown event
 _shutdown_event = threading.Event()
+
+# Global browser-sync process reference
+_browser_sync_process = None
+
+
+def start_browser_sync(public_port: int, flask_port: int, web_dir: str) -> subprocess.Popen:
+    """Start browser-sync as an HMR proxy.
+
+    Args:
+        public_port: The port browser-sync will listen on (user-facing)
+        flask_port: The port Flask is running on (proxied to)
+        web_dir: The web directory to watch for changes
+
+    Returns:
+        The browser-sync subprocess, or None if it couldn't start
+    """
+    # Check if npx is available
+    npx_path = shutil.which('npx')
+    if not npx_path:
+        print("[Dev Mode] Warning: npx not found. HMR disabled.", file=sys.stderr)
+        print("[Dev Mode] Install Node.js for hot reload support.", file=sys.stderr)
+        return None
+
+    cmd = [
+        npx_path, 'browser-sync', 'start',
+        '--proxy', f'localhost:{flask_port}',
+        '--files', 'js/**/*.js,css/**/*.css,index.html',
+        '--port', str(public_port),
+        '--no-open',
+        '--no-notify',
+        '--logLevel', 'silent',
+    ]
+
+    try:
+        process = subprocess.Popen(
+            cmd,
+            cwd=web_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
+        )
+        # Give it a moment to start
+        time.sleep(1.5)
+
+        if process.poll() is not None:
+            # Process exited already
+            stderr = process.stderr.read().decode() if process.stderr else ''
+            print(f"[Dev Mode] browser-sync failed to start: {stderr}", file=sys.stderr)
+            return None
+
+        print(f"[Dev Mode] browser-sync HMR running on port {public_port}", file=sys.stderr)
+        return process
+
+    except Exception as e:
+        print(f"[Dev Mode] Failed to start browser-sync: {e}", file=sys.stderr)
+        return None
+
+
+def stop_browser_sync():
+    """Stop the browser-sync process if running."""
+    global _browser_sync_process
+    if _browser_sync_process:
+        try:
+            _browser_sync_process.terminate()
+            _browser_sync_process.wait(timeout=3)
+        except Exception:
+            try:
+                _browser_sync_process.kill()
+            except Exception:
+                pass
+        _browser_sync_process = None
+        print("[Dev Mode] browser-sync stopped", file=sys.stderr)
 
 
 def get_plugin_version() -> str:
@@ -529,6 +602,7 @@ def _signal_handler(signum, frame):
     """Handle termination signals gracefully."""
     sig_name = signal.Signals(signum).name if hasattr(signal, 'Signals') else str(signum)
     print(f"Received signal {sig_name}, shutting down...", file=sys.stderr)
+    stop_browser_sync()
     _shutdown_event.set()
 
 
@@ -566,19 +640,38 @@ def main():
         action='store_true',
         help='Skip cleanup of orphaned processes on startup'
     )
+    parser.add_argument(
+        '--dev', '-d',
+        action='store_true',
+        help='Dev mode: use port -100 from default (24182 instead of 24282)'
+    )
 
     args = parser.parse_args()
 
+    # Apply dev mode port offset
+    # In dev mode: browser-sync on public_port, Flask on flask_port (internal)
+    public_port = args.port
+    flask_port = args.port
+    dev_mode = args.dev
+
+    if dev_mode:
+        public_port = args.port - 100  # User-facing port with HMR
+        flask_port = public_port + 1   # Internal Flask port
+        print(f"[Dev Mode] Public port: {public_port} (browser-sync HMR)", file=sys.stderr)
+        print(f"[Dev Mode] Flask port: {flask_port} (internal)", file=sys.stderr)
+
     host = '0.0.0.0' if args.remote else args.host
-    port = args.port
+    port = flask_port  # Flask always binds to flask_port
 
     # Register signal handlers
     signal.signal(signal.SIGTERM, _signal_handler)
     signal.signal(signal.SIGINT, _signal_handler)
 
     # Check if dashboard is already running and healthy
-    if is_dashboard_running(port):
-        url = f"http://127.0.0.1:{port}"
+    # In dev mode, check public_port; otherwise check flask_port
+    check_port = public_port if dev_mode else flask_port
+    if is_dashboard_running(check_port) or (dev_mode and is_dashboard_running(flask_port)):
+        url = f"http://127.0.0.1:{check_port}"
         print(f"Dashboard is already running at {url}", file=sys.stderr)
         if args.open_browser:
             print(f"Opening browser to existing dashboard", file=sys.stderr)
@@ -590,35 +683,57 @@ def main():
         else:
             # In MCP mode, run as a thin proxy that just reports the existing dashboard
             print("Running in MCP proxy mode for existing dashboard", file=sys.stderr)
-            run_mcp_proxy_mode(port)
+            run_mcp_proxy_mode(check_port)
             return
 
     # Cleanup any orphaned processes from previous runs
     # (only if no healthy dashboard is running)
     if not args.no_cleanup:
-        if not cleanup_orphaned_process(port):
-            print(f"Warning: Could not clean up existing process on port {port}", file=sys.stderr)
+        if not cleanup_orphaned_process(flask_port):
+            print(f"Warning: Could not clean up existing process on port {flask_port}", file=sys.stderr)
             print("You may need to manually kill the process or use a different port", file=sys.stderr)
             # Continue anyway - the server will fail to bind if port is in use
+        if dev_mode and not cleanup_orphaned_process(public_port):
+            print(f"Warning: Could not clean up existing process on port {public_port}", file=sys.stderr)
 
     # Write PID file
-    write_pid_file(port)
+    write_pid_file(flask_port)
 
     # Register cleanup to remove PID file on exit
-    atexit.register(remove_pid_file, port)
+    atexit.register(remove_pid_file, flask_port)
+
+    global _browser_sync_process
+    web_dir = os.path.join(plugin_root, 'web')
 
     try:
         if args.standalone:
             # Run web server directly (blocking)
             print("Running in standalone mode", file=sys.stderr)
-            run_web_server(port, host, args.open_browser, standalone=True)
+
+            if dev_mode:
+                # Start browser-sync for HMR in dev mode
+                _browser_sync_process = start_browser_sync(public_port, flask_port, web_dir)
+                if _browser_sync_process:
+                    print(f"", file=sys.stderr)
+                    print(f"════════════════════════════════════════════", file=sys.stderr)
+                    print(f"  Dashboard:  http://127.0.0.1:{public_port}  ← Use this (HMR enabled)", file=sys.stderr)
+                    print(f"  Flask:      http://127.0.0.1:{flask_port}  (internal)", file=sys.stderr)
+                    print(f"", file=sys.stderr)
+                    print(f"  Edit files in web/ and see changes instantly!", file=sys.stderr)
+                    print(f"════════════════════════════════════════════", file=sys.stderr)
+                    if args.open_browser:
+                        webbrowser.open(f"http://127.0.0.1:{public_port}")
+                        args.open_browser = False  # Don't open again in run_web_server
+
+            run_web_server(flask_port, host, args.open_browser, standalone=True)
         else:
             # Run as MCP server with web dashboard in background
-            run_mcp_mode(port, host, args.open_browser)
+            run_mcp_mode(flask_port, host, args.open_browser)
     except Exception as e:
         print(f"Fatal error: {e}", file=sys.stderr)
         raise
     finally:
+        stop_browser_sync()
         print("Dashboard shutdown complete", file=sys.stderr)
 
 
