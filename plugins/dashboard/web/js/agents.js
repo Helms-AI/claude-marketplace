@@ -24,7 +24,8 @@ const Agents = {
     async init() {
         await this.loadAgents();
         await this.loadDomains();
-        this.renderTree();
+        // Note: Tree rendering now handled by Lit component <agent-tree>
+        // this.renderTree() - Disabled, Lit handles this
     },
 
     async loadAgents() {
@@ -100,7 +101,11 @@ const Agents = {
         const agents = this.data.filteredAgents;
         if (agents.length === 0) {
             container.innerHTML = `
-                <div class="tree-empty">No agents found</div>
+                <dash-empty-state
+                    icon="users"
+                    title="No agents found"
+                    variant="centered"
+                ></dash-empty-state>
             `;
             return;
         }
@@ -130,7 +135,7 @@ const Agents = {
                 <div class="tree-node tree-node-domain ${isCollapsed ? 'collapsed' : ''}" data-expanded="${!isCollapsed}">
                     <span class="tree-chevron">${isCollapsed ? '▸' : '▾'}</span>
                     <span class="tree-domain-accent ${domainClass}"></span>
-                    <span class="tree-node-label">${displayName}</span>
+                    <span class="tree-node-label ${domainClass}">${displayName}</span>
                     <span class="tree-node-count">${items.length}</span>
                 </div>
                 <div class="tree-children ${isCollapsed ? 'hidden' : ''}">
@@ -153,7 +158,7 @@ const Agents = {
                  data-agent-id="${agent.id}"
                  title="${agent.role}">
                 <span class="tree-node-icon ${domainClass}">●</span>
-                <span class="tree-node-label">${agent.name}</span>
+                <span class="tree-node-label ${domainClass}">${agent.name}</span>
                 ${agent.last_active ? '<span class="tree-node-badge active-badge">●</span>' : ''}
             </div>
         `;
@@ -232,10 +237,31 @@ const Agents = {
 
     /**
      * Render agent detail in the editor tab
+     * Uses Lit components for consistent styling
      */
     async renderAgentDetailTab(agent) {
         const container = document.getElementById('agentDetailView');
         if (!container) return;
+
+        const domainClass = Dashboard.getDomainClass(agent.domain);
+        const displayDomain = agent.domain.replace(/-/g, ' ');
+
+        // Show loading state with header first
+        container.innerHTML = `
+            <div class="detail-header">
+                <div class="detail-title-row">
+                    <dash-avatar name="${agent.name}" domain="${agent.domain}" size="lg"></dash-avatar>
+                    <div style="margin-left: 12px;">
+                        <h2 class="detail-title">${agent.name}</h2>
+                        <p class="detail-subtitle">${agent.role}</p>
+                        <dash-tag label="${displayDomain}" domain="${agent.domain}" variant="subtle" size="xs"></dash-tag>
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 24px; text-align: center;">
+                <dash-spinner size="lg"></dash-spinner>
+            </div>
+        `;
 
         // Fetch activity
         let activity = [];
@@ -246,150 +272,107 @@ const Agents = {
             console.error('Error loading agent activity:', e);
         }
 
-        const domainClass = Dashboard.getDomainClass(agent.domain);
-        const tools = agent.tools.map(t => `<span class="detail-tag">${t}</span>`).join('');
-        const phrases = agent.key_phrases.map(p => `<div class="detail-phrase">"${p}"</div>`).join('');
+        // Build tools list for Lit component
+        const toolsJson = JSON.stringify(agent.tools || []);
 
-        const activityHtml = activity.length > 0
-            ? activity.slice(0, 10).map(e => `
-                <div class="activity-event ${e.event_type}">
-                    <span class="event-time">${new Date(e.timestamp).toLocaleString()}</span>
-                    <span class="event-type">${e.event_type.replace(/_/g, ' ')}</span>
-                </div>
-            `).join('')
-            : '<p class="detail-muted">No recent activity</p>';
+        // Build activity list for Lit component
+        const activityJson = JSON.stringify(activity.slice(0, 10));
 
         container.innerHTML = `
             <div class="detail-header">
                 <div class="detail-title-row">
-                    <h2 class="detail-title">${agent.name}</h2>
-                    <span class="detail-domain ${domainClass}">${agent.domain.replace(/-/g, ' ')}</span>
+                    <dash-avatar name="${agent.name}" domain="${agent.domain}" size="lg"></dash-avatar>
+                    <div style="margin-left: 12px;">
+                        <h2 class="detail-title">${agent.name}</h2>
+                        <p class="detail-subtitle">${agent.role}</p>
+                        <dash-tag label="${displayDomain}" domain="${agent.domain}" variant="subtle" size="xs"></dash-tag>
+                    </div>
                 </div>
-                <p class="detail-subtitle">${agent.role}</p>
             </div>
 
             ${agent.description ? `
-            <div class="detail-section">
-                <h4>Description</h4>
+            <dash-detail-section title="Description" icon="file-text">
                 <p>${agent.description}</p>
-            </div>
+            </dash-detail-section>
             ` : ''}
 
-            <div class="detail-section">
-                <h4>Tools</h4>
-                <div class="detail-tags">${tools || '<span class="detail-muted">No tools</span>'}</div>
-            </div>
+            <dash-detail-section title="Tools" icon="wrench">
+                <dash-tag-list id="agentTools" empty-text="No tools configured"></dash-tag-list>
+            </dash-detail-section>
 
-            ${agent.key_phrases.length > 0 ? `
-            <div class="detail-section">
-                <h4>Key Phrases</h4>
-                <div class="detail-phrases">${phrases}</div>
-            </div>
+            ${agent.key_phrases && agent.key_phrases.length > 0 ? `
+            <dash-detail-section title="Key Phrases" icon="message-circle">
+                <div class="phrases-list">
+                    ${agent.key_phrases.map(p => `<div class="detail-phrase ${domainClass}">"${p}"</div>`).join('')}
+                </div>
+            </dash-detail-section>
             ` : ''}
 
-            <div class="detail-section">
-                <h4>Recent Activity</h4>
-                <div class="detail-activity">${activityHtml}</div>
-            </div>
+            <dash-detail-section title="Recent Activity" icon="activity">
+                <dash-activity-list id="agentActivity" empty-message="No recent activity" show-time-ago></dash-activity-list>
+            </dash-detail-section>
         `;
 
+        // Set data on Lit components after they're in the DOM
+        requestAnimationFrame(() => {
+            const toolsList = container.querySelector('#agentTools');
+            if (toolsList) {
+                toolsList.items = agent.tools || [];
+            }
+
+            const activityList = container.querySelector('#agentActivity');
+            if (activityList) {
+                activityList.items = activity;
+            }
+        });
+
         // Show the agent detail tab
-        document.getElementById('agentDetailTab').classList.add('active');
+        const agentDetailTab = document.getElementById('agentDetailTab');
+        if (agentDetailTab) {
+            agentDetailTab.classList.add('active');
+        }
     },
 
     /**
      * Show agent in modal (single-click quick view)
-     * Redesigned modal with domain accent, avatar, tools grid, key phrases
+     * Uses the agent-detail-modal Lit component
      */
     async showAgentDetail(agentId) {
         const agent = this.data.agents.find(a => a.id === agentId);
         if (!agent) return;
 
-        // Fetch activity
-        let activity = [];
-        try {
-            const response = await Dashboard.fetchAPI(`/api/agents/id/${agentId}/activity`);
-            activity = response.events || [];
-        } catch (e) {
-            console.error('Error loading agent activity:', e);
+        // Create or get the agent detail modal component
+        let modalComponent = document.getElementById('agentDetailModalComponent');
+        if (!modalComponent) {
+            modalComponent = document.createElement('agent-detail-modal');
+            modalComponent.id = 'agentDetailModalComponent';
         }
 
-        const domainClass = Dashboard.getDomainClass(agent.domain);
-        const displayDomain = agent.domain.replace(/-/g, ' ');
-        
-        // Get initials for avatar
-        const initials = agent.name.split(' ')
-            .map(n => n[0])
-            .join('')
-            .toUpperCase()
-            .slice(0, 2);
+        // Set initial loading state
+        modalComponent.agent = agent;
+        modalComponent.activity = [];
+        modalComponent.loading = true;
 
-        // Build tools grid
-        const toolsHtml = agent.tools && agent.tools.length > 0
-            ? agent.tools.map(t => `<span class="modal-tool-tag">${t}</span>`).join('')
-            : '<span class="modal-empty-state">No tools configured</span>';
-
-        // Build key phrases with domain-colored borders
-        const phrasesHtml = agent.key_phrases && agent.key_phrases.length > 0
-            ? agent.key_phrases.map(p => 
-                `<div class="modal-phrase-item ${domainClass}">"${p}"</div>`
-            ).join('')
-            : '<span class="modal-empty-state">No key phrases defined</span>';
-
-        // Build activity list with alternating rows
-        const activityHtml = activity.length > 0
-            ? activity.slice(0, 10).map(e => {
-                const time = new Date(e.timestamp).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
-                const eventText = e.event_type.replace(/_/g, ' ');
-                return `
-                    <div class="modal-activity-row">
-                        <span class="modal-activity-time">${time}</span>
-                        <span class="modal-activity-event">${eventText}</span>
-                    </div>
-                `;
-            }).join('')
-            : '<div class="modal-empty-state" style="padding: 16px;">No recent activity</div>';
-
-        const content = `
-            <div class="modal-domain-accent ${domainClass}"></div>
-            
-            <div class="modal-header">
-                <div class="modal-identity">
-                    <div class="modal-avatar ${domainClass}">${initials}</div>
-                    <div class="modal-identity-info">
-                        <h2 class="modal-name">${agent.name}</h2>
-                        <p class="modal-role">${agent.role}</p>
-                        <span class="modal-domain-badge ${domainClass}">${displayDomain}</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-section">
-                <div class="modal-section-title">Tools</div>
-                <div class="modal-tools-grid">${toolsHtml}</div>
-            </div>
-
-            <div class="modal-section">
-                <div class="modal-section-title">Key Phrases</div>
-                <div class="modal-phrases">${phrasesHtml}</div>
-            </div>
-
-            <div class="modal-section">
-                <div class="modal-section-title">Recent Activity</div>
-                <div class="modal-activity-list">${activityHtml}</div>
-            </div>
-        `;
-
-        Dashboard.openModal('agentModal', content);
-        
-        // Add the modal-agent class to the modal content for styling
+        // Open modal with the component
+        Dashboard.openModal('agentModal', '');
         const modalContent = document.querySelector('#agentModal .modal-content');
         if (modalContent) {
             modalContent.classList.add('modal-agent');
+            modalContent.innerHTML = '';
+            modalContent.appendChild(modalComponent);
         }
+
+        // Fetch activity asynchronously
+        try {
+            const response = await Dashboard.fetchAPI(`/api/agents/id/${agentId}/activity`);
+            modalComponent.activity = response.events || [];
+        } catch (e) {
+            console.error('Error loading agent activity:', e);
+            modalComponent.activity = [];
+        }
+
+        // Update loading state
+        modalComponent.loading = false;
     },
 
     /**
@@ -406,7 +389,11 @@ const Agents = {
                 agent.domain.toLowerCase().includes(searchTerm);
         });
 
-        this.renderTree();
+        // Update store filter for Lit component
+        if (window.DashboardActions?.setAgentFilter) {
+            window.DashboardActions.setAgentFilter(query);
+        }
+        // Note: Tree rendering handled by Lit component <agent-tree>
     },
 
     /**
@@ -416,7 +403,11 @@ const Agents = {
         const agent = this.data.agents.find(a => a.id === agentId);
         if (agent) {
             agent.last_active = new Date().toISOString();
-            this.renderTree();
+            // Update store for Lit component
+            if (window.DashboardServices?.Agent?.updateAgentActivity) {
+                window.DashboardServices.Agent.updateAgentActivity(agentId);
+            }
+            // Note: Tree rendering handled by Lit component <agent-tree>
         }
     }
 };

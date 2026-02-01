@@ -4,14 +4,15 @@
  * Provides persistent storage for terminal conversations across browser refreshes.
  * Uses IndexedDB for 50MB+ storage capacity (vs localStorage's ~10KB limit).
  *
- * Session IDs are stored in sessionStorage (tab-specific, cleared on tab close).
+ * Session IDs are stored in localStorage (persists across tabs and browser restarts).
  * Conversation history is stored in IndexedDB (persists until explicitly cleared).
  */
 const ConversationStorage = {
     db: null,
     DB_NAME: 'dashboardConversations',
-    DB_VERSION: 1,
+    DB_VERSION: 2,
     STORE_NAME: 'messages',
+    SESSIONS_STORE_NAME: 'sessions',
 
     // Session storage keys
     SESSION_ID_KEY: 'dashboard-session-id',
@@ -66,12 +67,24 @@ const ConversationStorage = {
 
                     console.log('[ConversationStorage] Created messages store with indexes');
                 }
+
+                // Create sessions store if it doesn't exist (added in version 2)
+                if (!db.objectStoreNames.contains(this.SESSIONS_STORE_NAME)) {
+                    const sessionsStore = db.createObjectStore(this.SESSIONS_STORE_NAME, {
+                        keyPath: 'sessionId'
+                    });
+
+                    // Index by lastActivity for sorting and cleanup queries
+                    sessionsStore.createIndex('lastActivity', 'lastActivity', { unique: false });
+
+                    console.log('[ConversationStorage] Created sessions store with indexes');
+                }
             };
         });
     },
 
     /**
-     * Save a message to IndexedDB
+     * Save a message to IndexedDB and upsert the session record
      * @param {string} sessionId - The session ID
      * @param {Object} message - The message to save
      * @returns {Promise<number>} The message ID
@@ -83,25 +96,74 @@ const ConversationStorage = {
         }
 
         return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction([this.STORE_NAME], 'readwrite');
-            const store = transaction.objectStore(this.STORE_NAME);
+            // Open transaction on both stores
+            const transaction = this.db.transaction(
+                [this.STORE_NAME, this.SESSIONS_STORE_NAME],
+                'readwrite'
+            );
+            const messagesStore = transaction.objectStore(this.STORE_NAME);
+            const sessionsStore = transaction.objectStore(this.SESSIONS_STORE_NAME);
 
+            const now = Date.now();
             const record = {
                 sessionId,
-                timestamp: Date.now(),
+                timestamp: now,
                 ...message
             };
 
-            const request = store.add(record);
+            // Save the message
+            const messageRequest = messagesStore.add(record);
+            let messageId = null;
 
-            request.onsuccess = () => {
-                console.debug('[ConversationStorage] Saved message:', request.result);
-                resolve(request.result);
+            messageRequest.onsuccess = () => {
+                messageId = messageRequest.result;
+                console.debug('[ConversationStorage] Saved message:', messageId);
             };
 
-            request.onerror = () => {
-                console.error('[ConversationStorage] Failed to save message:', request.error);
-                reject(request.error);
+            messageRequest.onerror = () => {
+                console.error('[ConversationStorage] Failed to save message:', messageRequest.error);
+            };
+
+            // Upsert the session record
+            const sessionRequest = sessionsStore.get(sessionId);
+
+            sessionRequest.onsuccess = () => {
+                const existing = sessionRequest.result;
+                let sessionRecord;
+
+                if (existing) {
+                    // Update existing session
+                    sessionRecord = {
+                        ...existing,
+                        lastActivity: now,
+                        messageCount: (existing.messageCount || 0) + 1
+                    };
+                } else {
+                    // Create new session record
+                    sessionRecord = {
+                        sessionId,
+                        firstSeen: now,
+                        lastActivity: now,
+                        messageCount: 1
+                    };
+                }
+
+                sessionsStore.put(sessionRecord);
+                console.debug('[ConversationStorage] Upserted session:', sessionId);
+            };
+
+            sessionRequest.onerror = () => {
+                console.warn('[ConversationStorage] Failed to get session for upsert:', sessionRequest.error);
+            };
+
+            // Resolve when transaction completes
+            transaction.oncomplete = () => {
+                resolve(messageId);
+            };
+
+            transaction.onerror = () => {
+                console.error('[ConversationStorage] Transaction failed:', transaction.error);
+                reject(transaction.error);
             };
         });
     },
@@ -190,24 +252,101 @@ const ConversationStorage = {
         });
     },
 
+    // ========================================
+    // SESSION STORE METHODS
+    // ========================================
+
     /**
-     * Remove sessions older than maxAgeHours
+     * Get all sessions, sorted by lastActivity (most recent first)
+     * @returns {Promise<Array>} Array of session records
+     */
+    async getAllSessions() {
+        if (!this.db) {
+            console.warn('[ConversationStorage] Database not initialized');
+            return [];
+        }
+
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction([this.SESSIONS_STORE_NAME], 'readonly');
+            const store = transaction.objectStore(this.SESSIONS_STORE_NAME);
+            const index = store.index('lastActivity');
+
+            const request = index.getAll();
+
+            request.onsuccess = () => {
+                // Sort by lastActivity descending (most recent first)
+                const sessions = request.result.sort((a, b) => b.lastActivity - a.lastActivity);
+                console.log(`[ConversationStorage] Retrieved ${sessions.length} sessions`);
+                resolve(sessions);
+            };
+
+            request.onerror = () => {
+                console.error('[ConversationStorage] Failed to get sessions:', request.error);
+                reject(request.error);
+            };
+        });
+    },
+
+    /**
+     * Get session IDs only (for dropdown)
+     * @returns {Promise<Array<string>>} Array of session ID strings
+     */
+    async getSessionIds() {
+        const sessions = await this.getAllSessions();
+        return sessions.map(s => s.sessionId);
+    },
+
+    /**
+     * Delete a session and all its messages
+     * @param {string} sessionId - The session ID to delete
+     * @returns {Promise<void>}
+     */
+    async deleteSession(sessionId) {
+        if (!this.db) {
+            console.warn('[ConversationStorage] Database not initialized');
+            return;
+        }
+
+        // First clear all messages for this session
+        await this.clearSession(sessionId);
+
+        // Then delete the session record
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction([this.SESSIONS_STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(this.SESSIONS_STORE_NAME);
+
+            const request = store.delete(sessionId);
+
+            request.onsuccess = () => {
+                console.log(`[ConversationStorage] Deleted session ${sessionId}`);
+                resolve();
+            };
+
+            request.onerror = () => {
+                console.error('[ConversationStorage] Failed to delete session:', request.error);
+                reject(request.error);
+            };
+        });
+    },
+
+    /**
+     * Remove sessions older than maxAgeHours (cleans up both messages and session records)
      * @param {number} maxAgeHours - Maximum age in hours (default 48)
-     * @returns {Promise<number>} Number of records deleted
+     * @returns {Promise<{messages: number, sessions: number}>} Count of deleted records
      */
     async cleanupOldSessions(maxAgeHours = 48) {
         if (!this.db) {
-            return 0;
+            return { messages: 0, sessions: 0 };
         }
 
         const cutoff = Date.now() - (maxAgeHours * 60 * 60 * 1000);
 
-        return new Promise((resolve, reject) => {
+        // Clean up old messages
+        const messagesDeleted = await new Promise((resolve, reject) => {
             const transaction = this.db.transaction([this.STORE_NAME], 'readwrite');
             const store = transaction.objectStore(this.STORE_NAME);
             const index = store.index('timestamp');
 
-            // Get all records older than cutoff
             const range = IDBKeyRange.upperBound(cutoff);
             const request = index.openCursor(range);
 
@@ -228,10 +367,43 @@ const ConversationStorage = {
             };
 
             request.onerror = () => {
-                console.error('[ConversationStorage] Cleanup failed:', request.error);
+                console.error('[ConversationStorage] Message cleanup failed:', request.error);
                 reject(request.error);
             };
         });
+
+        // Clean up old session records
+        const sessionsDeleted = await new Promise((resolve, reject) => {
+            const transaction = this.db.transaction([this.SESSIONS_STORE_NAME], 'readwrite');
+            const store = transaction.objectStore(this.SESSIONS_STORE_NAME);
+            const index = store.index('lastActivity');
+
+            const range = IDBKeyRange.upperBound(cutoff);
+            const request = index.openCursor(range);
+
+            let deleted = 0;
+
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (cursor) {
+                    cursor.delete();
+                    deleted++;
+                    cursor.continue();
+                } else {
+                    if (deleted > 0) {
+                        console.log(`[ConversationStorage] Cleaned up ${deleted} old session records`);
+                    }
+                    resolve(deleted);
+                }
+            };
+
+            request.onerror = () => {
+                console.error('[ConversationStorage] Session cleanup failed:', request.error);
+                reject(request.error);
+            };
+        });
+
+        return { messages: messagesDeleted, sessions: sessionsDeleted };
     },
 
     // ========================================
@@ -239,20 +411,21 @@ const ConversationStorage = {
     // ========================================
 
     /**
-     * Get the current session ID from sessionStorage
+     * Get the current session ID from localStorage
      * @returns {string|null} Session ID or null if not set
      */
     getSessionId() {
-        return sessionStorage.getItem(this.SESSION_ID_KEY);
+        return localStorage.getItem(this.SESSION_ID_KEY);
     },
 
     /**
-     * Save session ID to sessionStorage
+     * Save session ID to localStorage
      * @param {string} sessionId - The session ID to save
      */
     setSessionId(sessionId) {
-        sessionStorage.setItem(this.SESSION_ID_KEY, sessionId);
-        sessionStorage.setItem(this.SESSION_TIMESTAMP_KEY, Date.now().toString());
+        localStorage.setItem(this.SESSION_ID_KEY, sessionId);
+        localStorage.setItem(this.SESSION_TIMESTAMP_KEY, Date.now().toString());
+        console.log('[ConversationStorage] Saved session ID to localStorage:', sessionId);
     },
 
     /**
@@ -263,11 +436,17 @@ const ConversationStorage = {
         const sessionId = this.getSessionId();
         if (!sessionId) return false;
 
-        const timestamp = sessionStorage.getItem(this.SESSION_TIMESTAMP_KEY);
+        const timestamp = localStorage.getItem(this.SESSION_TIMESTAMP_KEY);
         if (!timestamp) return false;
 
         const age = Date.now() - parseInt(timestamp, 10);
-        return age < this.SESSION_MAX_AGE_MS;
+        const isValid = age < this.SESSION_MAX_AGE_MS;
+
+        if (!isValid) {
+            console.log('[ConversationStorage] Session expired, age:', Math.round(age / 1000 / 60), 'minutes');
+        }
+
+        return isValid;
     },
 
     /**
@@ -275,24 +454,24 @@ const ConversationStorage = {
      * @returns {string|null} Model name or null
      */
     getModel() {
-        return sessionStorage.getItem(this.MODEL_KEY);
+        return localStorage.getItem(this.MODEL_KEY);
     },
 
     /**
-     * Save model preference to sessionStorage
+     * Save model preference to localStorage
      * @param {string} model - The model name to save
      */
     setModel(model) {
-        sessionStorage.setItem(this.MODEL_KEY, model);
+        localStorage.setItem(this.MODEL_KEY, model);
     },
 
     /**
-     * Clear all session storage
+     * Clear all session storage (localStorage keys)
      */
     clearSessionStorage() {
-        sessionStorage.removeItem(this.SESSION_ID_KEY);
-        sessionStorage.removeItem(this.SESSION_TIMESTAMP_KEY);
-        sessionStorage.removeItem(this.MODEL_KEY);
+        localStorage.removeItem(this.SESSION_ID_KEY);
+        localStorage.removeItem(this.SESSION_TIMESTAMP_KEY);
+        localStorage.removeItem(this.MODEL_KEY);
         console.log('[ConversationStorage] Session storage cleared');
     },
 
@@ -313,12 +492,15 @@ const ConversationStorage = {
             sessionId,
             model,
             messages,
-            timestamp: parseInt(sessionStorage.getItem(this.SESSION_TIMESTAMP_KEY), 10)
+            timestamp: parseInt(localStorage.getItem(this.SESSION_TIMESTAMP_KEY), 10)
         };
     }
 };
 
-// Export for module systems if available
+// ES module export
+export { ConversationStorage };
+
+// CommonJS export for backwards compatibility
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = ConversationStorage;
 }

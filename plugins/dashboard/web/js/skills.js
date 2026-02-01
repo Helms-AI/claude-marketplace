@@ -22,7 +22,8 @@ const Skills = {
 
     async init() {
         await this.loadSkills();
-        this.renderTree();
+        // Note: Tree rendering now handled by Lit component <skill-tree>
+        // this.renderTree() - Disabled, Lit handles this
     },
 
     async loadSkills() {
@@ -89,7 +90,11 @@ const Skills = {
         const skills = this.data.filteredSkills;
         if (skills.length === 0) {
             container.innerHTML = `
-                <div class="tree-empty">No skills found</div>
+                <dash-empty-state
+                    icon="zap"
+                    title="No skills found"
+                    variant="centered"
+                ></dash-empty-state>
             `;
             return;
         }
@@ -119,7 +124,7 @@ const Skills = {
                 <div class="tree-node tree-node-domain ${isCollapsed ? 'collapsed' : ''}" data-expanded="${!isCollapsed}">
                     <span class="tree-chevron">${isCollapsed ? '▸' : '▾'}</span>
                     <span class="tree-domain-accent ${domainClass}"></span>
-                    <span class="tree-node-label">${displayName}</span>
+                    <span class="tree-node-label ${domainClass}">${displayName}</span>
                     <span class="tree-node-count">${items.length}</span>
                 </div>
                 <div class="tree-children ${isCollapsed ? 'hidden' : ''}">
@@ -143,7 +148,7 @@ const Skills = {
                  data-skill-id="${skill.id}"
                  title="${skill.description || skill.name}">
                 <span class="tree-node-icon ${domainClass}">⚡</span>
-                <span class="tree-node-label">/${skill.id}</span>
+                <span class="tree-node-label ${domainClass}">/${skill.id}</span>
                 ${hasHandoffs ? '<span class="tree-node-badge handoff-badge">↔</span>' : ''}
                 ${skill.invocation_count > 0 ? `<span class="tree-node-badge count-badge">${skill.invocation_count}</span>` : ''}
             </div>
@@ -223,10 +228,31 @@ const Skills = {
 
     /**
      * Render skill detail in the editor tab
+     * Uses Lit components for consistent styling
      */
     async renderSkillDetailTab(skill) {
         const container = document.getElementById('skillDetailView');
         if (!container) return;
+
+        const domainClass = Dashboard.getDomainClass(skill.domain);
+        const displayDomain = skill.domain.replace(/-/g, ' ');
+
+        // Show loading state with header first
+        container.innerHTML = `
+            <div class="detail-header">
+                <div class="detail-title-row" style="display: flex; align-items: center; gap: 12px;">
+                    <dash-icon name="zap" size="24" style="color: var(--${domainClass.replace('domain-', 'domain-')}, var(--accent-color));"></dash-icon>
+                    <div>
+                        <h2 class="detail-title" style="font-family: var(--font-mono);">/${skill.id}</h2>
+                        <p class="detail-subtitle">${skill.name}</p>
+                        <dash-tag label="${displayDomain}" domain="${skill.domain}" variant="subtle" size="xs"></dash-tag>
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 24px; text-align: center;">
+                <dash-spinner size="lg"></dash-spinner>
+            </div>
+        `;
 
         // Fetch invocations
         let invocations = [];
@@ -237,171 +263,158 @@ const Skills = {
             console.error('Error loading skill invocations:', e);
         }
 
-        const domainClass = Dashboard.getDomainClass(skill.domain);
-
-        const inputsHtml = skill.handoff_inputs?.length > 0
-            ? skill.handoff_inputs.map(s => `<span class="detail-tag">/${s}</span>`).join('')
-            : '<span class="detail-muted">None</span>';
-
-        const outputsHtml = skill.handoff_outputs?.length > 0
-            ? skill.handoff_outputs.map(s => `<span class="detail-tag">/${s}</span>`).join('')
-            : '<span class="detail-muted">None</span>';
-
-        const invocationsHtml = invocations.length > 0
-            ? invocations.slice(0, 10).map(e => `
-                <div class="activity-event">
-                    <span class="event-time">${new Date(e.timestamp).toLocaleString()}</span>
-                    <span class="event-type">${e.content?.tool || e.event_type}</span>
-                </div>
-            `).join('')
-            : '<p class="detail-muted">No invocations recorded</p>';
+        // Build handoff items for tag lists
+        const inputItems = (skill.handoff_inputs || []).map(s => ({ label: s, prefix: '/' }));
+        const outputItems = (skill.handoff_outputs || []).map(s => ({ label: s, prefix: '/' }));
 
         container.innerHTML = `
             <div class="detail-header">
-                <div class="detail-title-row">
-                    <h2 class="detail-title">/${skill.id}</h2>
-                    <span class="detail-domain ${domainClass}">${skill.domain.replace(/-/g, ' ')}</span>
+                <div class="detail-title-row" style="display: flex; align-items: center; gap: 12px;">
+                    <dash-icon name="zap" size="24" style="color: var(--${domainClass.replace('domain-', 'domain-')}, var(--accent-color));"></dash-icon>
+                    <div>
+                        <h2 class="detail-title" style="font-family: var(--font-mono);">/${skill.id}</h2>
+                        <p class="detail-subtitle">${skill.name}</p>
+                        <dash-tag label="${displayDomain}" domain="${skill.domain}" variant="subtle" size="xs"></dash-tag>
+                    </div>
                 </div>
-                <p class="detail-subtitle">${skill.name}</p>
             </div>
 
             ${skill.description ? `
-            <div class="detail-section">
-                <h4>Description</h4>
+            <dash-detail-section title="Description" icon="file-text">
                 <p>${skill.description}</p>
-            </div>
+            </dash-detail-section>
             ` : ''}
 
             ${skill.backing_agent ? `
-            <div class="detail-section">
-                <h4>Backing Agent</h4>
-                <p>${skill.backing_agent}</p>
-            </div>
+            <dash-detail-section title="Backing Agent" icon="bot">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <dash-avatar name="${skill.backing_agent}" domain="${skill.domain}" size="sm"></dash-avatar>
+                    <span>${skill.backing_agent}</span>
+                </div>
+            </dash-detail-section>
             ` : ''}
 
-            <div class="detail-section">
-                <h4>Receives Handoffs From</h4>
-                <div class="detail-tags">${inputsHtml}</div>
-            </div>
+            <dash-detail-section title="Receives Handoffs From" icon="arrow-down-left">
+                <dash-tag-list id="skillInputs" prefix="/" empty-text="None"></dash-tag-list>
+            </dash-detail-section>
 
-            <div class="detail-section">
-                <h4>Hands Off To</h4>
-                <div class="detail-tags">${outputsHtml}</div>
-            </div>
+            <dash-detail-section title="Hands Off To" icon="arrow-up-right">
+                <dash-tag-list id="skillOutputs" prefix="/" empty-text="None"></dash-tag-list>
+            </dash-detail-section>
 
-            <div class="detail-section">
-                <h4>Invocation Count</h4>
-                <p class="detail-stat">${skill.invocation_count || 0}</p>
-            </div>
+            <dash-detail-section title="Statistics" icon="bar-chart-2">
+                <div style="display: flex; gap: 24px;">
+                    <div>
+                        <div style="font-size: 24px; font-weight: 600; color: var(--accent-color);">${skill.invocation_count || 0}</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">Invocations</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 16px; font-weight: 500; color: var(--text-secondary);">${skill.last_invoked ? this.formatRelativeTime(new Date(skill.last_invoked)) : 'Never'}</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">Last Invoked</div>
+                    </div>
+                </div>
+            </dash-detail-section>
 
-            <div class="detail-section">
-                <h4>Recent Invocations</h4>
-                <div class="detail-activity">${invocationsHtml}</div>
-            </div>
+            <dash-detail-section title="Recent Invocations" icon="history">
+                <dash-activity-list id="skillInvocations" empty-message="No invocations recorded" show-time-ago></dash-activity-list>
+            </dash-detail-section>
         `;
 
+        // Set data on Lit components after they're in the DOM
+        requestAnimationFrame(() => {
+            const inputsList = container.querySelector('#skillInputs');
+            if (inputsList) {
+                inputsList.items = skill.handoff_inputs || [];
+            }
+
+            const outputsList = container.querySelector('#skillOutputs');
+            if (outputsList) {
+                outputsList.items = skill.handoff_outputs || [];
+            }
+
+            const invocationsList = container.querySelector('#skillInvocations');
+            if (invocationsList) {
+                invocationsList.items = invocations.map(inv => ({
+                    timestamp: inv.timestamp,
+                    event_type: inv.content?.tool || inv.event_type,
+                    icon: 'play'
+                }));
+            }
+        });
+
         // Show the skill detail tab
-        document.getElementById('skillDetailTab').classList.add('active');
+        const skillDetailTab = document.getElementById('skillDetailTab');
+        if (skillDetailTab) {
+            skillDetailTab.classList.add('active');
+        }
     },
 
     /**
      * Show skill in modal (single-click quick view)
-     * Redesigned modal with domain accent, command display, handoff flow, stats
+     * Uses the skill-detail-modal Lit component
      */
     async showSkillDetail(skillId) {
         const skill = this.data.skills.find(s => s.id === skillId);
         if (!skill) return;
 
-        // Fetch invocations
-        let invocations = [];
-        try {
-            const response = await Dashboard.fetchAPI(`/api/skills/id/${skillId}/invocations`);
-            invocations = response.invocations || [];
-        } catch (e) {
-            console.error('Error loading skill invocations:', e);
+        // Create or get the skill detail modal component
+        let modalComponent = document.getElementById('skillDetailModalComponent');
+        if (!modalComponent) {
+            modalComponent = document.createElement('skill-detail-modal');
+            modalComponent.id = 'skillDetailModalComponent';
         }
 
-        const domainClass = Dashboard.getDomainClass(skill.domain);
-        const displayDomain = skill.domain.replace(/-/g, ' ');
+        // Try to find the backing agent
+        const backingAgent = skill.backing_agent && typeof Agents !== 'undefined'
+            ? Agents.data.agents.find(a => a.name === skill.backing_agent || a.id === skill.backing_agent)
+            : null;
 
-        // Format last invoked time
-        const lastInvoked = skill.last_invoked 
-            ? this.formatRelativeTime(new Date(skill.last_invoked))
-            : 'Never';
+        // Set initial loading state
+        modalComponent.skill = skill;
+        modalComponent.invocations = [];
+        modalComponent.backingAgent = backingAgent;
+        modalComponent.loading = true;
 
-        // Build backing agent card if available
-        const backingAgentHtml = skill.backing_agent ? this.buildBackingAgentCard(skill) : '';
-
-        // Build handoff flow visualization
-        const handoffFlowHtml = this.buildHandoffFlowHtml(skill, domainClass);
-
-        // Build invocations list with alternating rows
-        const invocationsHtml = invocations.length > 0
-            ? invocations.slice(0, 8).map(e => {
-                const time = new Date(e.timestamp).toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                });
-                const eventText = e.content?.tool || e.event_type.replace(/_/g, ' ');
-                return `
-                    <div class="modal-activity-row">
-                        <span class="modal-activity-time">${time}</span>
-                        <span class="modal-activity-event">${eventText}</span>
-                    </div>
-                `;
-            }).join('')
-            : '<div class="modal-empty-state" style="padding: 16px;">No invocations recorded</div>';
-
-        const content = `
-            <div class="modal-domain-accent ${domainClass}"></div>
-            
-            <div class="modal-header">
-                <p class="modal-command ${domainClass}"><span class="modal-command-prefix">/</span><span class="modal-command-name">${skill.id}</span></p>
-                <p class="modal-skill-name">${skill.name}</p>
-                <span class="modal-domain-badge ${domainClass}">${displayDomain}</span>
-            </div>
-
-            ${backingAgentHtml ? `
-            <div class="modal-section">
-                <div class="modal-section-title">Powered By</div>
-                ${backingAgentHtml}
-            </div>
-            ` : ''}
-
-            <div class="modal-section">
-                <div class="modal-section-title">Handoff Flow</div>
-                ${handoffFlowHtml}
-            </div>
-
-            <div class="modal-section">
-                <div class="modal-stats-grid">
-                    <div class="modal-stat-card">
-                        <div class="modal-stat-label">Invocations</div>
-                        <div class="modal-stat-value">${skill.invocation_count || 0}</div>
-                    </div>
-                    <div class="modal-stat-card">
-                        <div class="modal-stat-label">Last Invoked</div>
-                        <div class="modal-stat-value" style="font-size: 16px;">${lastInvoked}</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-section">
-                <div class="modal-section-title">Recent Invocations</div>
-                <div class="modal-invocations-list">${invocationsHtml}</div>
-            </div>
-        `;
-
-        Dashboard.openModal('skillModal', content);
-        
-        // Add the modal-skill class to the modal content for styling
+        // Open modal with the component
+        Dashboard.openModal('skillModal', '');
         const modalContent = document.querySelector('#skillModal .modal-content');
         if (modalContent) {
             modalContent.classList.add('modal-skill');
+            modalContent.innerHTML = '';
+            modalContent.appendChild(modalComponent);
         }
 
-        // Attach click handlers after modal opens
-        this.attachSkillModalHandlers(skill);
+        // Fetch invocations asynchronously
+        try {
+            const response = await Dashboard.fetchAPI(`/api/skills/id/${skillId}/invocations`);
+            modalComponent.invocations = response.invocations || [];
+        } catch (e) {
+            console.error('Error loading skill invocations:', e);
+            modalComponent.invocations = [];
+        }
+
+        // Update loading state
+        modalComponent.loading = false;
+
+        // Attach event handlers for navigation
+        modalComponent.addEventListener('agent-click', (e) => {
+            const agentName = e.detail.agentName;
+            Dashboard.closeModal('skillModal');
+            if (typeof Agents !== 'undefined') {
+                const agent = Agents.data.agents.find(a =>
+                    a.name === agentName || a.id === agentName
+                );
+                if (agent) {
+                    setTimeout(() => Agents.showAgentDetail(agent.id), 150);
+                }
+            }
+        });
+
+        modalComponent.addEventListener('skill-click', (e) => {
+            const targetSkillId = e.detail.skillId;
+            Dashboard.closeModal('skillModal');
+            setTimeout(() => this.showSkillDetail(targetSkillId), 150);
+        });
     },
 
     /**
@@ -557,7 +570,11 @@ const Skills = {
                 skill.domain.toLowerCase().includes(searchTerm);
         });
 
-        this.renderTree();
+        // Update store filter for Lit component
+        if (window.DashboardActions?.setSkillFilter) {
+            window.DashboardActions.setSkillFilter(query);
+        }
+        // Note: Tree rendering handled by Lit component <skill-tree>
     },
 
     /**
@@ -568,7 +585,11 @@ const Skills = {
         if (skill) {
             skill.last_invoked = new Date().toISOString();
             skill.invocation_count = (skill.invocation_count || 0) + 1;
-            this.renderTree();
+            // Update store for Lit component
+            if (window.DashboardServices?.Skill?.updateSkillActivity) {
+                window.DashboardServices.Skill.updateSkillActivity(skillId);
+            }
+            // Note: Tree rendering handled by Lit component <skill-tree>
         }
     }
 };

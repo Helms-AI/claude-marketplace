@@ -39,7 +39,8 @@ const Changesets = {
     },
 
     render() {
-        this.renderChangesetTree();
+        // Note: Tree rendering now handled by Lit component <changeset-tree>
+        // this.renderChangesetTree() - Disabled, Lit handles this
         this.updateChangesetCount();
         // Update explorer tab counts
         if (Dashboard.updateExplorerTabCounts) {
@@ -65,7 +66,11 @@ const Changesets = {
      */
     filter(query) {
         this.data.filterQuery = query.toLowerCase();
-        this.renderChangesetTree();
+        // Update store filter for Lit component
+        if (window.DashboardActions?.setChangesetFilter) {
+            window.DashboardActions.setChangesetFilter(query);
+        }
+        // Note: Tree rendering handled by Lit component <changeset-tree>
     },
 
     /**
@@ -697,16 +702,12 @@ const Changesets = {
         }
 
         this.data.changesets.unshift(newChangeset);
-        this.renderChangesetTree();
+        // Update store for Lit component
+        if (window.DashboardActions?.addChangeset) {
+            window.DashboardActions.addChangeset(newChangeset);
+        }
+        // Note: Tree rendering handled by Lit component <changeset-tree>
         this.updateChangesetCount();
-
-        // Highlight the new changeset tree item briefly
-        setTimeout(() => {
-            const newItem = document.querySelector(`.changeset-tree-item[data-changeset-id="${newChangeset.id}"]`);
-            if (newItem) {
-                this.animateChange(newItem.querySelector('.changeset-tree-header'));
-            }
-        }, 50);
     },
 
     /**
@@ -721,7 +722,10 @@ const Changesets = {
         if (changesetIndex === -1) {
             // Changeset not in list yet, add it
             this.data.changesets.unshift(full_changeset);
-            this.renderChangesetTree();
+            // Update store for Lit component
+            if (window.DashboardActions?.addChangeset) {
+                window.DashboardActions.addChangeset(full_changeset);
+            }
             this.updateChangesetCount();
             return;
         }
@@ -730,8 +734,11 @@ const Changesets = {
         const changeset = this.data.changesets[changesetIndex];
         Object.assign(changeset, full_changeset);
 
-        // Re-render tree for simplicity (could be optimized for surgical updates)
-        this.renderChangesetTree();
+        // Update store for Lit component
+        if (window.DashboardActions?.updateChangeset) {
+            window.DashboardActions.updateChangeset(changeset_id, full_changeset);
+        }
+        // Note: Tree rendering handled by Lit component <changeset-tree>
 
         // Update conversation header if this is the selected changeset
         if (changeset_id === this.data.currentChangesetId) {
@@ -758,6 +765,11 @@ const Changesets = {
     removeChangeset(changesetId) {
         // Remove from in-memory data
         this.data.changesets = this.data.changesets.filter(c => c.id !== changesetId);
+
+        // Update store for Lit component
+        if (window.DashboardActions?.removeChangeset) {
+            window.DashboardActions.removeChangeset(changesetId);
+        }
 
         // If this was the selected changeset, clear the conversation view
         if (this.data.currentChangesetId === changesetId) {
@@ -791,8 +803,7 @@ const Changesets = {
             }
         }
 
-        // Re-render the changeset list
-        this.renderChangesetList();
+        // Note: Tree rendering handled by Lit component <changeset-tree>
         this.updateChangesetCount();
     },
 

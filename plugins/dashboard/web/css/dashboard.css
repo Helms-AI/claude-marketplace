@@ -694,7 +694,7 @@ body {
     font-size: var(--font-size-sm);
 }
 
-/* Tree node domain colors */
+/* Tree node domain colors - icons */
 .tree-node-icon.domain-architecture { color: var(--domain-architecture); }
 .tree-node-icon.domain-backend { color: var(--domain-backend); }
 .tree-node-icon.domain-data { color: var(--domain-data); }
@@ -706,6 +706,19 @@ body {
 .tree-node-icon.domain-testing { color: var(--domain-testing); }
 .tree-node-icon.domain-user-experience { color: var(--domain-user-experience); }
 .tree-node-icon.domain-external { color: var(--text-muted); }
+
+/* Tree node domain colors - labels (agent/skill names) */
+.tree-node-label.domain-architecture { color: var(--domain-architecture); }
+.tree-node-label.domain-backend { color: var(--domain-backend); }
+.tree-node-label.domain-data { color: var(--domain-data); }
+.tree-node-label.domain-devops { color: var(--domain-devops); }
+.tree-node-label.domain-documentation { color: var(--domain-documentation); }
+.tree-node-label.domain-frontend { color: var(--domain-frontend); }
+.tree-node-label.domain-pm { color: var(--domain-pm); }
+.tree-node-label.domain-security { color: var(--domain-security); }
+.tree-node-label.domain-testing { color: var(--domain-testing); }
+.tree-node-label.domain-user-experience { color: var(--domain-user-experience); }
+.tree-node-label.domain-external { color: var(--text-muted); }
 
 /* Changeset List */
 .changeset-list {
@@ -7355,3 +7368,4 @@ details.tool-call-card[open] .tool-expand-icon {
     50% { transform: scale(1.1); }
     100% { transform: scale(1); }
 }
+/* HMR test comment - Sat Jan 31 15:43:10 EST 2026 */
