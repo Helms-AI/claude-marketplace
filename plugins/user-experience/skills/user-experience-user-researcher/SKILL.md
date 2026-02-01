@@ -1,6 +1,14 @@
 ---
 name: user-experience-user-researcher
 description: User personas, journey maps, and Jobs-to-be-Done framework
+argument-hint: "[research-method]"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+---
+
 ---
 
 # User Researcher Skill

@@ -1,6 +1,14 @@
 ---
 name: user-experience-layout-composer
 description: Grid-breaking spatial composition - intentional asymmetry, whitespace choreography, and unconventional visual hierarchy
+argument-hint: "[layout-type]"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+---
+
 ---
 
 # Layout Composer Skill

@@ -1,6 +1,15 @@
 ---
 name: frontend-form-experience
 description: Form layout, validation timing, error recovery, and multi-step wizard patterns with accessibility built-in
+argument-hint: "[form-type]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Form Experience Skill

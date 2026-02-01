@@ -1,6 +1,15 @@
 ---
 name: frontend-responsive-engineer
 description: Container queries, fluid typography, CSS subgrid, and responsive design patterns
+argument-hint: "[breakpoint|component]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Responsive Engineer Skill

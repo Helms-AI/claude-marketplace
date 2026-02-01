@@ -1,6 +1,14 @@
 ---
 name: user-experience-aesthetic-director
 description: Design thinking layer that determines aesthetic direction BEFORE implementation - the missing "why" behind design choices
+argument-hint: "[aesthetic-style]"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+---
+
 ---
 
 # Aesthetic Director Skill

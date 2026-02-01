@@ -1,6 +1,14 @@
 ---
 name: docs-team-session
 description: Multi-agent documentation discussions and collaborative writing sessions
+user-invocable: false
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
 ---
 
 # Documentation Team Session

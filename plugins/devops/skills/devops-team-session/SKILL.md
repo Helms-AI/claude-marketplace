@@ -1,6 +1,14 @@
 ---
 name: devops-team-session
 description: Multi-agent DevOps team discussions for complex problems
+user-invocable: false
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
 ---
 
 # DevOps Team Session

@@ -1,6 +1,14 @@
 ---
 name: user-experience-texture-atmosphere
 description: Depth, texture, and visual richness - grain overlays, mesh gradients, multi-shadow systems, and atmospheric effects
+argument-hint: "[texture-style]"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+---
+
 ---
 
 # Texture & Atmosphere Skill

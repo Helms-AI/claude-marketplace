@@ -1,6 +1,21 @@
 ---
 name: devops-ci-architect
 description: CI/CD pipeline design and implementation
+argument-hint: "[pipeline-stage]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
+# Dynamic Context
+
+```
+!cat .github/workflows/*.yml 2>/dev/null | head -30
+```
+
 ---
 
 # CI/CD Architect

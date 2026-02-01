@@ -1,6 +1,20 @@
 ---
 name: arch-orchestrator
 description: Routes architecture requests to the appropriate specialist or skill
+argument-hint: "[system|feature]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
+# Dynamic Context
+
+```
+!ls docs/architecture/ 2>/dev/null | head -5
+```
+
 ---
 
 # Architecture Orchestrator

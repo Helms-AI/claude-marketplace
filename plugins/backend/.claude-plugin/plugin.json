@@ -1,6 +1,17 @@
 {
   "name": "backend",
-  "description": "Backend team with 5 specialized agents for API development, database design, authentication, services, and integrations",
-  "version": "1.0.1",
-  "skills": ["./skills/"]
+  "description": "Backend development including APIs, databases, authentication, and server-side logic.",
+  "version": "1.2.0",
+  "homepage": "https://github.com/Helms-AI/claude-marketplace",
+  "repository": "https://github.com/Helms-AI/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["backend", "api", "database", "rest", "graphql", "authentication"],
+  "skills": ["./skills/"],
+  "hooks": "./hooks/hooks.json",
+  "mcp": "./mcp.json",
+  "lsp": "./lsp.json",
+  "statusLine": {
+    "template": "Backend | Endpoints: ${endpoint_count} | DB: ${db_status}",
+    "refresh": "on-change"
+  }
 }

@@ -1,6 +1,14 @@
 ---
 name: backend-team-session
 description: Multi-agent backend discussions for complex architectural decisions
+user-invocable: false
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
 ---
 
 # Backend Team Session

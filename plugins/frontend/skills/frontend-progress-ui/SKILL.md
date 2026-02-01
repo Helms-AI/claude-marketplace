@@ -1,6 +1,15 @@
 ---
 name: frontend-progress-ui
 description: Loading states, progress indicators, skeleton screens, and optimistic UI patterns with personality
+argument-hint: "[loading-pattern]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Progress UI Skill

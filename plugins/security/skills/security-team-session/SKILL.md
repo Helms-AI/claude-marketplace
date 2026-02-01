@@ -1,6 +1,14 @@
 ---
 name: security-team-session
 description: Multi-agent collaborative security discussions with specialized personas
+user-invocable: false
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
 ---
 
 # Security Team Session

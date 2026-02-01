@@ -1,6 +1,14 @@
 ---
 name: testing-team-session
 description: Multi-agent testing discussions with all specialists contributing
+user-invocable: false
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
 ---
 
 # Testing Team Session

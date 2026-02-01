@@ -1,7 +1,20 @@
 ---
 name: pm-resolve
 description: List and resolve pending conflicts between domains
+argument-hint: "[conflict-id]"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+  - Ask
 ---
+
+# Dynamic Context
+
+```
+!cat .claude/changesets/*/changeset.json 2>/dev/null | jq -r '.conflicts[]?' | head -5
+```
 
 # PM Resolve - Conflict Resolution
 

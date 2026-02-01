@@ -1,0 +1,22 @@
+{
+  "lspServers": {
+    "typescript": {
+      "command": "typescript-language-server",
+      "args": ["--stdio"],
+      "languages": ["typescript", "typescriptreact"],
+      "rootMarkers": ["tsconfig.json", "jest.config.js", "vitest.config.ts"],
+      "settings": {
+        "typescript.preferences.importModuleSpecifier": "relative"
+      },
+      "description": "TypeScript for Jest/Vitest test files"
+    }
+  },
+  "diagnosticProviders": {
+    "vitest": {
+      "command": "npx",
+      "args": ["vitest", "typecheck", "--reporter=json"],
+      "languages": ["typescript", "typescriptreact"],
+      "description": "Vitest type-checking diagnostics"
+    }
+  }
+}

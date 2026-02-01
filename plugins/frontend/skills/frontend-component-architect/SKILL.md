@@ -1,6 +1,22 @@
 ---
 name: frontend-component-architect
 description: Modern component patterns for React 19, Vue 3.5, and Svelte 5 with distinctive aesthetic expression
+argument-hint: "[component-name]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+---
+
+# Dynamic Context
+
+```
+!ls src/components/ 2>/dev/null | head -10
+```
+
 ---
 
 # Component Architect Skill

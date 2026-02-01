@@ -1,6 +1,21 @@
 ---
 name: arch-api-designer
 description: REST, GraphQL, and gRPC API design with OpenAPI specifications
+argument-hint: "[api-name]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
+# Dynamic Context
+
+```
+!cat openapi.yaml 2>/dev/null | head -20
+```
+
 ---
 
 # API Designer

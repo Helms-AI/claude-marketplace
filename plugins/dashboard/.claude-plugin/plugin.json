@@ -1,15 +1,14 @@
 {
   "name": "dashboard",
-  "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration",
-  "version": "2.28.5",
+  "description": "Marketplace dashboard UI built with Lit 3.x and Preact Signals following Atomic Design principles.",
+  "version": "1.1.0",
+  "homepage": "https://github.com/Helms-AI/claude-marketplace",
+  "repository": "https://github.com/Helms-AI/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["dashboard", "lit", "preact", "signals", "ui"],
   "skills": ["./skills/"],
-  "mcpServers": {
-    "dashboard": {
-      "command": "/opt/homebrew/bin/python3.12",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/run_dashboard.py"],
-      "env": {
-        "DASHBOARD_PORT": "24282"
-      }
-    }
+  "statusLine": {
+    "template": "Dashboard | Components: ${component_count}",
+    "refresh": "on-change"
   }
 }

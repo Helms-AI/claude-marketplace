@@ -1,6 +1,15 @@
 ---
 name: frontend-data-grid
 description: Table layouts, sorting/filtering, virtualization, and responsive data display with proper semantics
+argument-hint: "[grid-feature]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Data Grid Skill

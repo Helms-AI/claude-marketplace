@@ -1,6 +1,14 @@
 ---
 name: user-experience-typography-curator
 description: Distinctive typography beyond generic choices - font personality, pairing theory, variable fonts, web font performance
+argument-hint: "[font-category]"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+---
+
 ---
 
 # Typography Curator Skill

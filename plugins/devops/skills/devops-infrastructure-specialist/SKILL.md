@@ -1,6 +1,22 @@
 ---
 name: devops-infrastructure-specialist
 description: Infrastructure as Code and cloud architecture
+argument-hint: "[resource-type]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+---
+
+# Dynamic Context
+
+```
+!ls terraform/ 2>/dev/null | head -10
+```
+
 ---
 
 # Infrastructure Specialist

@@ -1,6 +1,16 @@
 ---
 name: data-pipeline-architect
 description: ETL/ELT pipeline design, Airflow DAGs, dbt models, and data orchestration
+argument-hint: "[pipeline-name]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+---
+
 ---
 
 # Data Pipeline Architect

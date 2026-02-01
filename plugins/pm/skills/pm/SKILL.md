@@ -1,7 +1,22 @@
 ---
 name: pm
 description: Project Manager broker for cross-domain orchestration - routes requests to specialized plugins
+argument-hint: "[task-description]"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+  - Task
+  - Bash
 ---
+
+# Dynamic Context
+
+```
+!git status --short
+!ls -la .claude/changesets/ 2>/dev/null | head -10
+```
 
 # PM - Project Manager Broker
 

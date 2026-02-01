@@ -1,6 +1,15 @@
 ---
 name: arch-system-designer
 description: High-level system design with components, scalability, and diagrams
+argument-hint: "[system-scope]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # System Designer

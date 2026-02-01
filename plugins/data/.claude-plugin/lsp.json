@@ -1,0 +1,21 @@
+{
+  "lspServers": {
+    "python": {
+      "command": "pylsp",
+      "args": [],
+      "languages": ["python"],
+      "rootMarkers": ["pyproject.toml", "setup.py", "dbt_project.yml"],
+      "settings": {
+        "pylsp.plugins.pycodestyle.enabled": true
+      },
+      "description": "Python for data engineering (Airflow, dbt, pandas)"
+    },
+    "sql": {
+      "command": "sql-language-server",
+      "args": ["up", "--method", "stdio"],
+      "languages": ["sql"],
+      "rootMarkers": ["dbt_project.yml", ".sqlfluff"],
+      "description": "SQL language server for dbt models and queries"
+    }
+  }
+}

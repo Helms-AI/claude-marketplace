@@ -1,6 +1,15 @@
 ---
 name: data-warehouse-specialist
 description: Data warehouse architecture, star schemas, partitioning, and performance optimization
+argument-hint: "[schema|table]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Data Warehouse Specialist

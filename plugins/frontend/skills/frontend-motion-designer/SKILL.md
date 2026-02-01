@@ -1,6 +1,15 @@
 ---
 name: frontend-motion-designer
 description: Animations, transitions, and micro-interactions using GSAP, Lottie, Rive, Framer Motion, View Transitions API, and scroll-driven CSS
+argument-hint: "[animation-type]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Motion Designer Skill

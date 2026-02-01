@@ -1,6 +1,22 @@
 ---
 name: frontend-storybook
 description: Component documentation with Storybook 8, CSF3 format, and testing integration
+argument-hint: "[component-name]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+---
+
+# Dynamic Context
+
+```
+!ls .storybook/ 2>/dev/null
+```
+
 ---
 
 # Storybook Skill

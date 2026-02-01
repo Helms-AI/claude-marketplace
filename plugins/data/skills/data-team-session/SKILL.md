@@ -1,6 +1,14 @@
 ---
 name: data-team-session
 description: Multi-agent collaborative data discussions with the full data engineering team
+user-invocable: false
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
 ---
 
 # Data Team Session

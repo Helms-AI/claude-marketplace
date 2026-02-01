@@ -1,6 +1,13 @@
 ---
 name: testing-strategy-advisor
 description: Test strategy planning, coverage goals, and risk assessment
+argument-hint: "[test-type]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+---
+
 ---
 
 # Testing Strategy Advisor

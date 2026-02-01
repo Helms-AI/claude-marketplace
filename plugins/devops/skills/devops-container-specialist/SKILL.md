@@ -1,6 +1,22 @@
 ---
 name: devops-container-specialist
 description: Docker and Kubernetes containerization
+argument-hint: "[container|service]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+---
+
+# Dynamic Context
+
+```
+!cat Dockerfile 2>/dev/null | head -20
+```
+
 ---
 
 # Container Specialist

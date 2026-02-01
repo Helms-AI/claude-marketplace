@@ -1,6 +1,14 @@
 ---
 name: user-experience-color-alchemist
 description: Mood-driven color systems using OKLCH, atmospheric effects, and emotion-first palette creation
+argument-hint: "[palette-type]"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+---
+
 ---
 
 # Color Alchemist Skill

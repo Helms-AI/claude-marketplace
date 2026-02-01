@@ -1,6 +1,16 @@
 ---
 name: testing-integration-specialist
 description: Integration test implementation for APIs, databases, and service contracts
+argument-hint: "[integration-scope]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+---
+
 ---
 
 # Integration Test Specialist

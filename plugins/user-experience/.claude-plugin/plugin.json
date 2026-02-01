@@ -1,6 +1,15 @@
 {
   "name": "user-experience",
-  "description": "Design thinking, visual direction, and aesthetic foundation for distinctive user experiences. Pre-code design phase focused on visual identity, typography, color, layout, and user research.",
-  "version": "4.0.0",
-  "skills": ["./skills/"]
+  "description": "UX design including research, visual design, interaction patterns, and accessibility.",
+  "version": "4.2.0",
+  "homepage": "https://github.com/Helms-AI/claude-marketplace",
+  "repository": "https://github.com/Helms-AI/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["ux", "design", "typography", "color", "accessibility", "research"],
+  "skills": ["./skills/"],
+  "hooks": "./hooks/hooks.json",
+  "statusLine": {
+    "template": "UX | Aesthetic: ${aesthetic_style} | Tokens: ${token_count}",
+    "refresh": "on-change"
+  }
 }

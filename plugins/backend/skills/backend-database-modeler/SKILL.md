@@ -1,6 +1,21 @@
 ---
 name: backend-database-modeler
 description: Database schema design, migrations, and query optimization
+argument-hint: "[table|model]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
+# Dynamic Context
+
+```
+!cat prisma/schema.prisma 2>/dev/null | head -30
+```
+
 ---
 
 # Backend Database Modeler

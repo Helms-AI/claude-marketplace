@@ -1,6 +1,20 @@
 ---
 name: docs-orchestrator
 description: Routes documentation requests to appropriate specialists and coordinates documentation efforts
+argument-hint: "[doc-type]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
+# Dynamic Context
+
+```
+!ls docs/ 2>/dev/null | head -10
+```
+
 ---
 
 # Documentation Orchestrator

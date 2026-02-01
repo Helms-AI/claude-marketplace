@@ -1,6 +1,14 @@
 ---
 name: user-experience-team-session
 description: Multi-agent team discussions with specialized UX personas for comprehensive design collaboration
+user-invocable: false
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
 ---
 
 # User Experience Team Session

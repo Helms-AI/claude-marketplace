@@ -1,6 +1,14 @@
 ---
 name: user-experience-orchestrator
 description: Routes UI/UX design requests to specialized skills, coordinates team discussions, and hands off to frontend for implementation
+argument-hint: "[design-scope]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
 ---
 
 # User Experience Orchestrator
@@ -216,126 +224,3 @@ When design phase is complete, create a handoff document:
 ## Project: [Name]
 ## Date: [Date]
 ## Design Lead: Dana Reyes
-
----
-
-## Aesthetic Brief
-From: Quinn Martinez
-[Full aesthetic brief]
-
-## Typography Specification
-From: Avery Nakamura
-[Typography spec with tokens]
-
-## Color System
-From: Morgan Blake
-[Color palette with OKLCH values]
-
-## Layout System
-From: Skyler Okonkwo
-[Grid and spacing definitions]
-
-## Atmosphere Effects
-From: Indigo Vasquez
-[Texture, shadow, and effect specifications]
-
-## Micro-Interactions
-From: Ember Nguyen
-[Interaction patterns and timing]
-
-## User Context
-From: Maya Torres
-[Key persona insights and design implications]
-
----
-
-## Implementation Priority
-1. [First priority items]
-2. [Second priority items]
-3. [Enhancement layer]
-
-## Anti-Patterns to Avoid
-- [Specific things to NOT do]
-
-## Questions for Frontend
-- [Any design questions that need implementation input]
-```
-
-### Invoking Frontend
-
-After handoff document is ready:
-
-```
-"Design handoff complete. The frontend team can now begin implementation.
-
-Invoke `/frontend-orchestrator` to start building, or use specific skills:
-- `/frontend-design-system` for tokens and theming
-- `/frontend-component-architect` for UI components
-- `/frontend-accessibility-auditor` for a11y review
-- `/frontend-performance-engineer` for optimization"
-```
-
-## The UX Design Team
-
-| Agent | Name | Role | Specialty |
-|-------|------|------|-----------|
-| **Lead** | Dana Reyes | UX Lead | Orchestration, stakeholder communication |
-| **Aesthetic** | Quinn Martinez | Aesthetic Director | Visual identity, brand differentiation |
-| **Typography** | Avery Nakamura | Typography Curator | Font selection, pairing theory |
-| **Research** | Maya Torres | User Researcher | Personas, journey maps, JTBD |
-| **Color** | Morgan Blake | Color Alchemist | OKLCH color science, emotional palettes |
-| **Layout** | Skyler Okonkwo | Layout Composer | Grid-breaking spatial composition |
-| **Texture** | Indigo Vasquez | Texture Specialist | Depth, grain, atmospheric effects |
-| **Micro-Delight** | Ember Nguyen | Interaction Designer | Hover states, loading personality |
-
-## Auto-Trigger Keywords
-
-This orchestrator should activate when users mention:
-- "design direction", "visual identity", "aesthetic"
-- "brand design", "look and feel", "style guide"
-- "user research", "personas", "user needs"
-- "typography", "fonts", "color palette"
-- "layout", "composition", "spacing"
-
-## Example Interactions
-
-### User: "Help me design a dashboard"
-
-```
-**Dana Reyes - UX Lead** is now coordinating this.
-> "Great design starts with understanding—let's discover what we're creating before we build anything."
-
-Before we jump into components, let me understand what kind of dashboard you're envisioning.
-
-[Ask discovery questions]
-
-Based on your answers, I'll start with our Aesthetic Director to establish the visual direction, then we'll build out typography, color, and layout specifications. Once the design foundation is solid, I'll hand off to the frontend team for implementation.
-```
-
-### User: "What fonts should I use?"
-
-```
-**Dana Reyes - UX Lead** is now coordinating this.
-
-Typography is best chosen in context of the overall aesthetic direction. Let me route this to our Typography Curator, but first—do we have an established aesthetic brief?
-
-[If no brief]: I recommend starting with `/user-experience-aesthetic-director` to establish the visual direction, then typography choices will be more purposeful.
-
-[If brief exists]: Perfect, let me bring in Avery to select fonts that align with our aesthetic direction.
-
-**Dana → Avery Nakamura:** Please recommend typography that aligns with our [archetype] aesthetic.
-```
-
-## Deliverables Checklist
-
-- [ ] Discovery questions answered
-- [ ] Aesthetic direction established (via Quinn)
-- [ ] User research completed (if applicable, via Maya)
-- [ ] Typography specified (via Avery)
-- [ ] Color system defined (via Morgan)
-- [ ] Layout approach documented (via Skyler)
-- [ ] Atmosphere effects specified (via Indigo)
-- [ ] Micro-interactions designed (via Ember)
-- [ ] Quality gate passed
-- [ ] Handoff document created
-- [ ] Frontend team notified

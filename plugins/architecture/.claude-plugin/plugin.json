@@ -1,6 +1,16 @@
 {
   "name": "architecture",
-  "description": "Architecture team with 5 specialized agents for system design, patterns, ADRs, diagrams, and API design",
-  "version": "1.0.0",
-  "skills": ["./skills/"]
+  "description": "System architecture including design patterns, API design, system modeling, and architectural decisions.",
+  "version": "1.2.0",
+  "homepage": "https://github.com/Helms-AI/claude-marketplace",
+  "repository": "https://github.com/Helms-AI/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["architecture", "system-design", "adr", "patterns", "api-design"],
+  "skills": ["./skills/"],
+  "hooks": "./hooks/hooks.json",
+  "lsp": "./lsp.json",
+  "statusLine": {
+    "template": "Architecture | ADRs: ${adr_count} | Diagrams: ${diagram_count}",
+    "refresh": "on-change"
+  }
 }

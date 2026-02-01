@@ -1,6 +1,21 @@
 ---
 name: data-modeler
 description: Data model design, ERD creation, normalization, and DBML schema generation
+argument-hint: "[model-name]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
+# Dynamic Context
+
+```
+!cat dbt_project.yml 2>/dev/null | head -20
+```
+
 ---
 
 # Data Modeler

@@ -1,6 +1,14 @@
 ---
 name: frontend-team-session
 description: Multi-agent team discussions with specialized frontend personas for implementation decisions
+user-invocable: false
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
 ---
 
 # Frontend Team Session

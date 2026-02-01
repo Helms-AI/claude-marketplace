@@ -1,6 +1,14 @@
 ---
 name: arch-team-session
 description: Multi-agent architecture discussion with the full team
+user-invocable: false
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
 ---
 
 # Architecture Team Session

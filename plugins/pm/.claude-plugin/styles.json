@@ -1,0 +1,20 @@
+{
+  "outputStyles": {
+    "technical-deep-dive": {
+      "file": "./styles/technical-deep-dive.md",
+      "description": "Detailed technical analysis with code examples and diagrams",
+      "useWhen": ["architecture review", "debugging", "technical investigation", "design document"]
+    },
+    "executive-summary": {
+      "file": "./styles/executive-summary.md",
+      "description": "Concise stakeholder updates with status and action items",
+      "useWhen": ["status update", "stakeholder briefing", "decision summary", "weekly report"]
+    },
+    "code-review": {
+      "file": "./styles/code-review.md",
+      "description": "Structured PR review with severity levels and actionable feedback",
+      "useWhen": ["pull request", "code review", "audit", "implementation feedback"]
+    }
+  },
+  "defaultStyle": "technical-deep-dive"
+}

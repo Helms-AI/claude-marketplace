@@ -1,6 +1,21 @@
 ---
 name: devops-orchestrator
 description: Routes DevOps requests to the appropriate specialist agent
+argument-hint: "[deploy|pipeline|infra]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+  - Bash
+---
+
+# Dynamic Context
+
+```
+!git log --oneline -5
+```
+
 ---
 
 # DevOps Orchestrator

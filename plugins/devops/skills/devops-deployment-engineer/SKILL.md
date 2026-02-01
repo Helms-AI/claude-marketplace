@@ -1,6 +1,16 @@
 ---
 name: devops-deployment-engineer
 description: Deployment strategies and release management
+argument-hint: "[environment]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+---
+
 ---
 
 # Deployment Engineer

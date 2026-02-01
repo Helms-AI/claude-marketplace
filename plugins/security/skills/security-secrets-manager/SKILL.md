@@ -1,6 +1,13 @@
 ---
 name: security-secrets-manager
 description: Secrets management strategy and implementation guidance
+argument-hint: "[secret-type]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+---
+
 ---
 
 # Security Secrets Manager
