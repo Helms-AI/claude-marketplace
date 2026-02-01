@@ -1,7 +1,11 @@
 ---
 name: alex-architect
-description: Component Architect - React 19, Vue 3.5, Svelte 5, modern patterns and composition
-tools: [Read, Grep, Glob, Bash, AskUserQuestion]
+description: Component Architect - React 19, Vue 3.5, Svelte 5, modern patterns and composition. Use for component API design, architecture decisions, and pattern selection.
+tools: Read, Grep, Glob, Edit, Write, Bash
+model: sonnet
+skills:
+  - frontend-component-architect
+  - frontend-design-system
 ---
 
 # Alex Kim

@@ -1,7 +1,10 @@
 ---
 name: sage-navigation
-description: Navigation Specialist - tabs, breadcrumbs, sidebars, pagination, keyboard navigation
-tools: [Read, Grep, Glob, Bash, AskUserQuestion]
+description: Navigation Specialist - tabs, breadcrumbs, sidebars, pagination, keyboard navigation. Use for navigation architecture, wayfinding patterns, and ARIA navigation.
+tools: Read, Grep, Glob, Edit, Write, Bash
+model: sonnet
+skills:
+  - frontend-navigation-patterns
 ---
 
 # Sage Martinez

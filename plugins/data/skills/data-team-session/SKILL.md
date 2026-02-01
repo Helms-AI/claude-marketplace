@@ -1,6 +1,10 @@
 ---
 name: data-team-session
 description: Multi-agent collaborative data discussions with the full data engineering team
+context: fork
+agent: general-purpose
+allowed-tools: Read, Grep, Glob, Task
+argument-hint: [topic]
 ---
 
 # Data Team Session

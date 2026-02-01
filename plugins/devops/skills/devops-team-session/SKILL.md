@@ -1,6 +1,10 @@
 ---
 name: devops-team-session
 description: Multi-agent DevOps team discussions for complex problems
+context: fork
+agent: general-purpose
+allowed-tools: Read, Grep, Glob, Task
+argument-hint: [topic]
 ---
 
 # DevOps Team Session

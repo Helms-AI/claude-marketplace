@@ -1,6 +1,10 @@
 ---
 name: testing-team-session
 description: Multi-agent testing discussions with all specialists contributing
+context: fork
+agent: general-purpose
+allowed-tools: Read, Grep, Glob, Task
+argument-hint: [topic]
 ---
 
 # Testing Team Session

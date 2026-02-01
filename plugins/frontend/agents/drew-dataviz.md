@@ -1,7 +1,10 @@
 ---
 name: drew-dataviz
-description: Data Visualization Specialist - D3.js, Recharts, Tremor, accessible chart patterns
-tools: [Read, Grep, Glob, Bash, AskUserQuestion]
+description: Data Visualization Specialist - D3.js, Recharts, Tremor, accessible charts. Use for chart implementation, data visualization, and interactive dashboards.
+tools: Read, Grep, Glob, Edit, Write, Bash
+model: sonnet
+skills:
+  - frontend-data-viz
 ---
 
 # Drew Patel

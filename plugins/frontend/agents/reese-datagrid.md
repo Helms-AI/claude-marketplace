@@ -1,7 +1,10 @@
 ---
 name: reese-datagrid
-description: Data Grid Specialist - table layouts, sorting, filtering, virtualization, responsive data display
-tools: [Read, Grep, Glob, Bash, AskUserQuestion]
+description: Data Grid Specialist - table layouts, sorting, filtering, virtualization. Use for data tables, TanStack Table setup, and large dataset display.
+tools: Read, Grep, Glob, Edit, Write, Bash
+model: sonnet
+skills:
+  - frontend-data-grid
 ---
 
 # Reese Kim

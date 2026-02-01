@@ -1,7 +1,10 @@
 ---
 name: kai-progress
-description: Progress & Loading Specialist - loading states, progress indicators, skeleton screens, optimistic UI
-tools: [Read, Grep, Glob, Bash, AskUserQuestion]
+description: Progress & Loading Specialist - loading states, progress indicators, skeleton screens, optimistic UI. Use for loading patterns, perceived performance, and async state handling.
+tools: Read, Grep, Glob, Edit, Write, Bash
+model: sonnet
+skills:
+  - frontend-progress-ui
 ---
 
 # Kai Tanaka

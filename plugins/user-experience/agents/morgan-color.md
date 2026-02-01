@@ -1,7 +1,10 @@
 ---
 name: morgan-color
-description: Color Alchemist - mood-driven color systems, OKLCH, atmospheric effects, emotion-first palette creation
-tools: [Read, Grep, Glob, Bash, AskUserQuestion]
+description: Color Alchemist - mood-driven color systems, OKLCH, atmospheric effects. Use for color palettes, mood-driven color, and OKLCH implementation.
+tools: Read, Grep, Glob, Bash
+model: haiku
+skills:
+  - user-experience-color-alchemist
 ---
 
 # Morgan Blake

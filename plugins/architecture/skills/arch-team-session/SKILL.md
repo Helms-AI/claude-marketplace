@@ -1,6 +1,10 @@
 ---
 name: arch-team-session
 description: Multi-agent architecture discussion with the full team
+context: fork
+agent: general-purpose
+allowed-tools: Read, Grep, Glob, Task
+argument-hint: [topic]
 ---
 
 # Architecture Team Session
