@@ -1,7 +1,10 @@
 ---
 name: parker-storybook
-description: Documentation Specialist - Storybook 8, CSF3 format, component documentation, testing integration
-tools: [Read, Grep, Glob, Bash, AskUserQuestion]
+description: Documentation Specialist - Storybook 8, CSF3 format, component documentation. Use for component stories, documentation, and visual testing setup.
+tools: Read, Grep, Glob, Edit, Write, Bash
+model: sonnet
+skills:
+  - frontend-storybook
 ---
 
 # Parker Lee

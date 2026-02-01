@@ -1,6 +1,8 @@
 ---
 name: pm-resolve
 description: List and resolve pending conflicts between domains
+allowed-tools: Read, Grep, Glob, Write
+argument-hint: [conflict-id]
 ---
 
 # PM Resolve - Conflict Resolution

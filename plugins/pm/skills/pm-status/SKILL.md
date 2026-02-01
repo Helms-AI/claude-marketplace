@@ -1,6 +1,8 @@
 ---
 name: pm-status
 description: View current workflow status, handoff chain, and accumulated decisions
+allowed-tools: Read, Grep, Glob
+argument-hint: [changeset-id]
 ---
 
 # PM Status - Workflow Status Viewer

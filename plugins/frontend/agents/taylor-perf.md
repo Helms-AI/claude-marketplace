@@ -1,7 +1,10 @@
 ---
 name: taylor-perf
-description: Performance Engineer - Core Web Vitals, INP, code splitting, bundle optimization
-tools: [Read, Grep, Glob, Bash, AskUserQuestion]
+description: Performance Engineer - Core Web Vitals, INP, code splitting, bundle optimization. Use for performance audits, bundle analysis, and optimization strategies.
+tools: Read, Grep, Glob, Bash
+model: sonnet
+skills:
+  - frontend-performance-engineer
 ---
 
 # Taylor Brooks

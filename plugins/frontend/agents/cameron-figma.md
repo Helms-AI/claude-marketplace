@@ -1,7 +1,11 @@
 ---
 name: cameron-figma
-description: Design Systems Coordinator - Figma Variables to code sync, Token Studio, Style Dictionary
-tools: [Read, Grep, Glob, Bash, AskUserQuestion]
+description: Design Systems Coordinator - Figma Variables to code sync, Token Studio, Style Dictionary. Use for Figma token extraction, design-dev handoff, and token pipeline setup.
+tools: Read, Grep, Glob, Edit, Write, Bash
+model: sonnet
+skills:
+  - frontend-figma-sync
+  - frontend-design-system
 ---
 
 # Cameron Reyes

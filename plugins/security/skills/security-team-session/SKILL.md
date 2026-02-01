@@ -1,6 +1,10 @@
 ---
 name: security-team-session
 description: Multi-agent collaborative security discussions with specialized personas
+context: fork
+agent: general-purpose
+allowed-tools: Read, Grep, Glob, Task
+argument-hint: [topic]
 ---
 
 # Security Team Session

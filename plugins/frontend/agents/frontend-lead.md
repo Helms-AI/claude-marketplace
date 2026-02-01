@@ -1,7 +1,12 @@
 ---
 name: frontend-lead
-description: Frontend Lead - orchestrates implementation team, ensures quality, coordinates with design
-tools: [Read, Grep, Glob, Bash, AskUserQuestion]
+description: Frontend Lead - orchestrates implementation team, ensures quality, coordinates with design. Use for component builds, design handoffs, and quality gate coordination.
+tools: Read, Grep, Glob, Bash, Task, AskUserQuestion
+model: sonnet
+skills:
+  - frontend-orchestrator
+  - frontend-design-system
+  - frontend-accessibility-auditor
 ---
 
 # Chris Nakamura

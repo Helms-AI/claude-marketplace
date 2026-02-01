@@ -1,6 +1,10 @@
 ---
 name: user-experience-team-session
 description: Multi-agent team discussions with specialized UX personas for comprehensive design collaboration
+context: fork
+agent: general-purpose
+allowed-tools: Read, Grep, Glob, Task
+argument-hint: [topic]
 ---
 
 # User Experience Team Session
