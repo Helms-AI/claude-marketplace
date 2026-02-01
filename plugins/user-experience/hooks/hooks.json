@@ -1,0 +1,30 @@
+{
+  "description": "User Experience plugin hooks - design token validation, accessibility checks",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-design-tokens.sh",
+            "timeout": 10,
+            "statusMessage": "Validating design tokens..."
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/ux-summary.sh",
+            "timeout": 10,
+            "statusMessage": "Generating UX summary..."
+          }
+        ]
+      }
+    ]
+  }
+}

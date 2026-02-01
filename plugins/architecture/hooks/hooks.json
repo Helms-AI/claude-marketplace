@@ -1,0 +1,30 @@
+{
+  "description": "Architecture plugin hooks - ADR validation, diagram checks",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-adr.sh",
+            "timeout": 10,
+            "statusMessage": "Validating architecture documentation..."
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/architecture-summary.sh",
+            "timeout": 10,
+            "statusMessage": "Generating architecture summary..."
+          }
+        ]
+      }
+    ]
+  }
+}

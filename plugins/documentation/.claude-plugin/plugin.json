@@ -1,7 +1,8 @@
 {
   "name": "documentation",
-  "description": "Documentation team with 5 specialized agents for API docs, guides, architecture documentation, runbooks, and onboarding materials",
+  "description": "Documentation team with 5 specialized agents for API docs, guides, architecture docs, runbooks, and onboarding",
   "version": "1.1.0",
   "skills": ["./skills/"],
-  "agents": ["./agents/"]
+  "agents": ["./agents/"],
+  "hooks": "./hooks/hooks.json"
 }

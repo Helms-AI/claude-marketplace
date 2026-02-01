@@ -1,0 +1,43 @@
+{
+  "description": "Frontend plugin quality gates - linting, formatting, accessibility checks",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/lint-check.sh",
+            "timeout": 30,
+            "statusMessage": "Running lint checks..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-frontend-path.sh",
+            "timeout": 5,
+            "statusMessage": "Validating file path..."
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/quality-summary.sh",
+            "timeout": 10,
+            "statusMessage": "Generating quality summary..."
+          }
+        ]
+      }
+    ]
+  }
+}

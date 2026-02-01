@@ -1,5 +1,5 @@
 {
-  "description": "DevOps plugin safety hooks - validates dangerous operations before execution",
+  "description": "DevOps plugin hooks - deployment safety, infrastructure validation, CI/CD checks",
   "hooks": {
     "PreToolUse": [
       {
@@ -9,7 +9,7 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-devops-command.sh",
             "timeout": 10,
-            "statusMessage": "Validating DevOps command safety..."
+            "statusMessage": "Validating DevOps command..."
           }
         ]
       }
@@ -20,9 +20,21 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-config-changes.sh",
-            "timeout": 5,
-            "statusMessage": "Checking configuration changes..."
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-infra-changes.sh",
+            "timeout": 10,
+            "statusMessage": "Validating infrastructure changes..."
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/devops-summary.sh",
+            "timeout": 10,
+            "statusMessage": "Generating DevOps summary..."
           }
         ]
       }

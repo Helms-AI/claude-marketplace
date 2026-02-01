@@ -1,0 +1,42 @@
+{
+  "description": "Backend plugin hooks - SQL validation, API safety, database migration checks",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-db-command.sh",
+            "timeout": 10,
+            "statusMessage": "Validating database command..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-backend-path.sh",
+            "timeout": 5,
+            "statusMessage": "Validating backend file path..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-sql-patterns.sh",
+            "timeout": 10,
+            "statusMessage": "Checking for SQL issues..."
+          }
+        ]
+      }
+    ]
+  }
+}

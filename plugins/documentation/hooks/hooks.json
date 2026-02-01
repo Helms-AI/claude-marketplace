@@ -1,0 +1,30 @@
+{
+  "description": "Documentation plugin hooks - markdown validation, link checking",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-markdown.sh",
+            "timeout": 10,
+            "statusMessage": "Validating documentation..."
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/docs-summary.sh",
+            "timeout": 10,
+            "statusMessage": "Generating documentation summary..."
+          }
+        ]
+      }
+    ]
+  }
+}

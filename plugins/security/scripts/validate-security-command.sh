@@ -1,10 +1,10 @@
 #!/bin/bash
-# Security Command Validator
-# Validates commands that could expose or compromise credentials
+# Security Plugin - Command Validation
+# Validates commands for security issues before execution
 #
 # Exit codes:
-#   0 = Allow command
-#   2 = Block command (with reason on stderr)
+#   0 = Safe to execute
+#   2 = Blocked (security risk)
 
 set -euo pipefail
 
@@ -17,64 +17,74 @@ if [[ -z "$COMMAND" ]]; then
 fi
 
 # =============================================================================
-# CRITICAL: Commands that expose secrets
+# BLOCKED: Commands that expose credentials
 # =============================================================================
 
-# Printing environment variables that might contain secrets
+# Environment variables with secrets
 if echo "$COMMAND" | grep -qiE '\b(printenv|env)\b.*\b(SECRET|KEY|TOKEN|PASSWORD|CREDENTIALS)\b'; then
-    echo "BLOCKED: Command may expose secrets via environment variables. Use a secrets manager instead." >&2
+    echo "BLOCKED: Command may expose secrets via environment variables." >&2
     exit 2
 fi
 
-# Cat/echo of credential files
-if echo "$COMMAND" | grep -qiE '\b(cat|less|more|head|tail)\b.*\b(\.env|credentials|secrets?\.ya?ml|\.pem|\.key)\b'; then
-    echo "BLOCKED: Attempting to read credential file directly. Access secrets through a vault or secrets manager." >&2
+# Reading credential files
+if echo "$COMMAND" | grep -qiE '\b(cat|less|more|head|tail)\b.*\b(\.env|credentials|secrets?\.ya?ml|\.pem|\.key|id_rsa)\b'; then
+    echo "BLOCKED: Attempting to read credential file directly." >&2
     exit 2
 fi
 
-# Curl with credentials in URL or headers
-if echo "$COMMAND" | grep -qiE '\bcurl\b.*(-u|--user|Authorization)'; then
-    echo "BLOCKED: Curl with inline credentials detected. Use environment variables or a credential helper." >&2
+# Curl with inline credentials
+if echo "$COMMAND" | grep -qiE '\bcurl\b.*(-u|--user|Authorization:\s*Bearer)'; then
+    echo "BLOCKED: Curl with inline credentials. Use environment variables." >&2
     exit 2
 fi
 
-# Vault unseal or root token operations
+# Vault administrative operations
 if echo "$COMMAND" | grep -qiE '\bvault\b.*(unseal|generate-root|operator\s+init)'; then
-    echo "BLOCKED: Vault administrative operation. This should be done by authorized personnel only." >&2
+    echo "BLOCKED: Vault administrative operation requires authorized personnel." >&2
     exit 2
 fi
 
-# AWS/GCP credential file access
-if echo "$COMMAND" | grep -qiE '\b(cat|cp|mv)\b.*\.(aws/credentials|boto|gcloud)'; then
-    echo "BLOCKED: Direct access to cloud credential files. Use cloud CLI auth commands instead." >&2
+# AWS credential file access
+if echo "$COMMAND" | grep -qiE '\b(cat|cp|mv)\b.*\.(aws/credentials|boto)'; then
+    echo "BLOCKED: Direct access to cloud credential files." >&2
     exit 2
 fi
 
 # =============================================================================
-# WARNING: Potentially risky operations
+# BLOCKED: Dangerous network operations
 # =============================================================================
 
-# Vault secret commands (allow but warn)
+# Downloading and executing scripts
+if echo "$COMMAND" | grep -qiE 'curl.*\|\s*(bash|sh|python|ruby|perl)'; then
+    echo "BLOCKED: Downloading and executing remote scripts is a security risk." >&2
+    exit 2
+fi
+
+# Netcat listeners
+if echo "$COMMAND" | grep -qiE '\bnc\b.*-l.*-e'; then
+    echo "BLOCKED: Netcat with execution is a security risk." >&2
+    exit 2
+fi
+
+# =============================================================================
+# WARNINGS: Potentially risky operations
+# =============================================================================
+
+# Vault secret operations (allow but warn)
 if echo "$COMMAND" | grep -qiE '\bvault\s+(read|write|kv)\b'; then
-    echo '{"systemMessage": "⚠️ Vault secret operation. Ensure you have appropriate access and audit logging is enabled."}'
+    echo '{"systemMessage": "⚠️ Vault operation detected. Ensure audit logging is enabled."}'
     exit 0
 fi
 
-# AWS Secrets Manager operations
+# SSH key generation
+if echo "$COMMAND" | grep -qiE '\bssh-keygen\b'; then
+    echo '{"systemMessage": "⚠️ SSH key generation. Ensure keys are secured with strong passphrases."}'
+    exit 0
+fi
+
+# AWS secret operations
 if echo "$COMMAND" | grep -qiE '\baws\s+secretsmanager\b'; then
-    echo '{"systemMessage": "⚠️ AWS Secrets Manager operation. Verify the secret name and ensure rotation is configured."}'
-    exit 0
-fi
-
-# SSH key operations
-if echo "$COMMAND" | grep -qiE '\bssh-keygen\b|\bssh-add\b'; then
-    echo '{"systemMessage": "⚠️ SSH key operation. Ensure keys are properly secured and never committed to repos."}'
-    exit 0
-fi
-
-# GPG/PGP operations
-if echo "$COMMAND" | grep -qiE '\bgpg\b.*(--export|--import|--gen-key)'; then
-    echo '{"systemMessage": "⚠️ GPG key operation. Protect private keys and use strong passphrases."}'
+    echo '{"systemMessage": "⚠️ AWS Secrets Manager operation. Verify you have appropriate access."}'
     exit 0
 fi
 

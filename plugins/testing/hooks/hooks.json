@@ -1,0 +1,41 @@
+{
+  "description": "Testing plugin hooks - auto-run tests, coverage tracking, test validation",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/find-related-tests.sh",
+            "timeout": 10,
+            "statusMessage": "Finding related tests..."
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-test-output.sh",
+            "timeout": 5,
+            "statusMessage": "Checking test results..."
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/test-coverage-summary.sh",
+            "timeout": 15,
+            "statusMessage": "Generating test coverage summary..."
+          }
+        ]
+      }
+    ]
+  }
+}

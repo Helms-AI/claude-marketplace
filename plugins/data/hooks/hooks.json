@@ -1,0 +1,31 @@
+{
+  "description": "Data plugin hooks - pipeline validation, query safety, data governance",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-data-command.sh",
+            "timeout": 10,
+            "statusMessage": "Validating data command..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-dbt-model.sh",
+            "timeout": 10,
+            "statusMessage": "Validating dbt model..."
+          }
+        ]
+      }
+    ]
+  }
+}

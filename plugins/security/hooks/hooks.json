@@ -1,5 +1,5 @@
 {
-  "description": "Security plugin safety hooks - validates sensitive operations and prevents credential exposure",
+  "description": "Security plugin hooks - vulnerability scanning, secret detection, security validation",
   "hooks": {
     "PreToolUse": [
       {
@@ -9,12 +9,34 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-security-command.sh",
             "timeout": 10,
-            "statusMessage": "Validating security operation..."
+            "statusMessage": "Validating security of command..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/check-sensitive-paths.sh",
+            "timeout": 5,
+            "statusMessage": "Checking for sensitive file access..."
           }
         ]
       }
     ],
     "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/scan-for-secrets.sh",
+            "timeout": 15,
+            "statusMessage": "Scanning for exposed secrets..."
+          }
+        ]
+      },
       {
         "matcher": "Bash",
         "hooks": [
@@ -22,7 +44,19 @@
             "type": "command",
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/scan-output-for-secrets.sh",
             "timeout": 5,
-            "statusMessage": "Scanning output for exposed secrets..."
+            "statusMessage": "Scanning output for secrets..."
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/security-summary.sh",
+            "timeout": 20,
+            "statusMessage": "Generating security summary..."
           }
         ]
       }

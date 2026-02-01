@@ -1,7 +1,8 @@
 {
   "name": "user-experience",
-  "description": "Design thinking, visual direction, and aesthetic foundation for distinctive user experiences. Pre-code design phase focused on visual identity, typography, color, layout, and user research.",
+  "description": "UX team with 8 specialized agents for user research, aesthetics, typography, color, layout, texture, and micro-delights",
   "version": "4.1.0",
   "skills": ["./skills/"],
-  "agents": ["./agents/"]
+  "agents": ["./agents/"],
+  "hooks": "./hooks/hooks.json"
 }

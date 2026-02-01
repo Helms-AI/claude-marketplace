@@ -3,5 +3,6 @@
   "description": "Project Manager broker for cross-domain orchestration - routes requests to specialized domain plugins and manages workflow changesets",
   "version": "1.2.0",
   "skills": ["./skills/"],
-  "agents": ["./agents/"]
+  "agents": ["./agents/"],
+  "hooks": "./hooks/hooks.json"
 }
