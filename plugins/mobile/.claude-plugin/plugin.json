@@ -1,0 +1,17 @@
+{
+  "name": "mobile",
+  "description": "Mobile development including iOS, Android, React Native, and Flutter",
+  "version": "1.0.0",
+  "homepage": "https://github.com/Helms-AI/claude-marketplace",
+  "repository": "https://github.com/Helms-AI/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["mobile", "ios", "android", "react-native", "flutter", "swift", "kotlin"],
+  "skills": ["./skills/"],
+  "agents": ["./agents/"],
+  "hooks": "./hooks/hooks.json",
+  "lsp": "./lsp.json",
+  "statusLine": {
+    "template": "Mobile | Platform: ${platform} | Build: ${build_status}",
+    "refresh": "on-change"
+  }
+}

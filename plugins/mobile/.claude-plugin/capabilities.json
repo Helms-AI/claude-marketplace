@@ -1,0 +1,43 @@
+{
+  "plugin": {
+    "name": "mobile",
+    "version": "1.0.0"
+  },
+  "domain": {
+    "primary": "mobile",
+    "subdomains": ["ios", "android", "react-native", "flutter"],
+    "collaborates_with": ["frontend", "backend", "testing", "devops"]
+  },
+  "capabilities": [
+    {
+      "id": "mobile.create.ios-app",
+      "verb": "create",
+      "artifacts": ["ios-app", "swift-ui", "uikit"],
+      "keywords": ["ios", "iphone", "ipad", "swift", "swiftui"],
+      "intent_patterns": ["build * ios *", "create * iphone *", "swift * app"],
+      "skill": "/mobile-ios-developer",
+      "priority": 8
+    },
+    {
+      "id": "mobile.create.android-app",
+      "verb": "create",
+      "artifacts": ["android-app", "compose", "kotlin"],
+      "keywords": ["android", "kotlin", "compose", "jetpack"],
+      "intent_patterns": ["build * android *", "create * kotlin *"],
+      "skill": "/mobile-android-developer",
+      "priority": 8
+    },
+    {
+      "id": "mobile.create.cross-platform",
+      "verb": "create",
+      "artifacts": ["react-native-app", "flutter-app", "expo"],
+      "keywords": ["react native", "flutter", "expo", "cross-platform"],
+      "intent_patterns": ["build * cross-platform *", "react native *", "flutter *"],
+      "skill": "/mobile-react-native",
+      "priority": 8
+    }
+  ],
+  "orchestrator": {
+    "skill": "/mobile-orchestrator"
+  }
+}
