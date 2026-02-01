@@ -1,0 +1,31 @@
+{
+  "description": "DevOps plugin safety hooks - validates dangerous operations before execution",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-devops-command.sh",
+            "timeout": 10,
+            "statusMessage": "Validating DevOps command safety..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-config-changes.sh",
+            "timeout": 5,
+            "statusMessage": "Checking configuration changes..."
+          }
+        ]
+      }
+    ]
+  }
+}

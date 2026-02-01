@@ -1,7 +1,11 @@
 ---
 name: data-pipeline-architect
 description: ETL/ELT pipeline design, Airflow DAGs, dbt models, and data orchestration
+disable-model-invocation: true
+argument-hint: [pipeline-type] [source-system]
 ---
+
+> ⚠️ **PIPELINE SAFETY**: This skill designs production data pipelines. Test DAGs and dbt models in development before deploying to production. Verify source/destination connections carefully.
 
 # Data Pipeline Architect
 

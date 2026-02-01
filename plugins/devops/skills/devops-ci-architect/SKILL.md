@@ -1,7 +1,11 @@
 ---
 name: devops-ci-architect
 description: CI/CD pipeline design and implementation
+disable-model-invocation: true
+argument-hint: [ci-platform] [pipeline-type]
 ---
+
+> ⚠️ **PIPELINE SAFETY**: This skill can modify CI/CD pipelines that trigger deployments. Review all workflow changes carefully before committing, especially deploy stages.
 
 # CI/CD Architect
 

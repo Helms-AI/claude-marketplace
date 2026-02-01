@@ -115,7 +115,7 @@
       "name": "backend",
       "source": "./plugins/backend",
       "description": "Backend team with 5 specialized agents for API development, database design, authentication, services, and third-party integrations. Includes REST/GraphQL endpoints, PostgreSQL/MongoDB schemas, OAuth/JWT/RBAC auth, microservices patterns, and integration with external APIs.",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "author": {
         "name": "Platform Team"
       },
@@ -168,8 +168,8 @@
     {
       "name": "devops",
       "source": "./plugins/devops",
-      "description": "DevOps team with 5 specialized agents for CI/CD pipelines, deployment strategies, infrastructure as code, monitoring/observability, and containerization. Includes GitHub Actions, blue-green/canary deployments, Terraform, Kubernetes, and Prometheus/Grafana observability.",
-      "version": "1.0.0",
+      "description": "DevOps team with 5 specialized agents for CI/CD pipelines, deployment strategies, infrastructure as code, monitoring/observability, and containerization. Includes GitHub Actions, blue-green/canary deployments, Terraform, Kubernetes, and Prometheus/Grafana observability. Now with PreToolUse safety hooks for production protection.",
+      "version": "1.1.0",
       "author": {
         "name": "Platform Team"
       },
@@ -196,8 +196,8 @@
     {
       "name": "data",
       "source": "./plugins/data",
-      "description": "Data team with 5 specialized agents for data modeling, pipelines, analytics, warehousing, and governance. Includes ERD design, DBML, Airflow DAGs, dbt models, star schemas, data quality rules, and compliance frameworks.",
-      "version": "1.0.0",
+      "description": "Data team with 5 specialized agents for data modeling, pipelines, analytics, warehousing, and governance. Includes ERD design, DBML, Airflow DAGs, dbt models, star schemas, data quality rules, and compliance frameworks. Pipeline skills now require manual invocation for safety.",
+      "version": "1.0.1",
       "author": {
         "name": "Platform Team"
       },
@@ -228,8 +228,8 @@
     {
       "name": "security",
       "source": "./plugins/security",
-      "description": "Security team with 5 specialized agents for security audits, threat modeling, compliance, secrets management, and penetration testing guidance. Defensive security focus covering OWASP, STRIDE, SOC2, GDPR, HIPAA, PCI-DSS, HashiCorp Vault, and security code review.",
-      "version": "1.0.0",
+      "description": "Security team with 5 specialized agents for security audits, threat modeling, compliance, secrets management, and penetration testing guidance. Defensive security focus covering OWASP, STRIDE, SOC2, GDPR, HIPAA, PCI-DSS, HashiCorp Vault, and security code review. Now with hooks for credential protection and secret exposure scanning.",
+      "version": "1.1.0",
       "author": {
         "name": "Platform Team"
       },

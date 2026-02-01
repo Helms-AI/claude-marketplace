@@ -1,7 +1,11 @@
 ---
 name: security-secrets-manager
 description: Secrets management strategy and implementation guidance
+disable-model-invocation: true
+argument-hint: [vault-system] [operation-type]
 ---
+
+> ⚠️ **SECRETS SAFETY**: This skill manages sensitive credentials. Never expose secrets in logs or outputs. Rotate credentials rather than just revoking them.
 
 # Security Secrets Manager
 

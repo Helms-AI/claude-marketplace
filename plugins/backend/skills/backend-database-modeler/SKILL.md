@@ -1,7 +1,11 @@
 ---
 name: backend-database-modeler
 description: Database schema design, migrations, and query optimization
+disable-model-invocation: true
+argument-hint: [database-type] [operation]
 ---
+
+> ⚠️ **MIGRATION SAFETY**: This skill can generate database migrations. Always test migrations on non-production data first, and ensure migrations are reversible.
 
 # Backend Database Modeler
 
