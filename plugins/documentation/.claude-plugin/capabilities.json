@@ -41,6 +41,11 @@
       "description": "Developer onboarding materials and setup guides",
       "triggers": ["onboarding", "new developer", "setup guide", "team introduction"],
       "outputs": ["onboarding checklist", "environment setup", "codebase tour", "team processes"]
+    },
+    "docs-localization": {
+      "description": "Documentation localization and translation management",
+      "triggers": ["localization", "translation", "multilingual docs", "l10n", "language support"],
+      "outputs": ["translated docs", "locale structure", "translation workflow", "language support"]
     }
   },
   "agents": {

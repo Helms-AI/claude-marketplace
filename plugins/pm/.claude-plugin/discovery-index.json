@@ -288,6 +288,146 @@
       "keywords": ["research", "user", "persona", "interview", "survey"],
       "description": "User research",
       "useCases": ["user research", "create personas", "interviews"]
+    },
+    {
+      "name": "pm-discover",
+      "domain": "pm",
+      "keywords": ["discover", "find", "search", "recommend", "skill"],
+      "description": "Find the right skill for any task",
+      "useCases": ["find skill", "discover tools", "get recommendations"]
+    },
+    {
+      "name": "pm-tutorial",
+      "domain": "pm",
+      "keywords": ["tutorial", "learn", "onboard", "guide", "getting started"],
+      "description": "Interactive onboarding tutorial",
+      "useCases": ["learn system", "get started", "new user guide"]
+    },
+    {
+      "name": "pm-recipe",
+      "domain": "pm",
+      "keywords": ["recipe", "workflow", "template", "pattern", "cookbook"],
+      "description": "Execute pre-built workflow recipes",
+      "useCases": ["run recipe", "workflow template", "common patterns"]
+    },
+    {
+      "name": "pm-autonomy",
+      "domain": "pm",
+      "keywords": ["autonomy", "control", "confirmation", "oversight", "settings"],
+      "description": "Configure action autonomy levels",
+      "useCases": ["set autonomy", "control confirmations", "action settings"]
+    },
+    {
+      "name": "mobile-orchestrator",
+      "domain": "mobile",
+      "keywords": ["mobile", "ios", "android", "app", "cross-platform"],
+      "description": "Mobile development coordination",
+      "useCases": ["mobile app", "ios development", "android development"]
+    },
+    {
+      "name": "mobile-ios-developer",
+      "domain": "mobile",
+      "keywords": ["ios", "swift", "swiftui", "iphone", "ipad", "apple"],
+      "description": "iOS development with Swift",
+      "useCases": ["ios app", "swift code", "swiftui views"]
+    },
+    {
+      "name": "mobile-android-developer",
+      "domain": "mobile",
+      "keywords": ["android", "kotlin", "compose", "jetpack", "google"],
+      "description": "Android development with Kotlin",
+      "useCases": ["android app", "kotlin code", "compose ui"]
+    },
+    {
+      "name": "mobile-react-native",
+      "domain": "mobile",
+      "keywords": ["react native", "expo", "cross-platform", "javascript"],
+      "description": "React Native cross-platform apps",
+      "useCases": ["react native app", "expo project", "cross-platform mobile"]
+    },
+    {
+      "name": "mobile-flutter",
+      "domain": "mobile",
+      "keywords": ["flutter", "dart", "cross-platform", "material"],
+      "description": "Flutter cross-platform apps",
+      "useCases": ["flutter app", "dart code", "cross-platform mobile"]
+    },
+    {
+      "name": "mobile-testing",
+      "domain": "mobile",
+      "keywords": ["mobile test", "appium", "detox", "xctest", "espresso"],
+      "description": "Mobile app testing",
+      "useCases": ["test mobile app", "appium tests", "device testing"]
+    },
+    {
+      "name": "mlops-orchestrator",
+      "domain": "mlops",
+      "keywords": ["mlops", "machine learning", "ml", "ai", "models"],
+      "description": "MLOps coordination",
+      "useCases": ["ml workflow", "model lifecycle", "ml operations"]
+    },
+    {
+      "name": "mlops-model-trainer",
+      "domain": "mlops",
+      "keywords": ["train", "model", "pytorch", "tensorflow", "ml training"],
+      "description": "Train ML models",
+      "useCases": ["train model", "ml training", "deep learning"]
+    },
+    {
+      "name": "mlops-model-deployer",
+      "domain": "mlops",
+      "keywords": ["deploy", "serve", "inference", "endpoint", "production ml"],
+      "description": "Deploy ML models to production",
+      "useCases": ["deploy model", "inference endpoint", "model serving"]
+    },
+    {
+      "name": "mlops-feature-engineer",
+      "domain": "mlops",
+      "keywords": ["feature", "engineering", "preprocessing", "feast", "feature store"],
+      "description": "Feature engineering and stores",
+      "useCases": ["create features", "feature store", "data preprocessing"]
+    },
+    {
+      "name": "mlops-experiment-tracker",
+      "domain": "mlops",
+      "keywords": ["experiment", "mlflow", "wandb", "tracking", "metrics"],
+      "description": "Track ML experiments",
+      "useCases": ["track experiments", "log metrics", "mlflow setup"]
+    },
+    {
+      "name": "mlops-monitoring",
+      "domain": "mlops",
+      "keywords": ["monitor", "drift", "model health", "alerting", "observability"],
+      "description": "Monitor ML models in production",
+      "useCases": ["monitor models", "detect drift", "model alerts"]
+    },
+    {
+      "name": "testing-load-engineer",
+      "domain": "testing",
+      "keywords": ["load test", "stress test", "k6", "artillery", "performance"],
+      "description": "Load and stress testing",
+      "useCases": ["load testing", "stress test", "performance benchmarking"]
+    },
+    {
+      "name": "testing-performance-analyzer",
+      "domain": "testing",
+      "keywords": ["performance", "lighthouse", "core web vitals", "profiling"],
+      "description": "Performance analysis and optimization",
+      "useCases": ["analyze performance", "lighthouse audit", "optimize speed"]
+    },
+    {
+      "name": "frontend-i18n-engineer",
+      "domain": "frontend",
+      "keywords": ["i18n", "internationalization", "localization", "translation", "locale"],
+      "description": "Internationalization setup",
+      "useCases": ["add i18n", "setup translations", "support languages"]
+    },
+    {
+      "name": "docs-localization",
+      "domain": "documentation",
+      "keywords": ["localization", "translation", "multilingual", "l10n"],
+      "description": "Documentation localization",
+      "useCases": ["translate docs", "multilingual docs", "localize content"]
     }
   ],
   "domains": {
@@ -300,6 +440,8 @@
     "data": {"color": "#06b6d4", "priority": 7},
     "architecture": {"color": "#ec4899", "priority": 8},
     "documentation": {"color": "#84cc16", "priority": 9},
-    "user-experience": {"color": "#f97316", "priority": 10}
+    "user-experience": {"color": "#f97316", "priority": 10},
+    "mobile": {"color": "#14b8a6", "priority": 11},
+    "mlops": {"color": "#a855f7", "priority": 12}
   }
 }
