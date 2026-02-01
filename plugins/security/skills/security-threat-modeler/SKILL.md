@@ -1,6 +1,14 @@
 ---
 name: security-threat-modeler
 description: Systematic threat modeling using STRIDE methodology and attack trees
+argument-hint: "[system|feature]"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+---
+
 ---
 
 # Security Threat Modeler

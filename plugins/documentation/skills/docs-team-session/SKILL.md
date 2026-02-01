@@ -1,10 +1,14 @@
 ---
 name: docs-team-session
 description: Multi-agent documentation discussions and collaborative writing sessions
-context: fork
-agent: general-purpose
-allowed-tools: Read, Grep, Glob, Task
-argument-hint: [topic]
+user-invocable: false
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
 ---
 
 # Documentation Team Session

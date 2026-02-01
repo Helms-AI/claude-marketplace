@@ -1,11 +1,22 @@
 ---
 name: backend-database-modeler
 description: Database schema design, migrations, and query optimization
-disable-model-invocation: true
-argument-hint: [database-type] [operation]
+argument-hint: "[table|model]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
 ---
 
-> ⚠️ **MIGRATION SAFETY**: This skill can generate database migrations. Always test migrations on non-production data first, and ensure migrations are reversible.
+# Dynamic Context
+
+```
+!cat prisma/schema.prisma 2>/dev/null | head -30
+```
+
+---
 
 # Backend Database Modeler
 

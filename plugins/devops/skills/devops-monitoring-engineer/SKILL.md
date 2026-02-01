@@ -1,6 +1,15 @@
 ---
 name: devops-monitoring-engineer
 description: Observability, monitoring, and alerting setup
+argument-hint: "[metric|alert]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Monitoring Engineer

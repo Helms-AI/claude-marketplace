@@ -1,6 +1,16 @@
 ---
 name: backend-service-builder
 description: Microservices architecture, message queues, and distributed system patterns
+argument-hint: "[service-name]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+---
+
 ---
 
 # Backend Service Builder

@@ -1,0 +1,29 @@
+{
+  "lspServers": {
+    "typescript": {
+      "command": "typescript-language-server",
+      "args": ["--stdio"],
+      "languages": ["typescript", "typescriptreact", "javascript", "javascriptreact"],
+      "rootMarkers": ["tsconfig.json", "jsconfig.json", "package.json"],
+      "settings": {
+        "typescript.preferences.importModuleSpecifier": "relative",
+        "typescript.suggest.autoImports": true,
+        "typescript.format.semicolons": "insert"
+      },
+      "description": "TypeScript/JavaScript language intelligence for React, Vue, and Node.js"
+    },
+    "tailwindcss": {
+      "command": "tailwindcss-language-server",
+      "args": ["--stdio"],
+      "languages": ["html", "css", "typescriptreact", "javascriptreact", "vue"],
+      "rootMarkers": ["tailwind.config.js", "tailwind.config.ts"],
+      "description": "Tailwind CSS class name completion and hover info"
+    },
+    "css": {
+      "command": "vscode-css-language-server",
+      "args": ["--stdio"],
+      "languages": ["css", "scss", "less"],
+      "description": "CSS/SCSS/Less language support"
+    }
+  }
+}

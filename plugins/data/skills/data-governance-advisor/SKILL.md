@@ -1,6 +1,13 @@
 ---
 name: data-governance-advisor
 description: Data governance policies, data quality frameworks, compliance, and lineage tracking
+argument-hint: "[policy-type]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+---
+
 ---
 
 # Data Governance Advisor

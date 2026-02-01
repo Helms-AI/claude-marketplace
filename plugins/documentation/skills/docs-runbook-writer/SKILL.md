@@ -1,6 +1,15 @@
 ---
 name: docs-runbook-writer
 description: Operational runbooks, incident response playbooks, and SRE documentation
+argument-hint: "[process-name]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Runbook Writer

@@ -1,8 +1,15 @@
 {
   "name": "user-experience",
-  "description": "UX team with 8 specialized agents for user research, aesthetics, typography, color, layout, texture, and micro-delights",
-  "version": "4.1.0",
+  "description": "UX design including research, visual design, interaction patterns, and accessibility.",
+  "version": "4.2.0",
+  "homepage": "https://github.com/Helms-AI/claude-marketplace",
+  "repository": "https://github.com/Helms-AI/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["ux", "design", "typography", "color", "accessibility", "research"],
   "skills": ["./skills/"],
-  "agents": ["./agents/"],
-  "hooks": "./hooks/hooks.json"
+  "hooks": "./hooks/hooks.json",
+  "statusLine": {
+    "template": "UX | Aesthetic: ${aesthetic_style} | Tokens: ${token_count}",
+    "refresh": "on-change"
+  }
 }

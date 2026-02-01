@@ -1,6 +1,20 @@
 ---
 name: backend-orchestrator
 description: Routes backend requests to appropriate specialists based on domain expertise
+argument-hint: "[api|service|feature]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
+# Dynamic Context
+
+```
+!git status --short -- '*.py' '*.go' '*.rs' 2>/dev/null | head -10
+```
+
 ---
 
 # Backend Orchestrator

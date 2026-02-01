@@ -1,11 +1,23 @@
 ---
 name: devops-container-specialist
 description: Docker and Kubernetes containerization
-disable-model-invocation: true
-argument-hint: [cluster-context] [namespace]
+argument-hint: "[container|service]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
 ---
 
-> ⚠️ **CLUSTER SAFETY**: This skill can modify Kubernetes resources. Always verify the cluster context (`kubectl config current-context`) and namespace before applying changes.
+# Dynamic Context
+
+```
+!cat Dockerfile 2>/dev/null | head -20
+```
+
+---
 
 # Container Specialist
 

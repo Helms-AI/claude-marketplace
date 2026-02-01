@@ -1,6 +1,15 @@
 ---
 name: docs-guide-writer
 description: User guides, tutorials, how-to documentation, and learning materials
+argument-hint: "[guide-topic]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Guide Writer

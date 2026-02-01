@@ -1,6 +1,15 @@
 ---
 name: docs-architecture-documenter
 description: Architecture documentation including C4 diagrams, ADRs, and technical system documentation
+argument-hint: "[system-name]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Architecture Documenter

@@ -1,8 +1,17 @@
 {
   "name": "data",
-  "description": "Data team with 5 specialized agents for data modeling, pipelines, analytics, warehousing, and governance",
-  "version": "1.1.0",
+  "description": "Data engineering including pipelines, warehousing, ETL/ELT, and analytics infrastructure.",
+  "version": "1.2.0",
+  "homepage": "https://github.com/Helms-AI/claude-marketplace",
+  "repository": "https://github.com/Helms-AI/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["data", "etl", "dbt", "pipeline", "warehouse", "analytics"],
   "skills": ["./skills/"],
-  "agents": ["./agents/"],
-  "hooks": "./hooks/hooks.json"
+  "hooks": "./hooks/hooks.json",
+  "mcp": "./mcp.json",
+  "lsp": "./lsp.json",
+  "statusLine": {
+    "template": "Data | Models: ${model_count} | Pipeline: ${pipeline_status}",
+    "refresh": "on-change"
+  }
 }

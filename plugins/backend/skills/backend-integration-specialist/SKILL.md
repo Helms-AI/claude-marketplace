@@ -1,6 +1,16 @@
 ---
 name: backend-integration-specialist
 description: Third-party API integrations with reliability patterns and best practices
+argument-hint: "[service-name]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+---
+
 ---
 
 # Backend Integration Specialist

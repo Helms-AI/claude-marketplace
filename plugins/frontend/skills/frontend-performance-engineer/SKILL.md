@@ -1,6 +1,20 @@
 ---
 name: frontend-performance-engineer
 description: Core Web Vitals optimization, code splitting, and bundle optimization
+argument-hint: "[page|component]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+---
+
+# Dynamic Context
+
+```
+!cat package.json | jq '.scripts' 2>/dev/null
+```
+
 ---
 
 # Performance Engineer Skill

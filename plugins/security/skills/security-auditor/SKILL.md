@@ -1,6 +1,14 @@
 ---
 name: security-auditor
 description: Security-focused code review and vulnerability assessment
+argument-hint: "[component|codebase]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+---
+
 ---
 
 # Security Auditor

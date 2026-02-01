@@ -1,6 +1,15 @@
 ---
 name: data-analytics-engineer
 description: Analytics implementation, BI dashboards, metrics design, and reporting solutions
+argument-hint: "[metric|report]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Data Analytics Engineer

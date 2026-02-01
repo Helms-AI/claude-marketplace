@@ -1,6 +1,21 @@
 ---
 name: arch-adr-writer
 description: Architecture Decision Records (ADR) creation and management
+argument-hint: "[decision-title]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
+# Dynamic Context
+
+```
+!ls docs/decisions/ 2>/dev/null | tail -5
+```
+
 ---
 
 # ADR Writer

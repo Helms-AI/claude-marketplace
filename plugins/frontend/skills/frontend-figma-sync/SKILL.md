@@ -1,6 +1,14 @@
 ---
 name: frontend-figma-sync
 description: Figma Variables to code sync, Token Studio integration, and design spec extraction
+argument-hint: "[figma-file-url]"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+---
+
 ---
 
 # Figma Sync Skill

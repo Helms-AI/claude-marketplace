@@ -1,6 +1,13 @@
 ---
 name: security-penetration-advisor
 description: Defensive penetration testing guidance and methodology
+argument-hint: "[attack-surface]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+---
+
 ---
 
 # Security Penetration Advisor

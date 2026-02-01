@@ -1,6 +1,21 @@
 ---
 name: docs-api-writer
 description: API documentation including OpenAPI specs, Swagger documentation, and comprehensive code examples
+argument-hint: "[api-name]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
+# Dynamic Context
+
+```
+!cat openapi.yaml 2>/dev/null | head -30
+```
+
 ---
 
 # API Documentation Writer

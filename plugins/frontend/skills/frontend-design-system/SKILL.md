@@ -1,6 +1,21 @@
 ---
 name: frontend-design-system
 description: Design tokens, theming, and styling foundations with Style Dictionary and Tailwind CSS 4.0 - aesthetic-aware implementation
+argument-hint: "[token-category|theme]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
+# Dynamic Context
+
+```
+!cat tailwind.config.* 2>/dev/null | head -20
+```
+
 ---
 
 # Design System Skill

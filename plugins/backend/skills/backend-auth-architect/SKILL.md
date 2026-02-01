@@ -1,6 +1,15 @@
 ---
 name: backend-auth-architect
 description: Authentication and authorization implementation with security best practices
+argument-hint: "[auth-method]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Backend Auth Architect

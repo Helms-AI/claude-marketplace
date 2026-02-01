@@ -1,6 +1,13 @@
 ---
 name: arch-pattern-advisor
 description: Design pattern recommendations and best practices guidance
+argument-hint: "[pattern-category]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+---
+
 ---
 
 # Pattern Advisor

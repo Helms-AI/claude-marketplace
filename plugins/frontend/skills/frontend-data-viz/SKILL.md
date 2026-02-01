@@ -1,6 +1,15 @@
 ---
 name: frontend-data-viz
 description: Data visualization with D3.js, Recharts, Tremor, and accessible chart patterns
+argument-hint: "[chart-type]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Data Visualization Skill

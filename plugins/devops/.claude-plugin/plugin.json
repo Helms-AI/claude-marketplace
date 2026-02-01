@@ -1,8 +1,17 @@
 {
   "name": "devops",
-  "description": "DevOps team with 5 specialized agents for CI/CD, deployment, infrastructure, monitoring, and containerization",
-  "version": "1.2.0",
+  "description": "DevOps and infrastructure including CI/CD, containerization, orchestration, and cloud infrastructure.",
+  "version": "1.3.0",
+  "homepage": "https://github.com/Helms-AI/claude-marketplace",
+  "repository": "https://github.com/Helms-AI/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["devops", "ci-cd", "docker", "kubernetes", "terraform", "infrastructure"],
   "skills": ["./skills/"],
-  "agents": ["./agents/"],
-  "hooks": "./hooks/hooks.json"
+  "hooks": "./hooks/hooks.json",
+  "mcp": "./mcp.json",
+  "lsp": "./lsp.json",
+  "statusLine": {
+    "template": "DevOps | Pipeline: ${pipeline_status} | Deploy: ${deploy_env}",
+    "refresh": "on-change"
+  }
 }

@@ -1,8 +1,16 @@
 {
   "name": "frontend",
   "description": "Component implementation, engineering, and quality assurance for frontend development. Implementation phase focused on design systems, components, accessibility, performance, and tooling.",
-  "version": "1.1.0",
+  "version": "1.2.0",
+  "homepage": "https://github.com/Helms-AI/claude-marketplace",
+  "repository": "https://github.com/Helms-AI/claude-marketplace",
+  "license": "MIT",
+  "keywords": ["frontend", "react", "vue", "components", "design-system", "accessibility"],
   "skills": ["./skills/"],
-  "agents": ["./agents/"],
-  "hooks": "./hooks/hooks.json"
+  "hooks": "./hooks/hooks.json",
+  "lsp": "./lsp.json",
+  "statusLine": {
+    "template": "Frontend | Components: ${component_count} | Lint: ${lint_status}",
+    "refresh": "on-change"
+  }
 }

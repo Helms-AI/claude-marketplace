@@ -1,0 +1,22 @@
+{
+  "lspServers": {
+    "yaml": {
+      "command": "yaml-language-server",
+      "args": ["--stdio"],
+      "languages": ["yaml"],
+      "rootMarkers": ["openapi.yaml", "swagger.yaml", "asyncapi.yaml"],
+      "settings": {
+        "yaml.schemas": {
+          "https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/schemas/v3.0/schema.json": ["openapi*.yaml", "swagger*.yaml"]
+        }
+      },
+      "description": "YAML for OpenAPI/AsyncAPI schema validation"
+    },
+    "json": {
+      "command": "vscode-json-language-server",
+      "args": ["--stdio"],
+      "languages": ["json", "jsonc"],
+      "description": "JSON schema validation for config files"
+    }
+  }
+}

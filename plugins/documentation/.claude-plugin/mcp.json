@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "docs", "README.md", "CHANGELOG.md"],
+      "description": "Documentation filesystem access for reading and organizing docs"
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"],
+      "description": "Fetch external documentation and API references"
+    }
+  }
+}

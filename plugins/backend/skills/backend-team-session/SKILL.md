@@ -1,10 +1,14 @@
 ---
 name: backend-team-session
 description: Multi-agent backend discussions for complex architectural decisions
-context: fork
-agent: general-purpose
-allowed-tools: Read, Grep, Glob, Task
-argument-hint: [topic]
+user-invocable: false
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
 ---
 
 # Backend Team Session

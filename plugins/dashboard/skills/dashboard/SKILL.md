@@ -1,6 +1,22 @@
 ---
 name: dashboard
 description: Launch the Claude Marketplace Dashboard to view agents, skills, changesets, and domain interactions
+argument-hint: "[component|feature]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+---
+
+# Dynamic Context
+
+```
+!ls plugins/dashboard/web/js/components/ 2>/dev/null | head -10
+```
+
 ---
 
 # Dashboard Skill

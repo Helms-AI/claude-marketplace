@@ -1,0 +1,36 @@
+{
+  "lspServers": {
+    "typescript": {
+      "command": "typescript-language-server",
+      "args": ["--stdio"],
+      "languages": ["typescript", "javascript"],
+      "rootMarkers": ["tsconfig.json", "package.json"],
+      "description": "TypeScript/JavaScript for Node.js backends"
+    },
+    "python": {
+      "command": "pylsp",
+      "args": [],
+      "languages": ["python"],
+      "rootMarkers": ["pyproject.toml", "setup.py", "requirements.txt"],
+      "settings": {
+        "pylsp.plugins.pycodestyle.enabled": true,
+        "pylsp.plugins.pyflakes.enabled": true
+      },
+      "description": "Python language server for Flask, FastAPI, Django"
+    },
+    "go": {
+      "command": "gopls",
+      "args": ["serve"],
+      "languages": ["go"],
+      "rootMarkers": ["go.mod", "go.sum"],
+      "description": "Go language server"
+    },
+    "rust": {
+      "command": "rust-analyzer",
+      "args": [],
+      "languages": ["rust"],
+      "rootMarkers": ["Cargo.toml"],
+      "description": "Rust language server"
+    }
+  }
+}

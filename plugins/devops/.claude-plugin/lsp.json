@@ -1,0 +1,31 @@
+{
+  "lspServers": {
+    "yaml": {
+      "command": "yaml-language-server",
+      "args": ["--stdio"],
+      "languages": ["yaml"],
+      "rootMarkers": [".github/workflows", "k8s", "helm"],
+      "settings": {
+        "yaml.schemas": {
+          "https://json.schemastore.org/github-workflow.json": [".github/workflows/*.yml", ".github/workflows/*.yaml"],
+          "kubernetes": ["k8s/**/*.yaml", "manifests/**/*.yaml"]
+        }
+      },
+      "description": "YAML for GitHub Actions, Kubernetes manifests"
+    },
+    "dockerfile": {
+      "command": "docker-langserver",
+      "args": ["--stdio"],
+      "languages": ["dockerfile"],
+      "rootMarkers": ["Dockerfile", "docker-compose.yml"],
+      "description": "Dockerfile language server"
+    },
+    "terraform": {
+      "command": "terraform-ls",
+      "args": ["serve"],
+      "languages": ["terraform"],
+      "rootMarkers": ["*.tf", "terraform.tfstate"],
+      "description": "Terraform HCL language server"
+    }
+  }
+}

@@ -1,6 +1,20 @@
 ---
 name: testing-coverage-analyzer
 description: Coverage analysis, gap identification, and improvement recommendations
+argument-hint: "[threshold]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+---
+
+# Dynamic Context
+
+```
+!cat coverage/coverage-summary.json 2>/dev/null | jq '.total'
+```
+
 ---
 
 # Testing Coverage Analyzer

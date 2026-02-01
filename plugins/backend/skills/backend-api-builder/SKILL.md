@@ -1,6 +1,22 @@
 ---
 name: backend-api-builder
 description: API endpoint design and implementation with REST, GraphQL, and modern patterns
+argument-hint: "[endpoint-path]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+---
+
+# Dynamic Context
+
+```
+!cat openapi.yaml 2>/dev/null | head -20
+```
+
 ---
 
 # Backend API Builder

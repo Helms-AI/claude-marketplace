@@ -1,6 +1,21 @@
 ---
 name: security-orchestrator
 description: Routes security requests to appropriate specialists and coordinates security team activities
+argument-hint: "[audit-scope]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+  - Bash
+---
+
+# Dynamic Context
+
+```
+!npm audit --json 2>/dev/null | jq '.metadata.vulnerabilities'
+```
+
 ---
 
 # Security Orchestrator

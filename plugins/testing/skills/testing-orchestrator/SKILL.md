@@ -1,6 +1,21 @@
 ---
 name: testing-orchestrator
 description: Routes testing requests to appropriate specialists based on context
+argument-hint: "[test-scope]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+  - Bash
+---
+
+# Dynamic Context
+
+```
+!npm test -- --listTests 2>/dev/null | head -10
+```
+
 ---
 
 # Testing Orchestrator

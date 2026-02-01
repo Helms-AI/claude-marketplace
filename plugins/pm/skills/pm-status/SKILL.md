@@ -1,9 +1,19 @@
 ---
 name: pm-status
 description: View current workflow status, handoff chain, and accumulated decisions
-allowed-tools: Read, Grep, Glob
-argument-hint: [changeset-id]
+argument-hint: "[changeset-id]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
 ---
+
+# Dynamic Context
+
+```
+!ls -la .claude/changesets/ 2>/dev/null || echo "No changesets directory"
+!cat .claude/changesets/*/changeset.json 2>/dev/null | jq -r 'select(.status=="active") | .changeset_id' | head -1
+```
 
 # PM Status - Workflow Status Viewer
 

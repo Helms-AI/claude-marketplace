@@ -1,6 +1,15 @@
 ---
 name: frontend-navigation-patterns
 description: Tab patterns, breadcrumbs, sidebars, pagination, and keyboard navigation for intuitive wayfinding
+argument-hint: "[nav-type]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Navigation Patterns Skill

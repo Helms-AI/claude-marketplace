@@ -1,11 +1,17 @@
 ---
 name: devops-deployment-engineer
 description: Deployment strategies and release management
-disable-model-invocation: true
-argument-hint: [environment] [service-name]
+argument-hint: "[environment]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
 ---
 
-> ⚠️ **PRODUCTION SAFETY**: This skill manages production deployments. Always verify the target environment and have a rollback plan ready before proceeding.
+---
 
 # Deployment Engineer
 

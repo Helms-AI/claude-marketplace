@@ -6,6 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is an enterprise marketplace for sharing Claude Code plugins. It contains reusable skills, agents, hooks, and MCP servers that can be installed across projects. The marketplace features a multi-domain plugin ecosystem with cross-domain orchestration via the PM broker.
 
+## Recent Modernization (January 2026)
+
+The plugin system has been modernized following Claude Code best practices:
+
+| Phase | Changes |
+|-------|---------|
+| **Phase 1** | Critical safety controls, high-risk skill restrictions |
+| **Phase 2** | 58 agents converted to subagent format with YAML frontmatter |
+| **Phase 3** | 31 hook scripts across 10 plugins for validation/quality gates |
+| **Phase 4** | MCP/LSP integrations, dynamic context, output styles |
+
+See `docs/MIGRATION-GUIDE.md` for detailed migration instructions.
+
 ## Plugin Versioning Schema
 
 **CRITICAL:** All plugins use semantic versioning `{X}.{Y}.{Z}` with these rules:
@@ -208,17 +221,89 @@ Test plugins locally before committing:
 
 ## File Formats
 
-### plugin.json (Valid Schema)
+### plugin.json (Full Schema)
 ```json
 {
   "name": "plugin-name",
   "description": "What this plugin does",
   "version": "1.0.0",
-  "skills": ["./skills/"]
+  "homepage": "https://github.com/...",
+  "repository": "https://github.com/...",
+  "license": "MIT",
+  "keywords": ["keyword1", "keyword2"],
+  "skills": ["./skills/"],
+  "hooks": "./hooks/hooks.json",
+  "mcp": "./mcp.json",
+  "lsp": "./lsp.json",
+  "statusLine": {
+    "template": "Plugin | Status: ${status}",
+    "refresh": "on-change"
+  }
 }
 ```
 
-**Note:** The `agents` and `hooks` fields have strict schema requirements that may cause validation errors. Currently, only `skills` is reliably supported. Agent personas should be implemented as skills or included in skill prompts.
+**Modern Plugin Structure:**
+```
+plugins/<name>/
+├── .claude-plugin/
+│   ├── plugin.json      # Plugin manifest
+│   ├── capabilities.json # Cross-domain routing
+│   ├── mcp.json         # MCP server configuration
+│   ├── lsp.json         # LSP server configuration
+│   └── styles.json      # Output style definitions
+├── agents/              # Agent YAML files
+├── skills/              # Skill SKILL.md files
+├── hooks/
+│   └── hooks.json       # Hook definitions
+└── scripts/
+    └── *.sh             # Hook implementation scripts
+```
+
+### hooks.json (Lifecycle Hooks)
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-path.sh",
+            "timeout": 5,
+            "statusMessage": "Validating file path..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/lint-check.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [...],
+    "SubagentStop": [...],
+    "SessionStart": [...]
+  }
+}
+```
+
+**Hook Types:**
+- `PreToolUse`: Runs before Write/Edit/Bash - validate paths, block dangerous ops
+- `PostToolUse`: Runs after Write/Edit/Bash - lint, scan for secrets
+- `SubagentStart/Stop`: Handoff validation and changeset updates
+- `SessionStart`: Load workflow context
+
+**Exit Codes:**
+- `0` = Allow (with optional `systemMessage` JSON for warnings)
+- `2` = Block operation
 
 ### capabilities.json (Cross-Domain Routing)
 ```json
@@ -244,14 +329,40 @@ Test plugins locally before committing:
 }
 ```
 
-### SKILL.md
+### SKILL.md (Modern Format)
 ```markdown
 ---
 name: skill-name
 description: Brief description
+argument-hint: "[component-name|file-path]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+user-invocable: true  # or false for internal skills
 ---
+
+# Dynamic Context
+
+```
+!git status --short
+!cat package.json | jq '.dependencies | keys[:5]'
+```
+
 # Instructions here
 ```
+
+**Modern Frontmatter Fields:**
+- `argument-hint`: Autocomplete hint for skill arguments
+- `allowed-tools`: Restrict tools available to the skill
+- `user-invocable`: Set to `false` for internal/background skills
+- `disable-model-invocation`: Set to `true` for high-risk manual-only skills
+
+**Dynamic Context:**
+Use `!command` syntax to inject live context at skill invocation.
 
 Use `${CLAUDE_PLUGIN_ROOT}` to reference files within the plugin directory.
 

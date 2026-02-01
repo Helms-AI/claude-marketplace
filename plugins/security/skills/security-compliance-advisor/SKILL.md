@@ -1,6 +1,13 @@
 ---
 name: security-compliance-advisor
 description: Compliance assessment and regulatory guidance for security frameworks
+argument-hint: "[framework]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+---
+
 ---
 
 # Security Compliance Advisor

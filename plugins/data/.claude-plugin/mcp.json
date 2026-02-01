@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres"],
+      "env": {
+        "POSTGRES_CONNECTION_STRING": "${DATA_WAREHOUSE_URL}"
+      },
+      "description": "Data warehouse schema exploration and analytics queries"
+    },
+    "bigquery": {
+      "command": "npx",
+      "args": ["-y", "@anthropic/server-bigquery"],
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "${GOOGLE_CREDENTIALS_PATH}"
+      },
+      "description": "BigQuery data exploration and schema introspection"
+    }
+  }
+}

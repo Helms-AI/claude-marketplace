@@ -1,6 +1,14 @@
 ---
 name: arch-diagram-creator
 description: Create architecture diagrams using Mermaid, PlantUML, and C4 model
+argument-hint: "[diagram-type]"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+---
+
 ---
 
 # Diagram Creator

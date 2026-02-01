@@ -1,6 +1,14 @@
 ---
 name: user-experience-micro-delight
 description: Small moments of unexpected polish - custom cursors, creative hover states, loading personality, success celebrations, and empty state design
+argument-hint: "[interaction-type]"
+allowed-tools:
+  - Read
+  - Write
+  - Grep
+  - Glob
+---
+
 ---
 
 # Micro-Delight Skill

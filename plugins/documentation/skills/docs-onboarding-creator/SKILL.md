@@ -1,6 +1,15 @@
 ---
 name: docs-onboarding-creator
 description: Developer onboarding materials, setup guides, and team introduction documentation
+argument-hint: "[role|team]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+---
+
 ---
 
 # Onboarding Creator

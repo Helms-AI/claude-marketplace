@@ -1,6 +1,20 @@
 ---
 name: data-orchestrator
 description: Routes data requests to appropriate specialists and coordinates multi-agent data work
+argument-hint: "[pipeline|model|query]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Task
+---
+
+# Dynamic Context
+
+```
+!ls models/ dbt/ 2>/dev/null | head -10
+```
+
 ---
 
 # Data Orchestrator

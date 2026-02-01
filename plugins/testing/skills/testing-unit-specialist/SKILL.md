@@ -1,6 +1,16 @@
 ---
 name: testing-unit-specialist
 description: Unit test implementation with Jest, Vitest, mocking strategies
+argument-hint: "[file|function]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+---
+
 ---
 
 # Unit Test Specialist

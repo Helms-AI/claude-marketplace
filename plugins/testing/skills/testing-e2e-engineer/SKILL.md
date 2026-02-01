@@ -1,6 +1,22 @@
 ---
 name: testing-e2e-engineer
 description: End-to-end test implementation with Playwright and Cypress
+argument-hint: "[flow|page]"
+allowed-tools:
+  - Read
+  - Write
+  - Edit
+  - Grep
+  - Glob
+  - Bash
+---
+
+# Dynamic Context
+
+```
+!ls e2e/ tests/e2e/ 2>/dev/null | head -10
+```
+
 ---
 
 # E2E Test Engineer

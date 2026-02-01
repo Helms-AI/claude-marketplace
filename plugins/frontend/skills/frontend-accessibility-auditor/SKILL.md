@@ -1,6 +1,14 @@
 ---
 name: frontend-accessibility-auditor
 description: WCAG 2.2 compliance auditing, ARIA patterns, and assistive technology support
+argument-hint: "[component|page]"
+allowed-tools:
+  - Read
+  - Grep
+  - Glob
+  - Bash
+---
+
 ---
 
 # Accessibility Auditor Skill
