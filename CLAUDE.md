@@ -137,7 +137,7 @@ Technical writing with 5 agents and 7 skills:
 - **Agents**: Patricia Moore (Lead), Andrew Kim (API), Laura Hernandez (Guides), Steven Brown (Arch), Michelle Lee (Runbooks)
 - **Skills**: docs-orchestrator, docs-team-session, docs-api-writer, docs-guide-writer, docs-architecture-documenter, docs-runbook-writer, docs-onboarding-creator
 
-### Dashboard Plugin (v2.1.1)
+### Dashboard Plugin (v2.25.0)
 Location: `plugins/dashboard/`
 
 Real-time web dashboard for visualizing the marketplace:
@@ -149,9 +149,12 @@ Real-time web dashboard for visualizing the marketplace:
   - Changeset Viewer: Real-time conversation tracking via SSE
   - Domain Graph: D3.js visualization of domain collaborations
   - Handoff Timeline: Visual swimlane view of cross-domain handoffs
-- **Tech**: Flask server, vanilla JS frontend, D3.js for graphs
+  - SDK Terminal: Interactive Claude terminal with streaming responses
+- **Tech**: Flask server, Lit Web Components, Preact Signals, D3.js
 - **Launch**: `/dashboard` or `python -m server.app --open-browser`
 - **URL**: http://localhost:24282
+
+See [Dashboard Frontend Architecture](#dashboard-frontend-architecture) for component development requirements.
 
 ## Cross-Domain Orchestration
 
@@ -269,4 +272,211 @@ You are **Agent Name**, the [Role] - [brief description].
 
 ## Key Responsibilities
 - What the agent does
+```
+
+## Dashboard Frontend Architecture
+
+**CRITICAL: All frontend development in `plugins/dashboard/web/` MUST follow these patterns.**
+
+### Technology Stack
+
+- **Lit 3.x** - Web Components framework (CDN, zero-build)
+- **Preact Signals** - Fine-grained reactive state management
+- **Lucide Icons** - Icon library
+- **D3.js** - Graph visualizations
+- **Marked** - Markdown parsing
+
+### Atomic Design Hierarchy
+
+Components are organized following atomic design principles. **Always place new components in the correct layer:**
+
+```
+plugins/dashboard/web/js/components/
+├── atoms/          # 22 basic building blocks (buttons, inputs, icons)
+├── molecules/      # 20 atom combinations (search inputs, tab buttons)
+├── organisms/      # 14 complex sections (modals, panels, graphs)
+├── layout/         # 7 page structures (shell, sidebar, editor)
+├── explorer/       # 7 tree view components
+├── terminal/       # 6 SDK terminal components
+├── tool-cards/     # 11 tool result renderers
+├── conversation/   # 3 transcript viewers
+├── indicators/     # 2 status components
+└── core/           # 3 base classes and mixins
+```
+
+#### Layer Definitions
+
+| Layer | Purpose | Examples |
+|-------|---------|----------|
+| **Atoms** | Indivisible UI primitives | `dash-button`, `dash-input`, `dash-icon`, `dash-spinner` |
+| **Molecules** | Atom combinations with simple behavior | `search-input`, `tab-button`, `dropdown-menu` |
+| **Organisms** | Complex sections with business logic | `command-palette`, `agent-detail-modal`, `domain-graph` |
+| **Layout** | Page structure and containers | `dashboard-shell`, `sidebar-panel`, `editor-area` |
+
+### Component Requirements
+
+**1. Use SignalWatcher Mixin for Store-Connected Components**
+```javascript
+import { SignalWatcher } from '../core/signal-watcher.js';
+import { AppStore, Actions } from '../../store/app-state.js';
+
+class MyComponent extends SignalWatcher(LitElement) {
+    render() {
+        // Accessing signals auto-subscribes to changes
+        return html`Count: ${AppStore.agents.value.length}`;
+    }
+}
+```
+
+**2. Self-Register Components**
+```javascript
+class DashButton extends LitElement {
+    static properties = { /* ... */ };
+    static styles = css`/* ... */`;
+    render() { return html`/* ... */`; }
+}
+customElements.define('dash-button', DashButton);
+export { DashButton };
+```
+
+**3. Use CSS Variables for Theming**
+```css
+.my-component {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-md);
+}
+```
+
+**4. Domain Colors** - Apply using `domain-{name}` classes:
+```javascript
+const domainClass = `domain-${item.domain}`;
+return html`<span class="item-name ${domainClass}">${item.name}</span>`;
+```
+
+### State Management Pattern
+
+All state lives in `store/app-state.js` using Preact Signals:
+
+```javascript
+// Reading state (auto-subscribes in SignalWatcher components)
+const agents = AppStore.agents.value;
+
+// Mutating state (use Actions)
+Actions.setSelectedAgent(agent);
+Actions.toggleSidebar();
+
+// Computed values for derived state
+const filtered = filteredAgents.value;  // Auto-updates when dependencies change
+```
+
+**Never mutate signals directly in components.** Always use Actions.
+
+### Service Layer
+
+Services handle data fetching and business logic:
+
+```javascript
+import { AgentService } from '../../services/agent-service.js';
+
+// Services are singletons
+const agents = await AgentService.fetchAgents();
+```
+
+Available services:
+- `AgentService`, `SkillService`, `ChangesetService` - Domain data
+- `SSEService` - Real-time event streaming
+- `SDKClient` - Claude SDK integration
+- `ThemeService`, `ModalService`, `TabService` - UI services
+
+### Event Communication
+
+**Child → Parent**: Custom events
+```javascript
+this.dispatchEvent(new CustomEvent('agent-select', {
+    detail: { agent },
+    bubbles: true,
+    composed: true
+}));
+```
+
+**Parent → Child**: Properties
+```javascript
+<agent-item .agent=${agent} ?selected=${isSelected}></agent-item>
+```
+
+**Sibling ↔ Sibling**: Store
+```javascript
+// Component A
+Actions.setSelectedAgent(agent);
+
+// Component B (SignalWatcher)
+render() {
+    return html`Selected: ${AppStore.selectedAgent.value?.name}`;
+}
+```
+
+### File Naming Conventions
+
+- **Components**: `kebab-case.js` → `dash-button.js`, `agent-tree.js`
+- **Services**: `kebab-case.js` → `agent-service.js`, `sse-service.js`
+- **Custom element names**: `dash-*` for atoms/molecules, descriptive for organisms
+
+### Creating New Components
+
+1. **Determine the layer** (atom, molecule, organism, etc.)
+2. **Create file** in appropriate folder
+3. **Add export** to layer's `index.js`
+4. **Use SignalWatcher** if component needs store access
+5. **Follow patterns** from existing components in same layer
+
+Example atom:
+```javascript
+// components/atoms/my-badge.js
+import { LitElement, html, css } from 'lit';
+
+class MyBadge extends LitElement {
+    static properties = {
+        label: { type: String },
+        variant: { type: String }
+    };
+
+    static styles = css`
+        :host { display: inline-flex; }
+        .badge {
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-size-xs);
+        }
+    `;
+
+    render() {
+        return html`<span class="badge ${this.variant}">${this.label}</span>`;
+    }
+}
+
+customElements.define('my-badge', MyBadge);
+export { MyBadge };
+```
+
+### Inheritance Patterns
+
+**Tool Cards** - Inherit from `ToolCardBase`:
+```javascript
+import { ToolCardBase, toolCardBaseStyles } from './tool-card-base.js';
+
+class MyToolCard extends ToolCardBase {
+    static styles = [toolCardBaseStyles, css`/* additional */`];
+    // ...
+}
+```
+
+**Tree Items** - Use `treeItemBaseStyles`:
+```javascript
+import { treeItemBaseStyles } from './tree-item-base.js';
+
+class MyTreeItem extends LitElement {
+    static styles = [treeItemBaseStyles, css`/* additional */`];
+}
 ```

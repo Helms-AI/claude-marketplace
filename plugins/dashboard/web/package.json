@@ -1,0 +1,22 @@
+{
+  "name": "claude-marketplace-dashboard",
+  "version": "2.1.1",
+  "description": "Claude Marketplace Dashboard - Real-time web UI for visualizing agents, skills, and changesets",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "browser-sync start --proxy 'localhost:24282' --files 'js/**/*.js,css/**/*.css,index.html' --no-open --port 3000",
+    "watch": "browser-sync start --proxy 'localhost:24282' --files 'js/**/*.js,css/**/*.css,index.html' --open --port 3000"
+  },
+  "devDependencies": {
+    "browser-sync": "^3.0.2"
+  },
+  "keywords": [
+    "claude",
+    "marketplace",
+    "dashboard",
+    "lit",
+    "web-components"
+  ],
+  "license": "MIT"
+}
