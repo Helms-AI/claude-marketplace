@@ -1,0 +1,31 @@
+{
+  "description": "Security plugin safety hooks - validates sensitive operations and prevents credential exposure",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-security-command.sh",
+            "timeout": 10,
+            "statusMessage": "Validating security operation..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/scan-output-for-secrets.sh",
+            "timeout": 5,
+            "statusMessage": "Scanning output for exposed secrets..."
+          }
+        ]
+      }
+    ]
+  }
+}

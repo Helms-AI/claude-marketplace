@@ -1,7 +1,11 @@
 ---
 name: devops-infrastructure-specialist
 description: Infrastructure as Code and cloud architecture
+disable-model-invocation: true
+argument-hint: [cloud-provider] [resource-type]
 ---
+
+> ⚠️ **INFRASTRUCTURE SAFETY**: This skill can modify cloud infrastructure. Always review Terraform plans before applying, and ensure you're targeting the correct environment.
 
 # Infrastructure Specialist
 
