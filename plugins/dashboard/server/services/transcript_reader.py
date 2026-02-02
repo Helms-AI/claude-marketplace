@@ -261,6 +261,7 @@ class TranscriptReader:
         # Parse content blocks
         text_parts = []
         tool_calls = []
+        tool_results = {}  # Collect tool results for merging with tool_calls
         filtered_content = []
 
         for block in raw_content:
@@ -284,13 +285,28 @@ class TranscriptReader:
                 filtered_content.append(block)
 
             elif block_type == 'tool_result':
-                if include_tool_results:
-                    # Include but truncate large results
+                # Collect tool results for merging with tool_calls
+                tool_use_id = block.get('tool_use_id')
+                if tool_use_id:
                     result_content = block.get('content', '')
+                    # Truncate large results
                     if isinstance(result_content, str) and len(result_content) > 2000:
-                        block = dict(block)
-                        block['content'] = result_content[:2000] + '... [truncated]'
+                        result_content = result_content[:2000] + '... [truncated]'
+                    tool_results[tool_use_id] = {
+                        'content': result_content,
+                        'is_error': block.get('is_error', False)
+                    }
+                if include_tool_results:
                     filtered_content.append(block)
+
+        # Merge tool_results into tool_calls for activity tracking
+        for tool_call in tool_calls:
+            tool_id = tool_call.get('id')
+            if tool_id and tool_id in tool_results:
+                result = tool_results[tool_id]
+                tool_call['result'] = result.get('content')
+                tool_call['is_error'] = result.get('is_error', False)
+                tool_call['status'] = 'error' if result.get('is_error') else 'success'
 
         # Skip messages with no meaningful content
         if not text_parts and not tool_calls:

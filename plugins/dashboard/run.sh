@@ -83,15 +83,15 @@ echo "╚═══════════════════════�
 echo ""
 
 # Check if Python is available
-if ! command -v python3 &> /dev/null; then
-    echo "Error: python3 is required but not installed."
+if ! command -v python3.12 &> /dev/null; then
+    echo "Error: python3.12 is required but not installed."
     exit 1
 fi
 
 # Check if Flask is installed
-if ! python3 -c "import flask" 2>/dev/null; then
+if ! python3.12 -c "import flask" 2>/dev/null; then
     echo "Installing Flask..."
-    pip3 install flask flask-cors
+    pip3.12 install flask flask-cors
 fi
 
 # Install npm dependencies for web frontend (HMR support)
@@ -164,7 +164,7 @@ echo "Starting Flask server on port $PORT..."
 
 # Start Flask server in background
 cd "$SCRIPT_DIR"
-python3 -m server.app --port "$PORT" &
+python3.12 -m server.app --port "$PORT" &
 FLASK_PID=$!
 
 # Wait for Flask to be ready
