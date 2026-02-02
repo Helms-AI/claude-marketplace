@@ -52,3 +52,6 @@ export { NetworkWidget } from './network-widget.js';
 
 // Data display molecules
 export { JsonViewer, VIEW_MODE as JSON_VIEW_MODE } from './json-viewer.js';
+
+// Artifact viewer molecules
+export { ArtifactTab } from './artifact-tab.js';
