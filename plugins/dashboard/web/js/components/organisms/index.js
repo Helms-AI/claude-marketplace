@@ -25,3 +25,14 @@ export { AttachmentPanel } from './attachment-panel.js';
 // Events organisms
 export { EventsPanel } from './events-panel.js';
 export { EventItem, EVENT_TYPE_CONFIG } from './event-item.js';
+
+// About modal
+export { AboutModal } from './about-modal.js';
+
+// Artifact viewer organisms
+export { ArtifactTabBar } from './artifact-tab-bar.js';
+export { TextViewer } from './text-viewer.js';
+export { MarkdownViewer } from './markdown-viewer.js';
+export { JsonTreeViewer } from './json-tree-viewer.js';
+export { CodeViewer } from './code-viewer.js';
+export { ArtifactViewer } from './artifact-viewer.js';
