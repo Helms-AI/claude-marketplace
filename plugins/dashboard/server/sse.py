@@ -256,12 +256,24 @@ class SSEManager:
 
     @staticmethod
     def _format_sse(data: dict) -> str:
-        """Format data as SSE message.
+        """Format data as SSE message with optional event type.
+
+        Uses named SSE events when a 'type' field is present, allowing
+        browsers to use addEventListener for specific event types.
+        Falls back to generic 'message' event for backwards compatibility.
 
         Args:
-            data: The data to format.
+            data: The data to format. If it has a 'type' field, it will be
+                  used as the SSE event name.
 
         Returns:
-            SSE formatted string.
+            SSE formatted string with event type and data.
         """
+        event_type = data.get('type', 'message')
+
+        # For named events, include the event field so browsers can use
+        # addEventListener('event_type', handler)
+        if event_type != 'message':
+            return f"event: {event_type}\ndata: {json.dumps(data)}\n\n"
+
         return f"data: {json.dumps(data)}\n\n"

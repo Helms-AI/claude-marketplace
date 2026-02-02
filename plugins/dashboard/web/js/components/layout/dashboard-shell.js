@@ -82,16 +82,6 @@ class DashboardShell extends SignalWatcher(LitElement) {
         .activity-btn svg { width: 20px; height: 20px; }
         sidebar-panel { flex-shrink: 0; }
         editor-area { flex: 1; min-width: 0; }
-        .activity-bar-right {
-            display: flex;
-            flex-direction: column;
-            width: 48px;
-            background: var(--bg-secondary, #f8f9fa);
-            border-left: 1px solid var(--border-color, #e0e0e0);
-        }
-        .activity-bar-right .activity-top,
-        .activity-bar-right .activity-bottom { display: flex; flex-direction: column; }
-        .activity-bar-right .activity-top { flex: 1; }
         .bottom-panel {
             display: none;
             flex-direction: column;
@@ -129,6 +119,7 @@ class DashboardShell extends SignalWatcher(LitElement) {
             AppStore.theme,
             AppStore.sidebarVisible,
             AppStore.bottomPanelVisible,
+            AppStore.activitiesAsideCollapsed,
             AppStore.tasks,
             AppStore.completedTasks,
             AppStore.tokenUsage,
@@ -211,15 +202,6 @@ class DashboardShell extends SignalWatcher(LitElement) {
                 <editor-area>
                     <slot name="editor"></slot>
                 </editor-area>
-
-                <aside class="activity-bar-right">
-                    <div class="activity-top">
-                        <!-- Right sidebar buttons will go here -->
-                    </div>
-                    <div class="activity-bottom">
-                        <!-- Right sidebar bottom actions will go here -->
-                    </div>
-                </aside>
             </div>
 
             <div class="bottom-panel" style="height: ${this.bottomPanelHeight}px">

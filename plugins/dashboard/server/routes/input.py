@@ -133,6 +133,8 @@ def sdk_query():
     max_retries = data.get('max_retries')  # int
     max_thinking_tokens = data.get('max_thinking_tokens')  # int
     continue_conversation = data.get('continue_conversation')  # bool
+    # Image attachments (base64 encoded)
+    images = data.get('images')  # list of {type: 'image', source: {type: 'base64', media_type: str, data: str}}
 
     # Use a thread-safe queue to bridge async SDK to sync Flask SSE
     # This enables TRUE streaming - messages sent as they arrive!
@@ -159,6 +161,7 @@ def sdk_query():
                     max_retries=max_retries,
                     max_thinking_tokens=max_thinking_tokens,
                     continue_conversation=continue_conversation,
+                    images=images,
                 ):
                     msg_queue.put(msg)
             except Exception as e:
@@ -647,3 +650,97 @@ def cleanup_sessions():
         })
     finally:
         loop.close()
+
+
+@input_bp.route('/api/input/sdk/install', methods=['POST'])
+def install_sdk():
+    """Attempt to install the claude-agent-sdk package.
+
+    This endpoint allows the dashboard to self-heal when the SDK is not installed.
+
+    Returns:
+        JSON with installation status
+    """
+    import subprocess
+
+    try:
+        # Check if already installed
+        try:
+            import claude_agent_sdk
+            return jsonify({
+                'success': True,
+                'message': 'claude-agent-sdk is already installed',
+                'already_installed': True
+            })
+        except ImportError:
+            pass
+
+        # Attempt to install
+        print("[SDK] Attempting to install claude-agent-sdk...", file=sys.stderr)
+        result = subprocess.run(
+            [sys.executable, '-m', 'pip', 'install', 'claude-agent-sdk'],
+            capture_output=True,
+            text=True,
+            timeout=120  # 2 minute timeout
+        )
+
+        if result.returncode == 0:
+            print("[SDK] Successfully installed claude-agent-sdk", file=sys.stderr)
+
+            # Clear the bridge singleton so it reinitializes with the SDK
+            global _sdk_bridge
+            with _sdk_bridge_lock:
+                _sdk_bridge = None
+
+            return jsonify({
+                'success': True,
+                'message': 'claude-agent-sdk installed successfully. Please refresh the page.',
+                'output': result.stdout
+            })
+        else:
+            print(f"[SDK] Failed to install claude-agent-sdk: {result.stderr}", file=sys.stderr)
+            return jsonify({
+                'success': False,
+                'message': 'Failed to install claude-agent-sdk',
+                'error': result.stderr
+            }), 500
+
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'success': False,
+            'message': 'Installation timed out'
+        }), 504
+    except Exception as e:
+        print(f"[SDK] Error installing SDK: {e}", file=sys.stderr)
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+
+@input_bp.route('/api/input/sdk/status', methods=['GET'])
+def sdk_status():
+    """Check SDK installation and availability status.
+
+    Returns:
+        JSON with SDK status information
+    """
+    sdk_installed = False
+    sdk_version = None
+
+    try:
+        import claude_agent_sdk
+        sdk_installed = True
+        sdk_version = getattr(claude_agent_sdk, '__version__', 'unknown')
+    except ImportError:
+        pass
+
+    bridge = get_sdk_bridge()
+    bridge_available = bridge is not None
+
+    return jsonify({
+        'sdk_installed': sdk_installed,
+        'sdk_version': sdk_version,
+        'bridge_available': bridge_available,
+        'can_install': True  # Indicates the install endpoint is available
+    })

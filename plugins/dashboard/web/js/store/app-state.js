@@ -9,6 +9,7 @@
  */
 
 import { signal, computed, effect, batch } from "@preact/signals-core";
+import { groupChangesetsByTime, getDefaultExpansionState } from '../services/time-grouping.js';
 
 // Re-export batch for services that need it
 export { batch };
@@ -41,6 +42,52 @@ export const ExplorerTab = {
   WORK: "work",
   AGENTS: "agents",
   SKILLS: "skills",
+};
+
+/**
+ * Tool render modes
+ * @enum {string}
+ */
+export const ToolRenderMode = {
+  INLINE: "inline",     // Always render in conversation (interactive tools)
+  ASIDE: "aside",       // Always render in activities aside (operational tools)
+  HYBRID: "hybrid",     // User can choose (future feature)
+};
+
+/**
+ * Tool rendering configuration
+ * Determines where each tool type renders: inline in conversation or in activities aside
+ *
+ * - INLINE: Tools that require user interaction (must stay in conversation)
+ * - ASIDE: Operational tools that don't need inline display
+ * - HYBRID: Future - user can toggle between inline/aside
+ */
+export const TOOL_RENDER_CONFIG = {
+  // Interactive tools - ALWAYS inline (require user input)
+  AskUserQuestion: { mode: ToolRenderMode.INLINE, reason: "requires-user-input" },
+
+  // Operational tools - ALWAYS aside
+  Read: { mode: ToolRenderMode.ASIDE },
+  Write: { mode: ToolRenderMode.ASIDE },
+  Edit: { mode: ToolRenderMode.ASIDE },
+  Bash: { mode: ToolRenderMode.ASIDE },
+  Glob: { mode: ToolRenderMode.ASIDE },
+  Grep: { mode: ToolRenderMode.ASIDE },
+  Task: { mode: ToolRenderMode.ASIDE },
+  TaskCreate: { mode: ToolRenderMode.ASIDE },
+  TaskUpdate: { mode: ToolRenderMode.ASIDE },
+  TaskList: { mode: ToolRenderMode.ASIDE },
+  TaskGet: { mode: ToolRenderMode.ASIDE },
+  WebFetch: { mode: ToolRenderMode.ASIDE },
+  WebSearch: { mode: ToolRenderMode.ASIDE },
+  NotebookEdit: { mode: ToolRenderMode.ASIDE },
+  ToolSearch: { mode: ToolRenderMode.ASIDE },
+  Skill: { mode: ToolRenderMode.ASIDE },
+  EnterPlanMode: { mode: ToolRenderMode.ASIDE },
+  ExitPlanMode: { mode: ToolRenderMode.ASIDE },
+
+  // Default for unknown tools
+  _default: { mode: ToolRenderMode.ASIDE },
 };
 
 /**
@@ -96,19 +143,27 @@ export const AppStore = {
   commandPaletteOpen: signal(false),
 
   // ─────────────────────────────────────────────────────────────
-  // Terminal State
+  // Terminal State (shared across conversations)
   // ─────────────────────────────────────────────────────────────
-  terminalMessages: signal([]),
-  isStreaming: signal(false),
+  terminalMessages: signal([]),  // LEGACY: kept for backwards compatibility
+  isStreaming: signal(false),    // LEGACY: use conversations Map instead
   terminalModel: signal("opus"),
-  sessionId: signal(null),
+  sessionId: signal(null),       // Shared Claude session ID
   sdkConnected: signal(false),
+
+  // ─────────────────────────────────────────────────────────────
+  // Per-Tab Conversation State (NEW)
+  // ─────────────────────────────────────────────────────────────
+  // Map<string, ConversationState> where key is "type:id"
+  // ConversationState = { id, messages[], isStreaming, streamingContent, streamingTools[], contextPrefix?, lastActivity }
+  conversations: signal(new Map()),
+  activeStreamingId: signal(null),  // Which conversation is currently streaming { type, id }
 
   // ─────────────────────────────────────────────────────────────
   // Streaming State (real-time updates during SDK streaming)
   // ─────────────────────────────────────────────────────────────
-  streamingContent: signal(''),
-  streamingTools: signal([]),
+  streamingContent: signal(''),  // LEGACY: kept for backwards compatibility
+  streamingTools: signal([]),    // LEGACY: kept for backwards compatibility
 
   // ─────────────────────────────────────────────────────────────
   // Token/Cost Tracking
@@ -140,6 +195,7 @@ export const AppStore = {
   agentExpandedGroups: signal({}),      // { [domain]: boolean }
   skillExpandedGroups: signal({}),      // { [domain]: boolean }
   changesetExpandedItems: signal({}),   // { [changesetId]: boolean }
+  changesetTimeGroups: signal(getDefaultExpansionState()), // { [groupId]: boolean }
 
   // ─────────────────────────────────────────────────────────────
   // Loading States
@@ -156,6 +212,19 @@ export const AppStore = {
   transcript: signal(null),             // Transcript data for selected changeset
   conversationViewMode: signal('unified'), // 'unified' | 'transcript' | 'events'
   watchedChangesetId: signal(null),     // Currently watched changeset
+
+  // ─────────────────────────────────────────────────────────────
+  // Activities Aside Panel State
+  // ─────────────────────────────────────────────────────────────
+  activitiesAsideCollapsed: signal(true),      // Collapsed by default
+  activitiesAsideWidth: signal(320),           // Default expanded width (320px)
+  activitiesViewMode: signal('timeline'),      // 'timeline' | 'files'
+  activitiesFilter: signal(''),                // Filter string for activities
+
+  // ─────────────────────────────────────────────────────────────
+  // Attachment State (for terminal input attachments)
+  // ─────────────────────────────────────────────────────────────
+  currentAttachments: signal([]),              // Array of current attachments pending send
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -272,11 +341,48 @@ export const completedChangesets = computed(() =>
   ),
 );
 
+/**
+ * Changesets grouped by time hierarchy
+ * Returns { active: [], timeGroups: TimeGroup[] }
+ */
+export const changesetsByTime = computed(() =>
+  groupChangesetsByTime(AppStore.changesets.value),
+);
+
 export const domainList = computed(() => {
   const domains = new Set();
   AppStore.agents.value.forEach((a) => domains.add(a.domain || "external"));
   AppStore.skills.value.forEach((s) => domains.add(s.domain || "external"));
   return Array.from(domains).sort();
+});
+
+/**
+ * Tool activities from the activities store
+ * ActivityService adds tool events here via Actions.addActivity
+ *
+ * Note: This now uses AppStore.activities instead of conversationEvents
+ * because tool events are extracted from transcript_messages in app.js
+ * and routed to ActivityService which adds them to activities store.
+ */
+export const toolActivities = computed(() => {
+  // Return activities that have tool information
+  return AppStore.activities.value.filter(a =>
+    a.tool || a.type === 'tool_use' || a.type === 'tool_result'
+  );
+});
+
+/**
+ * Filtered tool activities based on the aside filter string
+ */
+export const filteredToolActivities = computed(() => {
+  const filter = AppStore.activitiesFilter.value.toLowerCase();
+  if (!filter) return toolActivities.value;
+  return toolActivities.value.filter(activity => {
+    const toolName = activity.content?.tool || activity.tool || '';
+    const filePath = activity.content?.file || activity.file || '';
+    return toolName.toLowerCase().includes(filter) ||
+           filePath.toLowerCase().includes(filter);
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────
@@ -399,10 +505,28 @@ export const Actions = {
       id: crypto.randomUUID(),
       timestamp: Date.now(),
     };
-    AppStore.activities.value = [
-      newActivity,
-      ...AppStore.activities.value.slice(0, 99),
-    ];
+
+    // Keep only 30 most recent activities
+    // Running activities are always kept, limit applies to completed ones
+    const currentActivities = AppStore.activities.value;
+    const runningActivities = currentActivities.filter(a => a.status === 'running');
+    const completedActivities = currentActivities.filter(a => a.status !== 'running');
+
+    // If new activity is running, add to running list
+    // If completed, add to completed list and trim to 30
+    if (newActivity.status === 'running') {
+      AppStore.activities.value = [
+        newActivity,
+        ...runningActivities,
+        ...completedActivities.slice(0, 30),
+      ];
+    } else {
+      AppStore.activities.value = [
+        ...runningActivities,
+        newActivity,
+        ...completedActivities.slice(0, 29),
+      ];
+    }
   },
 
   addError(error) {
@@ -502,6 +626,22 @@ export const Actions = {
     AppStore.changesetExpandedItems.value = expanded;
   },
 
+  toggleChangesetTimeGroup(groupId) {
+    const expanded = { ...AppStore.changesetTimeGroups.value };
+    expanded[groupId] = !expanded[groupId];
+    AppStore.changesetTimeGroups.value = expanded;
+  },
+
+  isChangesetTimeGroupExpanded(groupId) {
+    const state = AppStore.changesetTimeGroups.value;
+    // Check if explicitly set, otherwise use default
+    if (groupId in state) {
+      return state[groupId];
+    }
+    // Default: 'today' and 'today.last-hour' are expanded
+    return groupId === 'today' || groupId === 'today.last-hour';
+  },
+
   isAgentGroupExpanded(domain) {
     return AppStore.agentExpandedGroups.value[domain] !== false;
   },
@@ -530,6 +670,19 @@ export const Actions = {
   // Conversation/Transcript actions
   setConversationEvents(events) {
     AppStore.conversationEvents.value = events;
+  },
+
+  addConversationEvent(event) {
+    // Append a single event for real-time updates
+    const newEvent = {
+      ...event,
+      id: event.id || crypto.randomUUID(),
+      timestamp: event.timestamp || Date.now(),
+    };
+    AppStore.conversationEvents.value = [
+      ...AppStore.conversationEvents.value,
+      newEvent,
+    ];
   },
 
   setTranscript(transcript) {
@@ -607,6 +760,297 @@ export const Actions = {
     if (AppStore.selectedChangeset.value?.id === changesetId) {
       AppStore.selectedChangeset.value = null;
     }
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // Activities Aside Actions
+  // ─────────────────────────────────────────────────────────────
+  toggleActivitiesAside() {
+    AppStore.activitiesAsideCollapsed.value = !AppStore.activitiesAsideCollapsed.value;
+  },
+
+  setActivitiesAsideCollapsed(collapsed) {
+    AppStore.activitiesAsideCollapsed.value = collapsed;
+  },
+
+  setActivitiesAsideWidth(width) {
+    // Clamp between min (240) and max (480)
+    AppStore.activitiesAsideWidth.value = Math.max(240, Math.min(480, width));
+  },
+
+  setActivitiesViewMode(mode) {
+    if (mode === 'timeline' || mode === 'files') {
+      AppStore.activitiesViewMode.value = mode;
+    }
+  },
+
+  setActivitiesFilter(filter) {
+    AppStore.activitiesFilter.value = filter;
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // Per-Tab Conversation Actions (NEW)
+  // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Serialize a ConversationId to a Map key
+   * @param {{type: string, id: string}} conversationId
+   * @returns {string}
+   */
+  _serializeConversationId(conversationId) {
+    return `${conversationId.type}:${conversationId.id}`;
+  },
+
+  /**
+   * Initialize a conversation for a tab (if not already exists)
+   * @param {{type: string, id: string}} conversationId
+   * @param {Object} options - { contextPrefix?: string }
+   */
+  initConversation(conversationId, options = {}) {
+    const key = this._serializeConversationId(conversationId);
+    const conversations = new Map(AppStore.conversations.value);
+
+    if (!conversations.has(key)) {
+      conversations.set(key, {
+        id: conversationId,
+        messages: [],
+        isStreaming: false,
+        streamingContent: '',
+        streamingTools: [],
+        contextPrefix: options.contextPrefix || null,
+        lastActivity: Date.now()
+      });
+      AppStore.conversations.value = conversations;
+    }
+  },
+
+  /**
+   * Get conversation state by ID
+   * @param {{type: string, id: string}} conversationId
+   * @returns {Object|null}
+   */
+  getConversation(conversationId) {
+    const key = this._serializeConversationId(conversationId);
+    return AppStore.conversations.value.get(key) || null;
+  },
+
+  /**
+   * Add message to a specific conversation
+   * @param {{type: string, id: string}} conversationId
+   * @param {Object} message
+   */
+  addConversationMessage(conversationId, message) {
+    const key = this._serializeConversationId(conversationId);
+    const conversations = new Map(AppStore.conversations.value);
+    const conv = conversations.get(key);
+
+    if (conv) {
+      const newMessage = {
+        ...message,
+        id: message.id || crypto.randomUUID(),
+        timestamp: message.timestamp || Date.now(),
+        conversationId
+      };
+
+      conversations.set(key, {
+        ...conv,
+        messages: [...conv.messages, newMessage],
+        lastActivity: Date.now()
+      });
+      AppStore.conversations.value = conversations;
+    }
+  },
+
+  /**
+   * Set streaming state for a specific conversation
+   * @param {{type: string, id: string}} conversationId
+   * @param {boolean} isStreaming
+   */
+  setConversationStreaming(conversationId, isStreaming) {
+    const key = this._serializeConversationId(conversationId);
+    const conversations = new Map(AppStore.conversations.value);
+    const conv = conversations.get(key);
+
+    if (conv) {
+      conversations.set(key, { ...conv, isStreaming });
+      AppStore.conversations.value = conversations;
+    }
+  },
+
+  /**
+   * Append streaming content to a specific conversation
+   * @param {{type: string, id: string}} conversationId
+   * @param {string} text
+   */
+  appendConversationStreamingContent(conversationId, text) {
+    const key = this._serializeConversationId(conversationId);
+    const conversations = new Map(AppStore.conversations.value);
+    const conv = conversations.get(key);
+
+    if (conv) {
+      conversations.set(key, {
+        ...conv,
+        streamingContent: conv.streamingContent + text
+      });
+      AppStore.conversations.value = conversations;
+    }
+  },
+
+  /**
+   * Set streaming content for a specific conversation
+   * @param {{type: string, id: string}} conversationId
+   * @param {string} content
+   */
+  setConversationStreamingContent(conversationId, content) {
+    const key = this._serializeConversationId(conversationId);
+    const conversations = new Map(AppStore.conversations.value);
+    const conv = conversations.get(key);
+
+    if (conv) {
+      conversations.set(key, { ...conv, streamingContent: content });
+      AppStore.conversations.value = conversations;
+    }
+  },
+
+  /**
+   * Update a streaming tool in a specific conversation
+   * @param {{type: string, id: string}} conversationId
+   * @param {Object} tool
+   */
+  updateConversationStreamingTool(conversationId, tool) {
+    const key = this._serializeConversationId(conversationId);
+    const conversations = new Map(AppStore.conversations.value);
+    const conv = conversations.get(key);
+
+    if (conv) {
+      const tools = [...conv.streamingTools];
+      const existingIndex = tools.findIndex(t => t.id === tool.id);
+
+      if (existingIndex >= 0) {
+        tools[existingIndex] = { ...tools[existingIndex], ...tool };
+      } else {
+        tools.push(tool);
+      }
+
+      conversations.set(key, { ...conv, streamingTools: tools });
+      AppStore.conversations.value = conversations;
+    }
+  },
+
+  /**
+   * Clear streaming state for a specific conversation
+   * @param {{type: string, id: string}} conversationId
+   */
+  clearConversationStreamingState(conversationId) {
+    const key = this._serializeConversationId(conversationId);
+    const conversations = new Map(AppStore.conversations.value);
+    const conv = conversations.get(key);
+
+    if (conv) {
+      conversations.set(key, {
+        ...conv,
+        isStreaming: false,
+        streamingContent: '',
+        streamingTools: []
+      });
+      AppStore.conversations.value = conversations;
+    }
+
+    // Clear active streaming if this was it
+    const activeId = AppStore.activeStreamingId.value;
+    if (activeId && activeId.type === conversationId.type && activeId.id === conversationId.id) {
+      AppStore.activeStreamingId.value = null;
+    }
+  },
+
+  /**
+   * Set the active streaming conversation ID
+   * @param {{type: string, id: string}|null} conversationId
+   */
+  setActiveStreamingId(conversationId) {
+    AppStore.activeStreamingId.value = conversationId;
+  },
+
+  /**
+   * Clear messages for a specific conversation
+   * @param {{type: string, id: string}} conversationId
+   */
+  clearConversationMessages(conversationId) {
+    const key = this._serializeConversationId(conversationId);
+    const conversations = new Map(AppStore.conversations.value);
+    const conv = conversations.get(key);
+
+    if (conv) {
+      conversations.set(key, { ...conv, messages: [] });
+      AppStore.conversations.value = conversations;
+    }
+  },
+
+  /**
+   * Update context prefix for a conversation
+   * @param {{type: string, id: string}} conversationId
+   * @param {string} contextPrefix
+   */
+  setConversationContextPrefix(conversationId, contextPrefix) {
+    const key = this._serializeConversationId(conversationId);
+    const conversations = new Map(AppStore.conversations.value);
+    const conv = conversations.get(key);
+
+    if (conv) {
+      conversations.set(key, { ...conv, contextPrefix });
+      AppStore.conversations.value = conversations;
+    }
+  },
+
+  /**
+   * Set the terminal model preference
+   * @param {string} model
+   */
+  setTerminalModel(model) {
+    AppStore.terminalModel.value = model;
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // Attachment Actions
+  // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Add one or more attachments to the pending list
+   * @param {Array|Object} attachments - Single attachment or array
+   */
+  addAttachments(attachments) {
+    const items = Array.isArray(attachments) ? attachments : [attachments];
+    const current = AppStore.currentAttachments.value;
+    // Dedupe by id
+    const newItems = items.filter(item =>
+      !current.some(existing => existing.id === item.id)
+    );
+    AppStore.currentAttachments.value = [...current, ...newItems];
+  },
+
+  /**
+   * Remove an attachment by ID
+   * @param {string} attachmentId
+   */
+  removeAttachment(attachmentId) {
+    AppStore.currentAttachments.value = AppStore.currentAttachments.value.filter(
+      att => att.id !== attachmentId
+    );
+  },
+
+  /**
+   * Clear all pending attachments
+   */
+  clearAttachments() {
+    AppStore.currentAttachments.value = [];
+  },
+
+  /**
+   * Get pending attachments as array
+   * @returns {Array}
+   */
+  getAttachments() {
+    return AppStore.currentAttachments.value;
   },
 };
 

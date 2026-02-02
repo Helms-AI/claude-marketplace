@@ -397,26 +397,404 @@ plugins/dashboard/
 | `/api/rescan` | POST | Rescan plugins |
 | `/api/auth/token` | GET | Get auth token (local only) |
 
-## Real-time Updates
+## Real-time Updates (SSE System)
 
-The dashboard uses Server-Sent Events (SSE) for real-time updates:
+The dashboard uses a sophisticated **Server-Sent Events (SSE)** system for real-time updates between the Python backend and JavaScript frontend.
+
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           SSE EVENT FLOW                                     │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  BACKEND (Python)                    FRONTEND (JavaScript)                  │
+│  ──────────────────                  ────────────────────────               │
+│                                                                              │
+│  ┌─────────────────┐                ┌─────────────────┐                     │
+│  │ ChangesetWatcher│────broadcast──▶│  SSEService     │                     │
+│  │ TranscriptWatcher│               │  (EventSource)  │                     │
+│  │ EventStore      │                └────────┬────────┘                     │
+│  └────────┬────────┘                         │                              │
+│           │                                  │ _handleEvent()               │
+│           ▼                                  ▼                              │
+│  ┌─────────────────┐                ┌─────────────────┐                     │
+│  │   SSEManager    │                │    app.js       │                     │
+│  │  (Queue-based)  │                │ (Central Router)│                     │
+│  └────────┬────────┘                └────────┬────────┘                     │
+│           │                                  │                              │
+│           │ generate_stream()                │ dispatch to services         │
+│           ▼                                  ▼                              │
+│  ┌─────────────────┐                ┌─────────────────┐                     │
+│  │  Flask endpoint │                │  AppStore       │                     │
+│  │  /api/stream    │                │ (Preact Signals)│                     │
+│  └─────────────────┘                └────────┬────────┘                     │
+│                                              │                              │
+│                                              │ SignalWatcher                │
+│                                              ▼                              │
+│                                     ┌─────────────────┐                     │
+│                                     │  Components     │                     │
+│                                     │  (auto-render)  │                     │
+│                                     └─────────────────┘                     │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Event Types
+
+| Type | Direction | Frequency | Source | Purpose |
+|------|-----------|-----------|--------|---------|
+| `connected` | Backend→Frontend | Once | SSEManager | Connection confirmation |
+| `heartbeat` | Backend→Frontend | Every 3s | SSEManager | Keep-alive signal |
+| `changeset_created` | Backend→Frontend | Per changeset | ChangesetWatcher | New changeset detected |
+| `changeset_updated` | Backend→Frontend | When changed | ChangesetScanner | Changeset metadata updated |
+| `changeset_deleted` | Backend→Frontend | When removed | ChangesetWatcher | Changeset removed |
+| `transcript_message` | Backend→Frontend | Per message | TranscriptWatcher | New conversation message |
+| `task_state_change` | Backend→Frontend | Per task tool | TranscriptWatcher | Task lifecycle event |
+| `conversation_event` | Backend→Frontend | Per event | EventStore listener | General conversation event |
+| `graph_activity` | Backend→Frontend | Debounced 500ms | Custom broadcast | Domain node activity |
+| `graph_handoff` | Backend→Frontend | Per handoff | Custom broadcast | Inter-domain handoff |
+| `activity` | Backend→Frontend | Per action | App | Generic activity log |
+| `error` | Backend→Frontend | Per error | App | Error notifications |
+
+### Basic Usage
 
 ```javascript
+// Simple connection
 const eventSource = new EventSource('/api/stream');
 
+// Named event listeners (recommended)
+eventSource.addEventListener('changeset_created', (e) => {
+    const data = JSON.parse(e.data);
+    console.log('New changeset:', data.changeset_id);
+});
+
+eventSource.addEventListener('transcript_message', (e) => {
+    const data = JSON.parse(e.data);
+    console.log('New message from:', data.source);
+});
+
+// Fallback for generic messages
 eventSource.onmessage = (event) => {
     const data = JSON.parse(event.data);
+    console.log('Event:', data.type, data);
+};
 
-    if (data.type === 'conversation_event') {
-        // Handle new event
+// Connection status
+eventSource.onopen = () => console.log('SSE Connected');
+eventSource.onerror = () => console.log('SSE Error/Disconnected');
+```
+
+### Using the SSEService
+
+The dashboard provides a higher-level `SSEService` with automatic reconnection:
+
+```javascript
+import { SSEService, SSEEventType } from './services/sse-service.js';
+
+// Connect to SSE endpoint
+SSEService.connect('/api/stream');
+
+// Subscribe to all events
+const unsubscribe = SSEService.subscribe((eventType, data) => {
+    switch (eventType) {
+        case SSEEventType.CHANGESET_CREATED:
+            console.log('New changeset:', data);
+            break;
+        case SSEEventType.TRANSCRIPT_MESSAGE:
+            console.log('Transcript update:', data);
+            break;
+    }
+});
+
+// Later: unsubscribe
+unsubscribe();
+
+// Disconnect
+SSEService.disconnect();
+
+// Check connection status
+console.log('Connected:', SSEService.isConnected);
+```
+
+### Implementing New Event Types
+
+#### Step 1: Define Event Type (Backend)
+
+In `server/sse.py`, events are broadcast using:
+
+```python
+# Simple broadcast
+sse_manager.broadcast(
+    {'changeset_id': '...', 'data': '...'},
+    event_type='my_custom_event'
+)
+
+# With debouncing (for high-frequency events)
+sse_manager.broadcast_graph_activity(
+    node_id='frontend',
+    agent_id='chris-nakamura',
+    activity_type='skill'
+)
+```
+
+#### Step 2: Generate Events (Backend)
+
+In `server/app.py` or your watcher/service:
+
+```python
+from server.sse import sse_manager
+
+# From a Flask route
+@app.route('/api/my-action', methods=['POST'])
+def my_action():
+    # Do something...
+    result = process_action()
+
+    # Broadcast to all connected clients
+    sse_manager.broadcast({
+        'action': 'completed',
+        'result': result,
+        'timestamp': datetime.now().isoformat()
+    }, event_type='my_custom_event')
+
+    return jsonify({'success': True})
+
+# From a background thread/watcher
+def my_watcher_loop():
+    while True:
+        changes = detect_changes()
+        if changes:
+            sse_manager.broadcast({
+                'changes': changes
+            }, event_type='my_custom_event')
+        time.sleep(1)
+```
+
+#### Step 3: Register Event Type (Frontend)
+
+In `web/js/services/sse-service.js`:
+
+```javascript
+// Add to SSEEventType enum
+export const SSEEventType = {
+    // ... existing types
+    MY_CUSTOM_EVENT: 'my_custom_event'
+};
+
+// In connect() method, add listener
+this._eventSource.addEventListener('my_custom_event', (e) =>
+    this._handleEvent(SSEEventType.MY_CUSTOM_EVENT, this._parseData(e))
+);
+```
+
+#### Step 4: Route Events (Frontend)
+
+In `web/js/app.js`, add routing in the SSE subscriber:
+
+```javascript
+SSEService.subscribe((eventType, data) => {
+    // ... existing routing
+
+    if (eventType === 'my_custom_event') {
+        // Option A: Update store directly
+        Actions.handleMyCustomEvent(data);
+
+        // Option B: Route to a service
+        MyService.handleEvent(data);
+
+        // Option C: Add to activity feed
+        Actions.addActivity({
+            type: 'custom',
+            message: `Custom event: ${data.action}`,
+            data
+        });
+    }
+});
+```
+
+#### Step 5: Update Store (Frontend)
+
+In `web/js/store/app-state.js`:
+
+```javascript
+// Add state signal
+export const AppStore = {
+    // ... existing state
+    myCustomData: signal([])
+};
+
+// Add action
+export const Actions = {
+    // ... existing actions
+    handleMyCustomEvent(data) {
+        AppStore.myCustomData.value = [
+            data,
+            ...AppStore.myCustomData.value.slice(0, 99)  // Keep last 100
+        ];
     }
 };
 ```
 
-Event types:
-- `connected` - Initial connection
-- `heartbeat` - Keep-alive (every 15s)
-- `conversation_event` - Agent/skill activity
+#### Step 6: React in Components (Frontend)
+
+```javascript
+import { SignalWatcher } from '../core/signal-watcher.js';
+import { AppStore } from '../../store/app-state.js';
+
+class MyComponent extends SignalWatcher(LitElement) {
+    connectedCallback() {
+        super.connectedCallback();
+        // Subscribe to specific signals
+        this.watchSignals([AppStore.myCustomData]);
+    }
+
+    render() {
+        const data = AppStore.myCustomData.value;
+        return html`
+            <ul>
+                ${data.map(item => html`<li>${item.action}</li>`)}
+            </ul>
+        `;
+    }
+}
+```
+
+### Complete Example: Adding "Agent Invoked" Events
+
+Here's a complete example of adding a new event type:
+
+**Backend (`server/app.py`):**
+```python
+# In the hook event handler or watcher
+def on_agent_invoked(agent_id, skill, domain):
+    sse_manager.broadcast({
+        'agent_id': agent_id,
+        'skill': skill,
+        'domain': domain,
+        'timestamp': datetime.now().isoformat()
+    }, event_type='agent_invoked')
+```
+
+**Frontend (`sse-service.js`):**
+```javascript
+export const SSEEventType = {
+    // ...
+    AGENT_INVOKED: 'agent_invoked'
+};
+
+// In connect():
+this._eventSource.addEventListener('agent_invoked', (e) =>
+    this._handleEvent(SSEEventType.AGENT_INVOKED, this._parseData(e))
+);
+```
+
+**Frontend (`app.js`):**
+```javascript
+SSEService.subscribe((eventType, data) => {
+    if (eventType === 'agent_invoked') {
+        // Update agent's last activity
+        Actions.updateAgentActivity(data.agent_id, data);
+
+        // Trigger graph animation
+        Actions.addActivity({
+            type: 'agent',
+            message: `${data.agent_id} invoked ${data.skill}`,
+            domain: data.domain
+        });
+    }
+});
+```
+
+**Frontend (`app-state.js`):**
+```javascript
+Actions = {
+    updateAgentActivity(agentId, data) {
+        const agents = [...AppStore.agents.value];
+        const index = agents.findIndex(a => a.id === agentId);
+        if (index !== -1) {
+            agents[index] = {
+                ...agents[index],
+                lastActivity: data.timestamp,
+                lastSkill: data.skill
+            };
+            AppStore.agents.value = agents;
+        }
+    }
+};
+```
+
+### Data Normalization
+
+When receiving events from the backend, always normalize field names:
+
+```javascript
+// Backend sends: { changeset_id: '...' }
+// Frontend expects: { id: '...' }
+
+handleSSEEvent({type, data}) {
+    case 'changeset_created':
+        const normalized = {
+            ...data,
+            id: data.id || data.changeset_id,  // Normalize ID
+            name: data.name || data.changeset_id  // Provide display name
+        };
+        Actions.addChangeset(normalized);
+        break;
+}
+```
+
+### Connection States
+
+The SSEService tracks connection state automatically:
+
+```
+┌─────────────────────┐
+│   DISCONNECTED      │
+└──────────┬──────────┘
+           │ connect()
+           ▼
+┌─────────────────────┐
+│   CONNECTING        │
+└──────────┬──────────┘
+           │ onopen
+           ▼
+┌─────────────────────┐
+│   CONNECTED         │◄──────────┐
+└──────────┬──────────┘           │
+           │ onerror              │ reconnect success
+           ▼                       │
+┌─────────────────────┐           │
+│   DISCONNECTED      ├───────────┘
+└──────────┬──────────┘
+           │ exponential backoff (1s → 30s max)
+           ▼
+       auto-reconnect
+```
+
+### Performance Considerations
+
+1. **Queue Limits**: Each client has a 100-item queue to prevent memory issues
+2. **Activity Debouncing**: High-frequency events (graph animations) are debounced at 500ms
+3. **Event Trimming**: In-memory EventStore keeps max 10,000 events
+4. **Heartbeat**: 3-second intervals prevent connection timeouts
+5. **Fine-Grained Reactivity**: Preact Signals minimize re-renders
+
+### Debugging
+
+```bash
+# Check SSE status
+curl http://localhost:24282/api/debug/sse-status
+
+# Health check
+curl http://localhost:24282/api/heartbeat
+
+# Watch raw SSE stream
+curl -N http://localhost:24282/api/stream
+```
+
+In browser DevTools:
+- Network tab → Filter "EventStream"
+- Watch for `event:` and `data:` lines
 
 ## SDK Terminal Usage
 

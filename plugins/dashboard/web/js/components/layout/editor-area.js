@@ -17,6 +17,7 @@ import '../atoms/icon.js';
 import '../terminal/terminal-view.js';
 import '../organisms/welcome-panel.js';
 import '../conversation/changeset-viewer.js';
+import './activities-aside.js';
 
 class EditorArea extends SignalWatcher(LitElement) {
     static properties = {
@@ -27,6 +28,23 @@ class EditorArea extends SignalWatcher(LitElement) {
     static styles = css`
         :host { display: flex; flex-direction: column; height: 100%; background: var(--bg-primary, white); }
         dash-tab-group { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+
+        /* Wrapper for content + activities aside within each tab pane */
+        .tab-content-wrapper {
+            display: flex;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .tab-content-wrapper .main-content {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .tab-content-wrapper activities-aside {
+            flex-shrink: 0;
+        }
     `;
 
     constructor() {
@@ -41,13 +59,32 @@ class EditorArea extends SignalWatcher(LitElement) {
             AppStore.openTabs,
             AppStore.activeTabId,
             AppStore.sdkConnected,
-            AppStore.terminalMessages,
-            AppStore.isStreaming,
+            AppStore.terminalMessages,  // Legacy - keep for backwards compatibility
+            AppStore.isStreaming,       // Legacy - keep for backwards compatibility
             AppStore.terminalModel,
             AppStore.sessionId,
-            AppStore.streamingContent,
-            AppStore.streamingTools
+            AppStore.streamingContent,  // Legacy - keep for backwards compatibility
+            AppStore.streamingTools,
+            AppStore.activitiesAsideCollapsed,
+            AppStore.conversations,     // NEW: Per-tab conversations
+            AppStore.activeStreamingId  // NEW: Active streaming target
         ]);
+    }
+
+    /**
+     * Get the conversation ID for the main terminal
+     * @private
+     */
+    get _terminalConversationId() {
+        return { type: 'terminal', id: 'main' };
+    }
+
+    /**
+     * Get the terminal conversation state from the per-tab conversations Map
+     * @private
+     */
+    get _terminalConversation() {
+        return Actions.getConversation(this._terminalConversationId);
     }
 
     _handleTabChange(e) {
@@ -68,8 +105,16 @@ class EditorArea extends SignalWatcher(LitElement) {
 
     // Terminal event handlers
     _handleSendMessage(e) {
-        const { message, model, settings } = e.detail;
-        SDKClient.sendMessage(message, { model, settings });
+        const { message, model, settings, attachments } = e.detail;
+        // Initialize conversation if needed and send with terminal:main conversationId
+        Actions.initConversation(this._terminalConversationId);
+        SDKClient.sendMessage(message, {
+            conversationId: this._terminalConversationId,
+            model,
+            settings,
+            attachments: attachments || [],
+            resumeSession: true
+        });
     }
 
     _handleInterrupt() {
@@ -77,6 +122,9 @@ class EditorArea extends SignalWatcher(LitElement) {
     }
 
     _handleClearMessages() {
+        // Clear the per-conversation messages for terminal:main
+        Actions.clearConversationMessages(this._terminalConversationId);
+        // Also clear legacy terminal for backwards compatibility
         Actions.clearTerminal();
     }
 
@@ -112,25 +160,48 @@ class EditorArea extends SignalWatcher(LitElement) {
     }
 
     /**
+     * Wrap content with activities aside for tabs that show tool activity
+     * @private
+     */
+    _wrapWithActivitiesAside(content) {
+        return html`
+            <div class="tab-content-wrapper">
+                <div class="main-content">
+                    ${content}
+                </div>
+                <activities-aside></activities-aside>
+            </div>
+        `;
+    }
+
+    /**
      * Render content for a specific tab
      * Each tab type has its own content renderer
      */
     _renderTabContent(tab) {
         // Check if this is a changeset tab
         if (tab.type === 'changeset' && tab.changesetId) {
-            return html`<changeset-viewer changeset-id="${tab.changesetId}"></changeset-viewer>`;
+            const content = html`<changeset-viewer changeset-id="${tab.changesetId}"></changeset-viewer>`;
+            return this._wrapWithActivitiesAside(content);
         }
 
         switch(tab.type) {
             case 'terminal':
-                return html`
+                // Use per-conversation state for terminal:main
+                const terminalConv = this._terminalConversation;
+                const terminalMessages = terminalConv?.messages || [];
+                const terminalIsStreaming = terminalConv?.isStreaming || false;
+                const terminalStreamingContent = terminalConv?.streamingContent || '';
+
+                const terminalContent = html`
                     <terminal-view
-                        .messages=${AppStore.terminalMessages.value}
-                        ?streaming=${AppStore.isStreaming.value}
+                        .messages=${terminalMessages}
+                        ?streaming=${terminalIsStreaming}
                         ?connected=${AppStore.sdkConnected.value}
                         .model=${AppStore.terminalModel.value}
                         .sessionId=${AppStore.sessionId.value}
-                        .streamingContent=${AppStore.streamingContent.value}
+                        .streamingContent=${terminalStreamingContent}
+                        .inputHistory=${terminalMessages.filter(m => m.role === 'user').map(m => m.content)}
                         @send-message=${this._handleSendMessage}
                         @interrupt=${this._handleInterrupt}
                         @clear-messages=${this._handleClearMessages}
@@ -140,6 +211,7 @@ class EditorArea extends SignalWatcher(LitElement) {
                         @session-select=${this._handleSessionSelect}
                     ></terminal-view>
                 `;
+                return this._wrapWithActivitiesAside(terminalContent);
             case 'welcome':
             default:
                 return html`<welcome-panel></welcome-panel>`;

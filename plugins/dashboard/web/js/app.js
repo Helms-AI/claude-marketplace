@@ -13,6 +13,7 @@ import { SDKClient } from './services/sdk-client.js';
 import { AgentService } from './services/agent-service.js';
 import { SkillService } from './services/skill-service.js';
 import { ChangesetService } from './services/changeset-service.js';
+import { ActivityService } from './services/activity-service.js';
 
 // New services (Phase 3)
 import { TaskService } from './services/task-service.js';
@@ -35,6 +36,7 @@ import './components/atoms/avatar.js';
 import './components/atoms/tag.js';
 import './components/atoms/empty-state.js';
 import './components/atoms/divider.js';
+import './components/atoms/activity-indicator.js';
 
 // Import molecules (self-registering)
 import './components/molecules/search-input.js';
@@ -43,6 +45,10 @@ import './components/molecules/activity-list.js';
 import './components/molecules/modal-section.js';
 import './components/molecules/modal-identity.js';
 import './components/molecules/detail-section.js';
+import './components/molecules/activity-item.js';
+import './components/molecules/activity-group.js';
+import './components/molecules/collapsed-preview.js';
+import './components/molecules/tool-activity-badge.js';
 
 // Import organisms (self-registering)
 import './components/organisms/token-meter.js';
@@ -58,6 +64,8 @@ import './components/organisms/welcome-panel.js';
 import './components/organisms/activity-panel.js';
 import './components/organisms/agent-detail-modal.js';
 import './components/organisms/skill-detail-modal.js';
+import './components/organisms/activity-timeline.js';
+import './components/organisms/activity-file-tree.js';
 
 // Import all legacy components (self-registering)
 import './components/core/icon-button.js';
@@ -94,6 +102,7 @@ import './components/layout/sidebar-panel.js';
 import './components/layout/editor-area.js';
 import './components/layout/tab-bar.js';
 import './components/layout/status-bar.js';
+import './components/layout/activities-aside.js';
 
 class DashboardApp {
     constructor() { this._initialized = false; }
@@ -143,12 +152,158 @@ class DashboardApp {
     }
 
     _initSSE() {
+        // Central SSE event router - dispatches events to appropriate services
         SSEService.subscribe((eventType, data) => {
-            // Skip logging heartbeat messages (can come as named event or in data.type)
-            if (eventType !== SSEEventType.HEARTBEAT && data?.type !== 'heartbeat') {
-                console.log(`[SSE] ${eventType}:`, data);
+            // Skip heartbeat logging
+            if (eventType === SSEEventType.HEARTBEAT || data?.type === 'heartbeat') {
+                return;
+            }
+
+            // Debug logging (can be disabled in production)
+            console.log(`[SSE] ${eventType}:`, data);
+
+            // Determine the actual event type (can come from named event or data.type)
+            const type = eventType !== 'message' ? eventType : (data?.type || eventType);
+
+            // Route changeset events to ChangesetService
+            if (type === 'changeset_created' || type === 'changeset_updated' || type === 'changeset_deleted') {
+                ChangesetService.handleSSEEvent({ type, data: data?.data || data });
+
+                // Add activity feed entry for changeset events
+                if (type === 'changeset_created') {
+                    const changesetId = data?.data?.id || data?.id || data?.changeset_id;
+                    Actions.addActivity({
+                        type: 'changeset',
+                        message: `Changeset ${changesetId} created`,
+                        changesetId
+                    });
+                }
+            }
+
+            // Route transcript messages to conversation AND terminal (real-time updates)
+            if (type === 'transcript_message') {
+                const msgData = data?.data || data;
+                const watchedId = AppStore.watchedChangesetId.value;
+                const terminalSessionId = AppStore.sessionId.value;
+                const eventSessionId = msgData.session_id;
+
+                console.log('[SSE] transcript_message received:', {
+                    changeset_id: msgData.changeset_id,
+                    session_id: eventSessionId,
+                    watchedId,
+                    terminalSessionId,
+                    source: msgData.source,
+                    role: msgData.message?.role
+                });
+
+                // Route to ChangesetViewer if watching this changeset
+                if (watchedId && msgData.changeset_id === watchedId) {
+                    Actions.addConversationEvent({
+                        type: 'transcript_message',
+                        message: msgData.message,
+                        source: msgData.source,
+                        changeset_id: msgData.changeset_id,
+                        timestamp: msgData.timestamp
+                    });
+                    console.log('[SSE] Added transcript_message to conversation events');
+
+                    // Extract tool calls and route to ActivityService for Activities Aside
+                    const toolCalls = msgData.message?.tool_calls || [];
+                    if (toolCalls.length > 0) {
+                        console.log(`[SSE] Extracting ${toolCalls.length} tool calls for ActivityService`);
+                        toolCalls.forEach(toolCall => {
+                            const toolId = toolCall.id || crypto.randomUUID();
+
+                            // Determine if this tool call has completed (has result or output)
+                            const hasResult = toolCall.result !== undefined ||
+                                              toolCall.output !== undefined ||
+                                              toolCall.content !== undefined;
+                            const isError = toolCall.status === 'error' || toolCall.is_error;
+
+                            if (hasResult) {
+                                // Tool has completed - send as completed activity
+                                ActivityService.handleToolEvent({
+                                    type: 'tool_result',
+                                    data: {
+                                        name: toolCall.name,
+                                        tool_use_id: toolId,
+                                        input: toolCall.input,
+                                        output: toolCall.result || toolCall.output || toolCall.content,
+                                        is_error: isError,
+                                        changeset_id: msgData.changeset_id,
+                                        timestamp: msgData.timestamp
+                                    }
+                                });
+                            } else {
+                                // Tool is still running - send as tool_use
+                                ActivityService.handleToolEvent({
+                                    type: 'tool_use',
+                                    data: {
+                                        name: toolCall.name,
+                                        tool_use_id: toolId,
+                                        input: toolCall.input,
+                                        status: toolCall.status,
+                                        changeset_id: msgData.changeset_id,
+                                        timestamp: msgData.timestamp
+                                    }
+                                });
+                            }
+                        });
+                    }
+                }
+
+                // Route to Terminal if session ID matches the terminal's session
+                // This allows the terminal to show real-time updates from file watching
+                if (terminalSessionId && eventSessionId && terminalSessionId === eventSessionId) {
+                    const message = msgData.message;
+                    if (message && message.role) {
+                        // Only add messages from the main transcript (not subagents) to terminal
+                        // since the terminal represents the main conversation
+                        if (msgData.source === 'main') {
+                            // Check if this message already exists in terminal (avoid duplicates)
+                            const existingMessages = AppStore.terminalMessages.value;
+                            const isDuplicate = existingMessages.some(m =>
+                                m.role === message.role &&
+                                m.content === message.text &&
+                                Math.abs(new Date(m.timestamp || 0) - new Date(message.timestamp || 0)) < 1000
+                            );
+
+                            if (!isDuplicate) {
+                                Actions.addTerminalMessage({
+                                    role: message.role,
+                                    content: message.text || '',
+                                    tools: message.tool_calls || [],
+                                    timestamp: message.timestamp,
+                                    fromSSE: true // Mark as from SSE for potential styling
+                                });
+                                console.log('[SSE] Added transcript_message to terminal');
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Route conversation events
+            if (type === 'conversation_event') {
+                const eventData = data?.data || data;
+                const watchedId = AppStore.watchedChangesetId.value;
+
+                if (watchedId && eventData.changeset_id === watchedId) {
+                    Actions.addConversationEvent(eventData);
+                }
+            }
+
+            // Route task events to TaskService
+            if (type === SSEEventType.TASK_STATE_CHANGE || type === 'task_state_change') {
+                TaskService.handleTaskEvent(data);
+            }
+
+            // Route tool events to ActivityService (batched handling)
+            if (type === 'tool_use' || type === 'tool_result') {
+                ActivityService.handleToolEvent({ type, data: data?.data || data });
             }
         });
+
         SSEService.connect('/api/stream');
     }
 
@@ -184,6 +339,7 @@ class DashboardApp {
             Agent: AgentService,
             Skill: SkillService,
             Changeset: ChangesetService,
+            Activity: ActivityService,
             // New services (Phase 3)
             Task: TaskService,
             Error: ErrorService,
@@ -197,13 +353,7 @@ class DashboardApp {
         };
         window.addEventListener('theme-change', (e) => Actions.setTheme(e.detail.theme));
         window.addEventListener('sidebar-toggle', () => Actions.toggleSidebar());
-
-        // Connect SSE events to services
-        SSEService.subscribe((eventType, data) => {
-            if (eventType === SSEEventType.TASK_STATE_CHANGE) {
-                TaskService.handleTaskEvent(data);
-            }
-        });
+        // Note: SSE event routing is now consolidated in _initSSE()
     }
 
     destroy() { SSEService.disconnect(); this._initialized = false; }

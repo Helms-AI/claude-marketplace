@@ -10,7 +10,16 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { SignalWatcher } from '../core/signal-watcher.js';
 import { AppStore, Actions } from '../../store/app-state.js';
 import { ChangesetService } from '../../services/changeset-service.js';
+import { SDKClient } from '../../services/sdk-client.js';
 import '../common/changeset-name.js';
+import '../molecules/tool-activity-badge.js';
+import '../terminal/terminal-input.js';
+import {
+    filterInlineTools,
+    filterAsideTools,
+    hasAsideTools,
+    getAsideToolNamesSummary
+} from '../../services/tool-render-service.js';
 
 // Domain configuration
 const DOMAIN_CONFIG = {
@@ -158,9 +167,16 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
         /* Conversation Container */
         .conversation-container {
             flex: 1;
+            min-height: 0; /* Critical for flex layout with terminal-input */
             overflow-y: auto;
             overflow-x: hidden;
             padding: var(--spacing-md, 12px);
+        }
+
+        /* Terminal Input Integration */
+        terminal-input {
+            flex-shrink: 0;
+            border-top: 2px solid var(--accent-color, #007acc);
         }
 
         /* Chat Stream - matches original vanilla JS */
@@ -422,6 +438,13 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
             display: flex;
             flex-direction: column;
             gap: var(--spacing-xs, 4px);
+        }
+
+        /* Aside tools badge indicator */
+        .aside-tools-indicator {
+            margin-top: var(--spacing-sm, 8px);
+            display: flex;
+            align-items: center;
         }
 
         .tool-card {
@@ -687,6 +710,7 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
         this._loading = false;
         this._autoScroll = true;
         this._agentMetadata = {};
+        this._processedEventIds = new Set(); // Track which SSE events we've already processed
     }
 
     connectedCallback() {
@@ -698,6 +722,90 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
             AppStore.conversationViewMode,
             AppStore.loadingConversation
         ]);
+
+        // Track previous event count for auto-scroll on new events
+        this._prevEventCount = 0;
+    }
+
+    willUpdate(changedProperties) {
+        super.willUpdate && super.willUpdate(changedProperties);
+
+        // Process new SSE events and append to merged timeline for real-time updates
+        const storeEvents = AppStore.conversationEvents.value || [];
+        const currentEventCount = storeEvents.length;
+
+        if (currentEventCount > this._prevEventCount) {
+            // Process only new events
+            const newEvents = storeEvents.slice(this._prevEventCount);
+            this._processRealtimeEvents(newEvents);
+
+            // Schedule scroll after render if auto-scroll is enabled
+            if (this._autoScroll) {
+                this.updateComplete.then(() => this._scrollToBottom());
+            }
+        }
+        this._prevEventCount = currentEventCount;
+    }
+
+    /**
+     * Process real-time SSE events and append to local transcript timeline
+     * This enables unified view to update in real-time without full re-fetch
+     */
+    _processRealtimeEvents(newEvents) {
+        if (!newEvents?.length) return;
+
+        // Only process transcript_message events for the unified timeline
+        for (const event of newEvents) {
+            // Skip if already processed (dedup by id)
+            if (event.id && this._processedEventIds.has(event.id)) continue;
+            if (event.id) this._processedEventIds.add(event.id);
+
+            // Handle transcript_message events - append to merged timeline
+            if (event.type === 'transcript_message' && event.message) {
+                this._appendToTimeline(event.message, event.source || 'main');
+            }
+        }
+
+        // Trigger re-render by creating a new transcript reference
+        if (this._transcript) {
+            this._transcript = { ...this._transcript };
+            this.requestUpdate(); // Explicitly request re-render
+        }
+    }
+
+    /**
+     * Append a message to the merged timeline
+     */
+    _appendToTimeline(message, source) {
+        if (!this._transcript) {
+            // Initialize transcript if not loaded yet
+            this._transcript = {
+                messages: [],
+                subagents: {},
+                merged_timeline: [],
+                agent_metadata: {}
+            };
+        }
+
+        // Ensure merged_timeline exists
+        if (!this._transcript.merged_timeline) {
+            this._transcript.merged_timeline = [];
+        }
+
+        // Create timeline entry matching the format from transcript reader
+        const timelineEntry = {
+            message: {
+                role: message.role,
+                text: message.text || '',
+                tool_calls: message.tool_calls || [],
+                timestamp: message.timestamp
+            },
+            source: source,
+            timestamp: message.timestamp
+        };
+
+        this._transcript.merged_timeline.push(timelineEntry);
+        console.log(`[ChangesetViewer] Appended ${message.role} message from ${source} to timeline`);
     }
 
     updated(changedProperties) {
@@ -999,15 +1107,131 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
                     </div>
                     <div class="message-content">
                         ${text ? html`<div class="transcript-text">${unsafeHTML(this._formatContent(text))}</div>` : ''}
-                        ${toolCalls?.length ? html`
-                            <div class="tool-cards transcript-tools">
-                                ${toolCalls.map(tool => this._renderToolCard(tool))}
-                            </div>
-                        ` : ''}
+                        ${this._renderToolsSection(toolCalls)}
                     </div>
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Render tools section with mode-based filtering
+     * - Inline tools (AskUserQuestion) render as full cards
+     * - Aside tools render as a compact badge with count
+     */
+    _renderToolsSection(toolCalls) {
+        if (!toolCalls?.length) return '';
+
+        const inlineTools = filterInlineTools(toolCalls);
+        const asideTools = filterAsideTools(toolCalls);
+
+        return html`
+            ${inlineTools.length ? html`
+                <div class="tool-cards transcript-tools">
+                    ${inlineTools.map(tool => this._renderToolCard(tool))}
+                </div>
+            ` : ''}
+            ${asideTools.length ? html`
+                <div class="aside-tools-indicator">
+                    <tool-activity-badge
+                        .count=${asideTools.length}
+                        .toolNames=${asideTools.map(t => t.name)}
+                        @badge-click=${this._handleBadgeClick}
+                    ></tool-activity-badge>
+                </div>
+            ` : ''}
+        `;
+    }
+
+    /**
+     * Handle badge click to expand activities aside
+     */
+    _handleBadgeClick(e) {
+        // Expand the activities aside panel
+        Actions.setActivitiesAsideCollapsed(false);
+        // Could add scroll-to-tool behavior in the future
+    }
+
+    /**
+     * Get the conversation ID for this changeset
+     * @returns {{type: string, id: string}}
+     */
+    get _conversationId() {
+        return { type: 'changeset', id: this.changesetId || 'unknown' };
+    }
+
+    /**
+     * Build context prefix for changeset conversations
+     * @returns {string|null}
+     */
+    _buildContextPrefix() {
+        const changeset = this._changeset;
+        if (!changeset) return null;
+
+        return `You are assisting with changeset: ${changeset.id || this.changesetId}
+Phase: ${changeset.phase || 'active'}
+Domains involved: ${(changeset.domains_involved || []).join(', ') || 'none specified'}
+${changeset.task ? `Task: ${changeset.task}` : ''}
+
+Please provide responses in the context of this changeset.`.trim();
+    }
+
+    /**
+     * Get messages for this changeset's conversation
+     * @returns {Array}
+     */
+    get _conversationMessages() {
+        const conv = Actions.getConversation(this._conversationId);
+        return conv?.messages || [];
+    }
+
+    /**
+     * Get streaming state for this changeset's conversation
+     * @returns {boolean}
+     */
+    get _conversationIsStreaming() {
+        const conv = Actions.getConversation(this._conversationId);
+        return conv?.isStreaming || false;
+    }
+
+    /**
+     * Handle send from terminal input - routes to SDKClient with changeset context
+     */
+    _handleTerminalSend(e) {
+        const { message, model, settings, attachments } = e.detail;
+
+        // Initialize conversation if needed
+        Actions.initConversation(this._conversationId, {
+            contextPrefix: this._buildContextPrefix()
+        });
+
+        SDKClient.sendMessage(message, {
+            conversationId: this._conversationId,
+            model,
+            settings,
+            attachments: attachments || [],
+            contextPrefix: this._buildContextPrefix(),
+            resumeSession: true
+        });
+
+        // Force scroll to bottom when user sends message
+        this._autoScroll = true;
+        this.removeAttribute('user-scrolled');
+        this.updateComplete.then(() => this._scrollToBottom());
+    }
+
+    /**
+     * Handle interrupt from terminal input
+     */
+    _handleTerminalInterrupt() {
+        SDKClient.interrupt();
+    }
+
+    /**
+     * Handle model change from terminal input
+     */
+    _handleTerminalModelChange(e) {
+        Actions.setTerminalModel(e.detail.model);
     }
 
     _renderToolCard(tool) {
@@ -1085,7 +1309,9 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
 
         const timeline = this._transcript?.merged_timeline || [];
         const messages = this._transcript?.messages || [];
-        const events = this._events || [];
+        // Use store's conversation events for real-time updates, fallback to local state
+        const storeEvents = AppStore.conversationEvents.value || [];
+        const events = storeEvents.length > 0 ? storeEvents : (this._events || []);
 
         // Choose view based on mode and available data
         if (this._viewMode === 'unified' || this._viewMode === 'transcript') {
@@ -1202,6 +1428,18 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
             <div class="conversation-container" @scroll=${this._handleScroll}>
                 ${this._renderConversation()}
             </div>
+            <terminal-input
+                .model=${AppStore.terminalModel?.value || 'sonnet'}
+                .history=${this._conversationMessages
+                    .filter(m => m.role === 'user')
+                    .map(m => m.content)}
+                ?streaming=${this._conversationIsStreaming}
+                ?disabled=${!(AppStore.sdkConnected?.value ?? true)}
+                placeholder="Chat with this changeset..."
+                @send=${this._handleTerminalSend}
+                @interrupt=${this._handleTerminalInterrupt}
+                @model-change=${this._handleTerminalModelChange}
+            ></terminal-input>
             <button class="scroll-bottom" @click=${this._scrollToBottom} title="Scroll to bottom">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </button>

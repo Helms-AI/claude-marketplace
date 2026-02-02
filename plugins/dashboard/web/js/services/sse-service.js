@@ -8,7 +8,12 @@ import { AppStore, Actions, ConnectionState } from '../store/app-state.js';
 export const SSEEventType = {
     CONNECTED: 'connected',
     CHANGESET_UPDATE: 'changeset_update',
+    CHANGESET_CREATED: 'changeset_created',
+    CHANGESET_UPDATED: 'changeset_updated',
+    CONVERSATION_EVENT: 'conversation_event',
     ACTIVITY: 'activity',
+    GRAPH_ACTIVITY: 'graph_activity',
+    GRAPH_HANDOFF: 'graph_handoff',
     ERROR: 'error',
     HEARTBEAT: 'heartbeat'
 };
@@ -53,13 +58,21 @@ class SSEServiceClass {
 
             this._eventSource.addEventListener('connected', (e) => this._handleEvent(SSEEventType.CONNECTED, this._parseData(e)));
             this._eventSource.addEventListener('changeset_update', (e) => this._handleEvent(SSEEventType.CHANGESET_UPDATE, this._parseData(e)));
+            this._eventSource.addEventListener('changeset_created', (e) => this._handleEvent(SSEEventType.CHANGESET_CREATED, this._parseData(e)));
+            this._eventSource.addEventListener('changeset_updated', (e) => this._handleEvent(SSEEventType.CHANGESET_UPDATED, this._parseData(e)));
+            this._eventSource.addEventListener('conversation_event', (e) => this._handleEvent(SSEEventType.CONVERSATION_EVENT, this._parseData(e)));
+            this._eventSource.addEventListener('transcript_message', (e) => this._handleEvent('transcript_message', this._parseData(e)));
             this._eventSource.addEventListener('activity', (e) => this._handleEvent(SSEEventType.ACTIVITY, this._parseData(e)));
             this._eventSource.addEventListener('error', (e) => this._handleEvent(SSEEventType.ERROR, this._parseData(e)));
             this._eventSource.addEventListener('heartbeat', () => this._resetHeartbeatMonitor());
 
             this._eventSource.onmessage = (event) => {
                 const data = this._parseData(event);
-                if (data) this._handleEvent('message', data);
+                if (data) {
+                    // Use the type field from data as the event type (backend sends type in payload)
+                    const eventType = data.type || 'message';
+                    this._handleEvent(eventType, data.data || data);
+                }
             };
         } catch (error) {
             console.error('[SSE] Failed to create EventSource', error);

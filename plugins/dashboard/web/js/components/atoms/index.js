@@ -38,3 +38,6 @@ export { DashDivider } from './divider.js';
 export { DashTab } from './tab.js';
 export { DashTabPanel } from './tab-panel.js';
 export { DashTabGroup } from './tab-group.js';
+
+// Activity components
+export { ActivityIndicator, ActivityIndicatorStatus } from './activity-indicator.js';

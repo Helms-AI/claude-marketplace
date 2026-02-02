@@ -615,6 +615,7 @@ class MarketplaceSDKBridge:
         max_retries: Optional[int] = None,
         max_thinking_tokens: Optional[int] = None,
         continue_conversation: Optional[bool] = None,
+        images: Optional[list] = None,
     ) -> AsyncIterator[dict]:
         """Stream a query through the SDK with marketplace agents/skills.
 
@@ -635,6 +636,8 @@ class MarketplaceSDKBridge:
             max_retries: Max retry attempts for transient errors
             max_thinking_tokens: Token budget for extended thinking
             continue_conversation: Whether to continue existing conversation
+            images: List of image attachments in Claude API format:
+                    [{type: 'image', source: {type: 'base64', media_type: str, data: str}}]
 
         Yields:
             Message dictionaries with type, content, tool info, etc.
@@ -684,7 +687,22 @@ class MarketplaceSDKBridge:
 
         while attempt <= config.max_retries:
             try:
-                async for message in query(prompt=prompt, options=options):
+                # Build prompt with images if provided
+                # Images should be list of {type: 'image', source: {type: 'base64', media_type: str, data: str}}
+                if images and len(images) > 0:
+                    # Build multimodal content list
+                    content = []
+                    # Add images first
+                    for img in images:
+                        content.append(img)
+                    # Add text prompt
+                    if prompt:
+                        content.append({"type": "text", "text": prompt})
+                    query_prompt = content
+                else:
+                    query_prompt = prompt
+
+                async for message in query(prompt=query_prompt, options=options):
                     # Check for API errors in AssistantMessage (Phase 4.1)
                     msg_dict = self._message_to_dict(message)
 

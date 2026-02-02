@@ -38,3 +38,9 @@ export { SliderRow } from './slider-row.js';
 // Re-export indicators (these are molecules too)
 export { ConnectionStatus, ConnectionState } from '../indicators/connection-status.js';
 export { ThinkingIndicator } from '../indicators/thinking-indicator.js';
+
+// Activity molecules
+export { ActivityItem, TOOL_ICONS } from './activity-item.js';
+export { ActivityGroup } from './activity-group.js';
+export { CollapsedPreview } from './collapsed-preview.js';
+export { ToolActivityBadge } from './tool-activity-badge.js';
