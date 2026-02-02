@@ -1,7 +1,8 @@
 /**
- * Terminal Input Component - Command line input for SDK interactions
+ * Terminal Input Component - Command line input for SDK or Passthrough interactions
  * Refactored to use Atomic Design pattern with composable molecules
  * Updated to use settings-panel for SDK configuration
+ * Supports both SDK mode (default) and Passthrough mode for parent session routing
  * @module components/terminal/terminal-input
  */
 
@@ -10,8 +11,10 @@ import '../atoms/icon.js';
 import '../molecules/model-toggle.js';
 import '../molecules/input-toolbar.js';
 import './settings-panel.js';
+import './terminal-input-activity-indicator.js';
 import { VoiceInputService } from '../../services/voice-input-service.js';
 import { AttachmentService } from '../../services/attachment-service.js';
+import { AppStore } from '../../store/app-state.js';
 
 class TerminalInput extends LitElement {
     static properties = {
@@ -21,6 +24,7 @@ class TerminalInput extends LitElement {
         value: { type: String },
         history: { type: Array },
         model: { type: String },
+        contextId: { type: String, attribute: 'context-id' },
         _historyIndex: { type: Number, state: true },
         _showSettingsPanel: { type: Boolean, state: true },
         _recording: { type: Boolean, state: true },
@@ -282,6 +286,7 @@ class TerminalInput extends LitElement {
         this.value = '';
         this.history = [];
         this.model = 'sonnet';
+        this.contextId = 'main';
         this._historyIndex = -1;
         this._showSettingsPanel = false;
         this._recording = false;
@@ -452,12 +457,12 @@ class TerminalInput extends LitElement {
         }
     }
 
-    _handleSend() {
+    async _handleSend() {
         const trimmed = this.value.trim();
         // Allow send if there's text OR attachments
         if ((!trimmed && this._attachments.length === 0) || this.disabled || this.streaming) return;
 
-        // Include current settings in send event
+        // Dispatch send event - parent handles API call via ConversationClient
         const settings = this.getSettings();
 
         this.dispatchEvent(new CustomEvent('send', {
@@ -465,6 +470,7 @@ class TerminalInput extends LitElement {
                 message: trimmed,
                 model: settings?.model || this.model,
                 settings: settings,
+                contextId: this.contextId,
                 attachments: this._attachments.length > 0 ? [...this._attachments] : undefined
             },
             bubbles: true,
@@ -686,6 +692,7 @@ class TerminalInput extends LitElement {
 
     render() {
         const canSubmit = this.value.trim().length > 0 || this._attachments.length > 0;
+        const isDisabled = this.disabled || this.streaming;
 
         return html`
             <!-- Hidden file input for attachment picker -->
@@ -717,6 +724,11 @@ class TerminalInput extends LitElement {
                 </div>
             ` : ''}
 
+            <!-- Activity indicator (Claude is thinking...) -->
+            <terminal-input-activity-indicator
+                ?active="${this.streaming}"
+            ></terminal-input-activity-indicator>
+
             <div
                 class="input-container"
                 @dragover="${this._handleDragOver}"
@@ -727,7 +739,7 @@ class TerminalInput extends LitElement {
                     <div class="model-area">
                         <model-toggle
                             .model="${this.model}"
-                            ?disabled="${this.disabled || this.streaming}"
+                            ?disabled="${isDisabled}"
                             compact
                             @model-change="${this._handleModelChange}"
                         ></model-toggle>
@@ -735,7 +747,7 @@ class TerminalInput extends LitElement {
                     <button
                         class="mic-btn ${this._recording ? 'recording' : ''} ${!VoiceInputService.isSupported ? 'not-supported' : ''}"
                         title="${!VoiceInputService.isSupported ? 'Voice input not supported in this browser' : this._recording ? 'Stop recording' : 'Voice input'}"
-                        ?disabled="${this.disabled || this.streaming || !VoiceInputService.isSupported}"
+                        ?disabled="${isDisabled || !VoiceInputService.isSupported}"
                         @click="${this._handleMicClick}"
                     >
                         <dash-icon name="${this._recording ? 'mic-off' : 'mic'}" size="16"></dash-icon>
@@ -746,7 +758,7 @@ class TerminalInput extends LitElement {
                             rows="1"
                             .value="${this.value}"
                             placeholder="${this._recording && this._interimTranscript ? this._interimTranscript : this.placeholder}"
-                            ?disabled="${this.disabled || this.streaming}"
+                            ?disabled="${isDisabled}"
                             @input="${this._handleInput}"
                             @keydown="${this._handleKeyDown}"
                         ></textarea>
@@ -768,6 +780,7 @@ class TerminalInput extends LitElement {
                 </div>
             </div>
 
+            <!-- Settings panel -->
             <settings-panel
                 ?expanded="${this._showSettingsPanel}"
                 @panel-close="${this._handlePanelClose}"
