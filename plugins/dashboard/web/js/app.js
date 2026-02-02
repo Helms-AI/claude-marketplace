@@ -9,7 +9,7 @@
 
 import { AppStore, Actions, Theme } from './store/app-state.js';
 import { SSEService, SSEEventType } from './services/sse-service.js';
-import { SDKClient } from './services/sdk-client.js';
+import { SDKClient, SDKEventType } from './services/sdk-client.js';
 import { AgentService } from './services/agent-service.js';
 import { SkillService } from './services/skill-service.js';
 import { ChangesetService } from './services/changeset-service.js';
@@ -303,6 +303,56 @@ class DashboardApp {
         if (SDKClient.sessionId) {
             console.log('[App] Session restored:', SDKClient.sessionId);
         }
+
+        // Route SDK tool events to ActivityService for the Activities panel
+        SDKClient.subscribe((eventType, data) => {
+            if (eventType === SDKEventType.TOOL_START || eventType === SDKEventType.MCP_TOOL_START) {
+                // Tool is starting
+                console.log('[App] SDK tool start:', data);
+                ActivityService.handleToolEvent({
+                    type: 'tool_use',
+                    data: {
+                        name: data.tool_name,
+                        tool_use_id: data.tool_use_id,
+                        input: data.input,
+                        timestamp: Date.now()
+                    }
+                });
+            } else if (eventType === SDKEventType.TOOL_RESULT || eventType === SDKEventType.MCP_TOOL_RESULT) {
+                // Tool completed - handle both SDK bridge format (data.results array) and legacy format
+                console.log('[App] SDK tool result:', data);
+
+                // SDK Bridge format: event has results array
+                if (data.results && Array.isArray(data.results)) {
+                    data.results.forEach(result => {
+                        ActivityService.handleToolEvent({
+                            type: 'tool_result',
+                            data: {
+                                name: result.tool_name || 'Unknown',
+                                tool_use_id: result.tool_use_id,
+                                output: result.content,
+                                is_error: result.is_error || false,
+                                error_message: result.is_error ? result.content : null,
+                                timestamp: Date.now()
+                            }
+                        });
+                    });
+                } else {
+                    // Legacy format: data has tool_use_id directly
+                    ActivityService.handleToolEvent({
+                        type: 'tool_result',
+                        data: {
+                            name: data.tool_name || 'Unknown',
+                            tool_use_id: data.tool_use_id,
+                            output: data.result,
+                            is_error: data.error ? true : false,
+                            error_message: data.error,
+                            timestamp: Date.now()
+                        }
+                    });
+                }
+            }
+        });
     }
 
     _initKeyboardShortcuts() {

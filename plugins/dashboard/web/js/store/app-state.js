@@ -243,6 +243,14 @@ export const AppStore = {
   passthroughActive: signal(false),            // Is parent Claude session active?
 
   // ─────────────────────────────────────────────────────────────
+  // Artifact Viewer State
+  // ─────────────────────────────────────────────────────────────
+  artifacts: signal(new Map()),               // Map<id, ArtifactMetadata + content>
+  artifactTabs: signal([]),                   // Ordered array of artifact IDs
+  activeArtifactId: signal(null),             // Currently selected artifact tab
+  artifactLoadStates: signal(new Map()),      // Map<id, 'loading' | 'loaded' | 'error'>
+
+  // ─────────────────────────────────────────────────────────────
   // SSE Events Monitor State
   // ─────────────────────────────────────────────────────────────
   sseEvents: signal([]),                       // Circular buffer of SSE events
@@ -1413,6 +1421,169 @@ export const Actions = {
       localStorage.setItem('dashboard-events-preferences', JSON.stringify(prefs));
     } catch (e) {
       console.warn('[AppStore] Failed to save event preferences:', e);
+    }
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // Artifact Viewer Actions
+  // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Add an artifact to the store
+   * @param {Object} artifact - { id, path, filename, extension, mimeType, content, size }
+   */
+  addArtifact(artifact) {
+    const artifacts = new Map(AppStore.artifacts.value);
+    artifacts.set(artifact.id, {
+      ...artifact,
+      loadedAt: Date.now()
+    });
+    AppStore.artifacts.value = artifacts;
+  },
+
+  /**
+   * Open an artifact tab (adds to tabs if not present, sets active)
+   * @param {string} id - Artifact ID
+   */
+  openArtifactTab(id) {
+    const tabs = [...AppStore.artifactTabs.value];
+    if (!tabs.includes(id)) {
+      tabs.push(id);
+      AppStore.artifactTabs.value = tabs;
+    }
+    AppStore.activeArtifactId.value = id;
+  },
+
+  /**
+   * Close an artifact tab
+   * @param {string} id - Artifact ID to close
+   */
+  closeArtifactTab(id) {
+    const tabs = AppStore.artifactTabs.value.filter(t => t !== id);
+    batch(() => {
+      AppStore.artifactTabs.value = tabs;
+
+      // Update active tab if closing the active one
+      if (AppStore.activeArtifactId.value === id) {
+        AppStore.activeArtifactId.value = tabs[tabs.length - 1] || null;
+      }
+
+      // Optionally remove from artifacts map to free memory
+      // Commented out to allow re-opening without refetch
+      // const artifacts = new Map(AppStore.artifacts.value);
+      // artifacts.delete(id);
+      // AppStore.artifacts.value = artifacts;
+    });
+  },
+
+  /**
+   * Set the active artifact tab
+   * @param {string} id - Artifact ID to activate
+   */
+  setActiveArtifact(id) {
+    if (AppStore.artifactTabs.value.includes(id)) {
+      AppStore.activeArtifactId.value = id;
+    }
+  },
+
+  /**
+   * Set the load state for an artifact
+   * @param {string} id - Artifact ID
+   * @param {string} state - 'loading' | 'loaded' | 'error'
+   */
+  setArtifactLoadState(id, state) {
+    const loadStates = new Map(AppStore.artifactLoadStates.value);
+    loadStates.set(id, state);
+    AppStore.artifactLoadStates.value = loadStates;
+  },
+
+  /**
+   * Get artifact by ID
+   * @param {string} id - Artifact ID
+   * @returns {Object|null}
+   */
+  getArtifact(id) {
+    return AppStore.artifacts.value.get(id) || null;
+  },
+
+  /**
+   * Clear all artifacts and close all tabs
+   */
+  clearAllArtifacts() {
+    batch(() => {
+      AppStore.artifacts.value = new Map();
+      AppStore.artifactTabs.value = [];
+      AppStore.activeArtifactId.value = null;
+      AppStore.artifactLoadStates.value = new Map();
+    });
+  },
+
+  /**
+   * Load an artifact by path (convenience method)
+   * Creates ID, sets loading state, and opens tab
+   * @param {string} path - File path
+   * @param {string} changesetId - Optional changeset context
+   * @returns {string} - The generated artifact ID
+   */
+  prepareArtifactLoad(path, changesetId = null) {
+    const id = changesetId ? `${changesetId}:${path}` : path;
+    const filename = path.split('/').pop();
+    const extension = filename.includes('.') ? `.${filename.split('.').pop()}` : '';
+
+    batch(() => {
+      // Add placeholder artifact
+      this.addArtifact({
+        id,
+        path,
+        filename,
+        extension,
+        changesetId,
+        content: null
+      });
+
+      // Set loading state
+      this.setArtifactLoadState(id, 'loading');
+
+      // Open tab
+      this.openArtifactTab(id);
+    });
+
+    return id;
+  },
+
+  /**
+   * Complete artifact load with content
+   * @param {string} id - Artifact ID
+   * @param {Object} data - { content, mimeType, size }
+   */
+  completeArtifactLoad(id, data) {
+    const artifact = AppStore.artifacts.value.get(id);
+    if (artifact) {
+      batch(() => {
+        this.addArtifact({
+          ...artifact,
+          ...data
+        });
+        this.setArtifactLoadState(id, 'loaded');
+      });
+    }
+  },
+
+  /**
+   * Mark artifact load as failed
+   * @param {string} id - Artifact ID
+   * @param {string} error - Error message
+   */
+  failArtifactLoad(id, error) {
+    const artifact = AppStore.artifacts.value.get(id);
+    if (artifact) {
+      batch(() => {
+        this.addArtifact({
+          ...artifact,
+          error
+        });
+        this.setArtifactLoadState(id, 'error');
+      });
     }
   },
 };
