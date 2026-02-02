@@ -203,8 +203,8 @@
     {
       "name": "dashboard",
       "source": "./plugins/dashboard",
-      "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration.",
-      "version": "2.34.0",
+      "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration. Now includes passthrough mode for unified conversation context.",
+      "version": "2.35.5",
       "author": {
         "name": "Platform Team"
       },

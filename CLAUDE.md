@@ -57,8 +57,10 @@ Browser validation is **mandatory** for changes to:
 
 1. **Start the Dashboard Server** (if not running):
    ```bash
-   cd plugins/dashboard && python -m server.app
+   cd plugins/dashboard && python3 -m server.app
    ```
+
+   **Note:** Always use `python3` to execute Python files in this project.
 
 2. **Navigate to the Dashboard**:
    - Use Playwright MCP to open `http://localhost:24282`
@@ -221,7 +223,7 @@ Real-time web dashboard for visualizing the marketplace:
   - Handoff Timeline: Visual swimlane view of cross-domain handoffs
   - SDK Terminal: Interactive Claude terminal with streaming responses
 - **Tech**: Flask server, Lit Web Components, Preact Signals, D3.js
-- **Launch**: `/dashboard` or `python -m server.app --open-browser`
+- **Launch**: `/dashboard` or `python3 -m server.app --open-browser`
 - **URL**: http://localhost:24282
 
 See [Dashboard Frontend Architecture](#dashboard-frontend-architecture) for component development requirements.
@@ -441,6 +443,51 @@ You are **Agent Name**, the [Role] - [brief description].
 
 ## Key Responsibilities
 - What the agent does
+```
+
+## Dashboard Server Management
+
+### Starting the Server
+
+```bash
+cd plugins/dashboard && python3 -m server.app --no-parent-monitor
+```
+
+**Important:** Always use `python3` (not `python`) to execute Python files.
+
+### Server Options
+
+| Option | Purpose |
+|--------|---------|
+| `--no-parent-monitor` | Run standalone without parent process monitoring |
+| `--open-browser` | Open browser automatically on startup |
+| `--port PORT` | Use custom port (default: 24282) |
+| `--remote` | Allow remote connections (requires auth token) |
+
+### Stopping the Server
+
+```bash
+# Find and kill the server process
+lsof -ti:24282 | xargs kill -9
+
+# Or use the API endpoint
+curl -X POST http://localhost:24282/api/server/kill
+```
+
+### Restarting the Server
+
+```bash
+# Kill existing and start new
+lsof -ti:24282 | xargs kill -9 2>/dev/null || true
+sleep 2
+cd plugins/dashboard && python3 -m server.app --no-parent-monitor &
+```
+
+### Checking Server Status
+
+```bash
+curl -s http://localhost:24282/api/health
+# Returns: {"pid": 12345, "status": "healthy"}
 ```
 
 ## Dashboard Frontend Architecture
