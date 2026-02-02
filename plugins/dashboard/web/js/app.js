@@ -14,6 +14,7 @@ import { AgentService } from './services/agent-service.js';
 import { SkillService } from './services/skill-service.js';
 import { ChangesetService } from './services/changeset-service.js';
 import { ActivityService } from './services/activity-service.js';
+import { CommandService } from './services/command-service.js';
 
 // New services (Phase 3)
 import { TaskService } from './services/task-service.js';
@@ -74,6 +75,7 @@ import './components/core/resizable-panel.js';
 import './components/conversation/message-bubble.js';
 import './components/conversation/conversation-stream.js';
 import './components/conversation/changeset-viewer.js';
+import './components/conversation/conversation-input.js';
 import './components/indicators/thinking-indicator.js';
 import './components/indicators/connection-status.js';
 import './components/tool-cards/tool-card-base.js';
@@ -302,6 +304,18 @@ class DashboardApp {
             if (type === 'tool_use' || type === 'tool_result') {
                 ActivityService.handleToolEvent({ type, data: data?.data || data });
             }
+
+            // Route command events (passthrough mode)
+            if (type === 'command_completed' || type === 'command_error') {
+                const cmdData = data?.data || data;
+                console.log('[SSE] Command event:', type, cmdData);
+                CommandService.handleCommandComplete({
+                    command_id: cmdData.command_id,
+                    context_id: cmdData.context_id,
+                    status: type === 'command_error' ? 'error' : 'completed',
+                    error: cmdData.error
+                });
+            }
         });
 
         SSEService.connect('/api/stream');
@@ -340,6 +354,7 @@ class DashboardApp {
             Skill: SkillService,
             Changeset: ChangesetService,
             Activity: ActivityService,
+            Command: CommandService,
             // New services (Phase 3)
             Task: TaskService,
             Error: ErrorService,

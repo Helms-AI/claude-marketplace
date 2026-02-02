@@ -23,7 +23,8 @@ class TranscriptWatcher:
         transcript_reader,
         broadcast_callback: Callable[[dict, str], None],
         poll_interval: float = 0.5,
-        debug: bool = False
+        debug: bool = False,
+        command_service=None
     ):
         """Initialize the transcript watcher.
 
@@ -33,11 +34,13 @@ class TranscriptWatcher:
                                Signature: callback(data: dict, event_type: str)
             poll_interval: Time between file checks in seconds (default 0.5).
             debug: Enable debug logging.
+            command_service: Optional CommandService for response matching.
         """
         self.transcript_reader = transcript_reader
         self.broadcast_callback = broadcast_callback
         self.poll_interval = poll_interval
         self.debug = debug
+        self.command_service = command_service
 
         # Map of changeset_id -> watch info
         # watch info: {
@@ -335,6 +338,10 @@ class TranscriptWatcher:
                         self._log(f"Broadcasting task event: {task_event.get('event')}")
                         self.broadcast_callback(task_event, 'task_state_change')
 
+            # Match responses to commands (passthrough mode)
+            if self.command_service and msg_type == 'assistant':
+                self._match_response_to_command(msg_dict, changeset_id, session_id)
+
             return msg_dict
 
         except json.JSONDecodeError as e:
@@ -343,6 +350,64 @@ class TranscriptWatcher:
         except Exception as e:
             self._log(f"Error parsing transcript line: {e}")
             return None
+
+    def _match_response_to_command(
+        self,
+        message: dict,
+        changeset_id: str,
+        session_id: str
+    ) -> None:
+        """Match an assistant response to a processing command.
+
+        Uses FIFO matching - the oldest processing command gets the response.
+        This enables the passthrough mode to complete commands when the parent
+        session produces a response.
+
+        Args:
+            message: The assistant message dict.
+            changeset_id: The dashboard changeset ID.
+            session_id: Claude Code's native session ID.
+        """
+        if not self.command_service:
+            return
+
+        # Get processing commands (FIFO order)
+        processing = self.command_service.list_commands(status='processing')
+        if not processing:
+            return
+
+        # Match the oldest processing command
+        command = processing[0]
+        command_id = command.get('id')
+        if not command_id:
+            return
+
+        # Extract response text
+        response_text = message.get('text', '')
+        if not response_text:
+            # Try to get text from first text content block
+            content = message.get('content', [])
+            for block in content:
+                if isinstance(block, dict) and block.get('type') == 'text':
+                    response_text = block.get('text', '')
+                    break
+
+        # Update command status
+        self.command_service.update_command_status(
+            command_id,
+            status='completed',
+            result=response_text[:1000] if response_text else ''  # Truncate for storage
+        )
+
+        # Broadcast command completion via SSE
+        self._log(f"Command {command_id} completed with response")
+        self.broadcast_callback({
+            'command_id': command_id,
+            'status': 'completed',
+            'changeset_id': changeset_id,
+            'session_id': session_id,
+            'result_preview': response_text[:200] if response_text else ''
+        }, 'command_completed')
 
     def get_watched_changesets(self) -> list[str]:
         """Get list of currently watched changeset IDs.

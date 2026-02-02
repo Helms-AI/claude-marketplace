@@ -1,6 +1,18 @@
 #!/usr/bin/env python3
 """Marketplace SDK Bridge - Use Claude Agent SDK with marketplace plugins.
 
+.. deprecated:: 2.35.5
+    This module is deprecated. The Claude Agent SDK now natively supports
+    agent/skill discovery via the ``setting_sources`` configuration option.
+    Use ``setting_sources=["user", "project", "local"]`` in ClaudeAgentOptions
+    to enable automatic discovery from:
+    - User level: ``~/.claude/``
+    - Project level: ``.claude/``
+    - Local context: Current working directory
+
+    See :class:`conversation_service.ConversationService` for the preferred
+    implementation pattern, or use the SDK directly with ``setting_sources``.
+
 This module provides a bridge that allows the dashboard to query Claude
 using the Agent SDK while loading all marketplace agents and skills.
 
@@ -26,6 +38,7 @@ import asyncio
 import re
 import sys
 import random
+import warnings
 from pathlib import Path
 from typing import AsyncIterator, Optional, Any, Callable, TypeVar
 from dataclasses import dataclass, field
@@ -267,6 +280,10 @@ class MarketplaceSDKBridge:
     ):
         """Initialize the marketplace SDK bridge.
 
+        .. deprecated:: 2.35.5
+            Use ``ClaudeAgentOptions(setting_sources=["user", "project", "local"])``
+            for native agent discovery instead.
+
         Args:
             cwd: Working directory for Claude operations (your project path)
             marketplace_path: Path to claude-marketplace repo (defaults to cwd)
@@ -280,6 +297,12 @@ class MarketplaceSDKBridge:
             enable_betas: Whether to enable beta features like extended context (Phase 3.3)
             enable_sandbox: Whether to enable sandbox configuration (Phase 3.4)
         """
+        warnings.warn(
+            "MarketplaceSDKBridge is deprecated. Use ClaudeAgentOptions with "
+            "setting_sources=['user', 'project', 'local'] for native agent discovery.",
+            DeprecationWarning,
+            stacklevel=2
+        )
         self.cwd = cwd
         self.marketplace_path = marketplace_path or cwd
         self.permission_mode = permission_mode
@@ -548,7 +571,7 @@ class MarketplaceSDKBridge:
             permission_mode=self.permission_mode,
             plugins=self.plugins,
             agents=self.agents,
-            setting_sources=["user", "project"],
+            setting_sources=["user", "project", "local"],
             # CRITICAL: Enable streaming events for lifecycle visibility
             include_partial_messages=True,
             # Model configuration (Phase 1.1)

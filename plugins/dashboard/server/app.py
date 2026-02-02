@@ -25,9 +25,39 @@ from .services.changeset_tracker import ChangesetTracker
 from .services.event_store import EventStore
 from .services.file_watcher import FileWatcher
 from .services.changeset_watcher import ChangesetWatcher, ChangesetFileEvent
-from .routes import agents_bp, skills_bp, changesets_bp, events_bp, stream_bp, capabilities_bp, processes_bp, input_bp
+from .routes import agents_bp, skills_bp, changesets_bp, events_bp, stream_bp, capabilities_bp, processes_bp, input_bp, commands_bp, conversation_bp
+from .services.conversation_service import get_conversation_service
 from .services.transcript_reader import TranscriptReader
 from .services.transcript_watcher import TranscriptWatcher
+from .services.command_service import CommandService
+
+
+def find_project_root(start_path: str = None) -> str:
+    """Find the project root by looking for .git directory.
+
+    Traverses up from start_path until it finds a .git directory,
+    indicating the root of a git repository. Falls back to start_path
+    if no git root is found.
+
+    Args:
+        start_path: Directory to start searching from. Defaults to cwd.
+
+    Returns:
+        Path to the project root directory.
+    """
+    if start_path is None:
+        start_path = os.getcwd()
+
+    current = os.path.abspath(start_path)
+
+    # Traverse up looking for .git directory
+    while current != os.path.dirname(current):  # Stop at filesystem root
+        if os.path.isdir(os.path.join(current, '.git')):
+            return current
+        current = os.path.dirname(current)
+
+    # Fallback to start path if no git root found
+    return start_path
 
 
 def get_changeset_snapshot(changeset) -> dict:
@@ -283,11 +313,23 @@ def create_app(local_only: bool = True) -> Flask:
         if debug_mode:
             print(f"[Dashboard] Broadcast {event_type} to {sent} clients", flush=True)
 
+    # Initialize command service for passthrough mode
+    # Use project root (git root) so the queue is accessible to Claude Code hooks
+    project_root = find_project_root(cwd)
+    command_service = CommandService(project_path=project_root, debug=debug_mode)
+    print(f"Command service initialized for passthrough mode: {project_root}")
+
+    # Initialize conversation service for direct SDK messaging
+    # Uses same project root for access to agents/skills
+    conversation_service = get_conversation_service(project_root, debug=debug_mode)
+    print(f"Conversation service initialized: {project_root}")
+
     transcript_watcher = TranscriptWatcher(
         transcript_reader,
         broadcast_callback=transcript_broadcast,
         poll_interval=0.5,
-        debug=debug_mode
+        debug=debug_mode,
+        command_service=command_service
     )
     transcript_watcher.start()
 
@@ -382,6 +424,7 @@ def create_app(local_only: bool = True) -> Flask:
     app.config['changeset_watcher'] = changeset_watcher
     app.config['transcript_reader'] = transcript_reader
     app.config['transcript_watcher'] = transcript_watcher
+    app.config['command_service'] = command_service
     app.config['plugin_paths'] = plugin_paths
     app.config['project_paths'] = project_paths
 
@@ -394,6 +437,8 @@ def create_app(local_only: bool = True) -> Flask:
     app.register_blueprint(capabilities_bp)
     app.register_blueprint(processes_bp)
     app.register_blueprint(input_bp)
+    app.register_blueprint(commands_bp)
+    app.register_blueprint(conversation_bp)
 
     # Static file routes
     @app.route('/')

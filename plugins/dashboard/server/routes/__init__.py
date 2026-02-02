@@ -7,6 +7,8 @@ from .stream import stream_bp
 from .capabilities import capabilities_bp
 from .processes import processes_bp
 from .input import input_bp
+from .commands import commands_bp
+from .conversation import conversation_bp
 
 __all__ = [
     'agents_bp',
@@ -17,4 +19,6 @@ __all__ = [
     'capabilities_bp',
     'processes_bp',
     'input_bp',
+    'commands_bp',
+    'conversation_bp',
 ]

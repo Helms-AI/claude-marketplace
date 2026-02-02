@@ -225,6 +225,12 @@ export const AppStore = {
   // Attachment State (for terminal input attachments)
   // ─────────────────────────────────────────────────────────────
   currentAttachments: signal([]),              // Array of current attachments pending send
+
+  // ─────────────────────────────────────────────────────────────
+  // Passthrough Mode State (command queue)
+  // ─────────────────────────────────────────────────────────────
+  pendingCommand: signal(null),                // { message, contextId, timestamp }
+  passthroughActive: signal(false),            // Is parent Claude session active?
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -1051,6 +1057,47 @@ export const Actions = {
    */
   getAttachments() {
     return AppStore.currentAttachments.value;
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // Passthrough Mode Actions
+  // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Set a pending command
+   * @param {Object} command - { message, contextId, timestamp }
+   */
+  setPendingCommand(command) {
+    AppStore.pendingCommand.value = command;
+  },
+
+  /**
+   * Clear pending command for a context
+   * @param {string} contextId - Context to clear
+   */
+  clearPendingCommand(contextId) {
+    const current = AppStore.pendingCommand.value;
+    if (current && current.contextId === contextId) {
+      AppStore.pendingCommand.value = null;
+    }
+  },
+
+  /**
+   * Set passthrough active state
+   * @param {boolean} active - Whether parent session is active
+   */
+  setPassthroughActive(active) {
+    AppStore.passthroughActive.value = active;
+  },
+
+  /**
+   * Check if a command is pending for a context
+   * @param {string} contextId - Context to check
+   * @returns {boolean}
+   */
+  isPendingForContext(contextId) {
+    const current = AppStore.pendingCommand.value;
+    return current && current.contextId === contextId;
   },
 };
 

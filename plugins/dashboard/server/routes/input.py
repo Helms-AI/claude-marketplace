@@ -61,6 +61,34 @@ def _find_marketplace_path() -> str:
     return os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 
+def _find_project_root(start_path: str = None) -> str:
+    """Find the project root by looking for .git directory.
+
+    Traverses up from start_path until it finds a .git directory,
+    indicating the root of a git repository. Falls back to start_path
+    if no git root is found.
+
+    Args:
+        start_path: Directory to start searching from. Defaults to cwd.
+
+    Returns:
+        Path to the project root directory.
+    """
+    if start_path is None:
+        start_path = os.getcwd()
+
+    current = os.path.abspath(start_path)
+
+    # Traverse up looking for .git directory
+    while current != os.path.dirname(current):  # Stop at filesystem root
+        if os.path.isdir(os.path.join(current, '.git')):
+            return current
+        current = os.path.dirname(current)
+
+    # Fallback to start path if no git root found
+    return start_path
+
+
 def get_sdk_bridge():
     """Get or create the SDK bridge singleton."""
     global _sdk_bridge
@@ -69,15 +97,15 @@ def get_sdk_bridge():
             try:
                 from ..services.marketplace_sdk_bridge import MarketplaceSDKBridge
 
-                # Determine paths
-                cwd = os.getcwd()
+                # Determine paths - use project root (git root) for proper context
+                project_root = _find_project_root(os.getcwd())
                 marketplace_path = _find_marketplace_path()
 
                 _sdk_bridge = MarketplaceSDKBridge(
-                    cwd=cwd,
+                    cwd=project_root,
                     marketplace_path=marketplace_path
                 )
-                print(f"[SDK] Initialized bridge with cwd={cwd}, marketplace={marketplace_path}", file=sys.stderr)
+                print(f"[SDK] Initialized bridge with cwd={project_root}, marketplace={marketplace_path}", file=sys.stderr)
             except ImportError as e:
                 print(f"[SDK] Failed to import MarketplaceSDKBridge: {e}", file=sys.stderr)
                 return None
