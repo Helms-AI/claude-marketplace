@@ -10,3 +10,4 @@ export { EditorArea } from './editor-area.js';
 export { TabBar } from './tab-bar.js';
 export { StatusBar } from './status-bar.js';
 export { ActivitiesAside } from './activities-aside.js';
+export { ArtifactShell } from './artifact-shell.js';
