@@ -1,0 +1,28 @@
+{
+  "hooks": [
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Bash"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## DevOps: Deployment Safety Check\n\nBefore executing this command, verify deployment safety:\n\n**BLOCK and require explicit confirmation:**\n- `kubectl delete namespace` or `kubectl delete deployment` in production\n- `terraform destroy` without explicit state targeting\n- `docker system prune -af` (removes all unused data)\n- Force deployments that skip health checks\n- Direct production database access commands\n- Helm rollbacks without version specification\n\n**WARN:**\n- `kubectl apply` to production without dry-run first\n- Container image tags using `latest`\n- Deployments without resource limits\n- Commands that modify production secrets\n- Scale-to-zero operations\n\n**REQUIRE dry-run suggestion for:**\n- Any `kubectl apply` command → suggest adding `--dry-run=client`\n- Any `terraform apply` command → suggest `terraform plan` first\n- Any `helm upgrade` → suggest `--dry-run` flag\n\nOutput: 'SAFE', 'BLOCKED: [reason]', 'WARNING: [concern]', or 'SUGGEST: [dry-run command]'."
+        }
+      ]
+    },
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## DevOps: Infrastructure as Code Safety\n\nIf this file is IaC (Terraform, Kubernetes YAML, Docker Compose, Helm), verify:\n\n**BLOCK:**\n- Security groups with 0.0.0.0/0 ingress on sensitive ports (22, 3306, 5432, 27017)\n- Container images without explicit tags (using `latest`)\n- Secrets stored in plaintext in config\n- Missing resource limits on containers\n- Privileged container security contexts\n\n**WARN:**\n- Missing health checks on deployments\n- No pod disruption budgets for critical services\n- Missing network policies\n- No backup configuration for stateful workloads\n\n**BEST PRACTICES to note:**\n- Suggest adding resource requests/limits\n- Suggest adding liveness/readiness probes\n- Suggest using sealed secrets or external secrets operator\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    }
+  ]
+}

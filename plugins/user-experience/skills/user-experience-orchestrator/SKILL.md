@@ -16,6 +16,10 @@ When invoked with `/user-experience-orchestrator` or when the user asks about de
 > "Great design starts with understanding—let's discover what we're creating before we build anything."
 ```
 
+## Changeset Integration
+
+If a changeset context exists (check `.claude/changesets/` for active changesets), reference it in your response and store design artifacts in the changeset's artifacts directory.
+
 ## Workflow: Design Phase → Implementation Handoff
 
 The user-experience plugin handles the **pre-code design phase**:
