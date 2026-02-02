@@ -1,0 +1,40 @@
+{
+  "hooks": [
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Bash"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Security: Dangerous Command Check\n\nBefore executing this Bash command, verify it does NOT contain:\n\n**BLOCK if any found:**\n- `rm -rf /` or similar destructive patterns\n- Commands accessing `/etc/passwd`, `/etc/shadow`, or system credentials\n- `curl | bash` or `wget | sh` (unsafe piped execution)\n- Commands with hardcoded passwords, API keys, or secrets\n- `chmod 777` (world-writable permissions)\n- `eval` with untrusted input\n- Database drops without explicit user confirmation\n\n**WARN (allow but note risk):**\n- Any `sudo` commands\n- Network commands to unknown hosts\n- File deletions without explicit paths\n- Git force pushes\n\nIf dangerous patterns found, STOP and ask user for confirmation before proceeding.\n\nOutput: If safe, respond 'SAFE'. If blocked, respond 'BLOCKED: [reason]'. If warning, respond 'WARNING: [risk]'."
+        }
+      ]
+    },
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Security: Secrets Detection\n\nBefore writing this file, scan the content for potential secrets:\n\n**BLOCK if any found:**\n- API keys (patterns like `sk-`, `pk_live_`, `AKIA`, `ghp_`)\n- Private keys (RSA, SSH, PGP blocks)\n- Database connection strings with passwords\n- JWT tokens\n- AWS credentials\n- Plaintext passwords in config files\n\n**WARN:**\n- Environment variable references that might contain secrets\n- Config files that should use env vars instead of hardcoded values\n\nIf secrets detected, STOP and suggest using environment variables or a secrets manager instead.\n\nOutput: If safe, respond 'SAFE'. If blocked, respond 'BLOCKED: Found [secret type] at [location]'. If warning, respond 'WARNING: [concern]'."
+        }
+      ]
+    },
+    {
+      "type": "PostToolUse",
+      "matcher": {
+        "tool_name": "Read"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Security: Sensitive Data Audit\n\nAfter reading this file, note if it contains sensitive data that should not be:\n- Logged\n- Displayed to users\n- Committed to version control\n- Shared in error messages\n\nIf sensitive data found, remind the user to handle it appropriately and not expose it in outputs."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "hooks": [
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Architecture: ADR Quality Check\n\nIf this is an Architecture Decision Record (ADR), verify:\n\n**Required ADR sections:**\n- Title with ADR number\n- Status (proposed/accepted/deprecated/superseded)\n- Context (why this decision is needed)\n- Decision (what was decided)\n- Consequences (positive, negative, neutral)\n\n**Quality criteria:**\n- Decision is clear and actionable\n- Alternatives considered are documented\n- Consequences include both benefits AND drawbacks\n- Links to related ADRs if applicable\n\n**WARN if:**\n- No alternatives considered section\n- Only positive consequences listed\n- Status is missing or unclear\n- No date or author attribution\n\n**BLOCK:**\n- ADR without clear decision statement\n- ADR without any consequences documented\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    },
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Architecture: API Contract Validation\n\nIf this is an API specification (OpenAPI, GraphQL schema, etc.), verify:\n\n**Required:**\n- Version information included\n- All endpoints have descriptions\n- Request/response schemas defined\n- Error responses documented (at least 400, 401, 404, 500)\n- Authentication requirements specified\n\n**Best practices (WARN if missing):**\n- Pagination for list endpoints\n- Rate limiting documentation\n- Deprecation notices for old endpoints\n- Example requests/responses\n- Versioning strategy clear\n\n**BLOCK:**\n- Breaking changes without version bump\n- Endpoints without any documentation\n- Missing authentication specification for protected routes\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    },
+    {
+      "type": "PostToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Architecture: Documentation Reminder\n\nAfter creating architecture artifacts, remind about:\n\n- [ ] ADR created for significant decisions?\n- [ ] System diagram updated?\n- [ ] API contracts documented?\n- [ ] Security considerations noted?\n- [ ] Scalability implications documented?\n\nSuggest `/docs-orchestrator` for comprehensive documentation."
+        }
+      ]
+    }
+  ]
+}

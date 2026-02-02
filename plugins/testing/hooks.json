@@ -1,0 +1,40 @@
+{
+  "hooks": [
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Testing: Test Quality Standards\n\nIf this is a test file, verify:\n\n**Required test structure:**\n- Clear test name describing behavior (not implementation)\n- Arrange-Act-Assert pattern followed\n- One assertion concept per test\n- Test isolation (no shared mutable state)\n- Proper cleanup in afterEach/afterAll\n\n**Unit test requirements:**\n- External dependencies mocked\n- Edge cases covered (null, empty, boundary)\n- Error cases tested\n- No network calls in unit tests\n\n**Integration test requirements:**\n- Realistic test data\n- Database state properly managed\n- API contracts validated\n- Timeout handling appropriate\n\n**E2E test requirements:**\n- Stable selectors (data-testid preferred)\n- Retry logic for flaky operations\n- Screenshots on failure configured\n- Test data cleanup strategy\n\n**WARN if:**\n- Test names use 'should' without clear behavior\n- Multiple unrelated assertions in one test\n- Hardcoded waits/sleeps instead of proper waits\n- No negative/error case tests\n\n**BLOCK:**\n- Tests with no assertions\n- Tests depending on other tests' state\n- Credentials/secrets in test files\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    },
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Bash"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Testing: Test Execution Safety\n\nBefore running test commands, verify:\n\n**WARN:**\n- Running E2E tests against production (check URLs)\n- Test commands without timeout flags\n- Parallel tests on shared resources\n- Missing `--no-sandbox` in containerized Chrome\n\n**SAFE patterns:**\n- Tests running against localhost or test environment\n- Proper CI environment detection\n- Coverage collection enabled\n- Test reports being generated\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    },
+    {
+      "type": "PostToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Testing: Coverage Reminder\n\nAfter creating tests:\n\n- [ ] Happy path covered?\n- [ ] Error cases covered?\n- [ ] Edge cases covered (empty, null, boundary)?\n- [ ] Integration points tested?\n- [ ] Coverage meets threshold (typically 80%)?\n\nRun `/testing-coverage-analyzer` for detailed coverage report."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "hooks": [
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Bash"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Backend: Database Safety Check\n\nBefore executing this command, check for dangerous database operations:\n\n**BLOCK and require explicit confirmation:**\n- `DROP DATABASE` or `DROP TABLE` without `IF EXISTS`\n- `TRUNCATE TABLE` on production tables\n- `DELETE FROM` without `WHERE` clause\n- `UPDATE` without `WHERE` clause (affects all rows)\n- Migration `down` commands in production\n- Direct database connections with hardcoded credentials\n\n**WARN:**\n- Schema migrations that drop columns\n- Index removals on large tables\n- Bulk insert operations without transaction wrapping\n- Foreign key constraint modifications\n\n**SAFE patterns:**\n- Migrations with proper up/down\n- Queries with explicit WHERE clauses\n- Read operations (SELECT)\n- Test database operations\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    },
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Backend: Migration Safety Check\n\nIf this file is a database migration, verify:\n\n**Required:**\n- Has both `up` and `down` functions\n- Down migration is reversible\n- Timestamp-based naming convention followed\n- No destructive operations without data backup strategy noted\n\n**WARN if missing:**\n- Transaction wrapping for multi-step migrations\n- Rollback strategy documentation\n- Index considerations for large tables\n\n**BLOCK:**\n- Migrations that drop columns without data migration plan\n- Migrations that change column types with potential data loss\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    }
+  ]
+}

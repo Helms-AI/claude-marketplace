@@ -1,0 +1,40 @@
+{
+  "hooks": [
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Bash"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Data: Pipeline Safety Check\n\nBefore executing data pipeline commands, verify:\n\n**BLOCK if found:**\n- `DROP TABLE` or `TRUNCATE` on production data sources\n- ETL jobs writing to production without `--dry-run` first\n- Data deletion commands without backup confirmation\n- Overwriting source data (should be immutable)\n- Running pipelines with hardcoded credentials\n\n**WARN:**\n- Large data transformations without partition limits\n- Full table scans on tables >1M rows\n- Schema changes on active pipelines\n- Missing `--limit` flag on test runs\n- Backfill operations without date bounds\n\n**SAFE patterns:**\n- Read-only queries with LIMIT\n- Dry-run mode operations\n- Writing to staging/test environments\n- Incremental processing with date bounds\n- Idempotent operations\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    },
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Data: Model & Schema Validation\n\nIf this is a data model, schema, or dbt model file, verify:\n\n**Required for data models:**\n- Primary key defined\n- Nullable fields explicitly marked\n- Data types appropriate (no stringly-typed data)\n- Foreign key relationships documented\n- Indexes defined for common query patterns\n\n**dbt model requirements:**\n- Model has description in schema.yml\n- Tests defined (at minimum: unique, not_null for PKs)\n- Materialization strategy appropriate\n- Source freshness checks for critical sources\n\n**WARN if:**\n- No tests defined for the model\n- Missing documentation\n- Wide tables without clear use case\n- Denormalization without performance justification\n\n**BLOCK:**\n- Model without primary key or unique constraint\n- PII columns without encryption/hashing note\n- Hardcoded environment-specific values\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    },
+    {
+      "type": "PostToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Data: Governance Reminder\n\nAfter creating data models or pipelines:\n\n- [ ] Data lineage documented?\n- [ ] PII/sensitive data flagged?\n- [ ] Retention policy defined?\n- [ ] Access controls specified?\n- [ ] Data quality tests added?\n\nConsider `/data-governance-advisor` for compliance review."
+        }
+      ]
+    }
+  ]
+}
