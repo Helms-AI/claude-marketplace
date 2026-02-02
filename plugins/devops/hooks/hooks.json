@@ -1,5 +1,5 @@
 {
-  "description": "DevOps plugin hooks - deployment safety, infrastructure validation, CI/CD checks",
+  "description": "DevOps plugin hooks - deployment safety, infrastructure validation, CI/CD checks, observability telemetry",
   "hooks": {
     "PreToolUse": [
       {
@@ -10,6 +10,17 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-devops-command.sh",
             "timeout": 10,
             "statusMessage": "Validating DevOps command..."
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/telemetry/pre-tool-monitor.sh",
+            "timeout": 5,
+            "statusMessage": "Capturing telemetry..."
           }
         ]
       }
@@ -25,6 +36,30 @@
             "statusMessage": "Validating infrastructure changes..."
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/telemetry/post-tool-monitor.sh",
+            "timeout": 5,
+            "statusMessage": "Recording telemetry..."
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/telemetry/subagent-start-monitor.sh",
+            "timeout": 5,
+            "statusMessage": "Tracking agent invocation..."
+          }
+        ]
       }
     ],
     "SubagentStop": [
@@ -35,6 +70,12 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/scripts/devops-summary.sh",
             "timeout": 10,
             "statusMessage": "Generating DevOps summary..."
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/telemetry/subagent-stop-monitor.sh",
+            "timeout": 5,
+            "statusMessage": "Recording agent completion..."
           }
         ]
       }

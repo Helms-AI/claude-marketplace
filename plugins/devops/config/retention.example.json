@@ -1,0 +1,61 @@
+{
+  "description": "Telemetry data retention policy configuration",
+  "version": "1.0.0",
+  "retention_policies": {
+    "raw_events": {
+      "current_days": 7,
+      "description": "Uncompressed JSONL event logs",
+      "storage_format": "jsonl",
+      "compression": false,
+      "estimated_size_per_day_mb": 2
+    },
+    "archived_events": {
+      "archive_days": 30,
+      "description": "Compressed event logs (7-30 days old)",
+      "storage_format": "jsonl.gz",
+      "compression": true,
+      "compression_level": 9,
+      "estimated_size_per_day_mb": 0.5
+    },
+    "hourly_metrics": {
+      "retention_days": 90,
+      "description": "Pre-aggregated hourly statistics",
+      "storage_format": "json",
+      "compression": false,
+      "estimated_size_per_hour_kb": 50
+    },
+    "daily_metrics": {
+      "retention_days": 365,
+      "description": "Daily rollup statistics",
+      "storage_format": "json",
+      "compression": false,
+      "estimated_size_per_day_kb": 100
+    },
+    "alert_history": {
+      "retention_days": 365,
+      "description": "Alert fire/resolve events",
+      "storage_format": "jsonl",
+      "compression": false,
+      "estimated_size_per_day_kb": 10
+    }
+  },
+  "cleanup_schedule": {
+    "enabled": true,
+    "frequency": "daily",
+    "run_time": "02:00",
+    "description": "Automated cleanup runs daily at 2 AM UTC"
+  },
+  "disk_usage_limits": {
+    "max_total_size_mb": 500,
+    "warning_threshold_mb": 400,
+    "critical_threshold_mb": 450,
+    "action_on_critical": "compress_oldest_logs_first"
+  },
+  "export_settings": {
+    "enabled": false,
+    "export_format": "csv",
+    "export_interval_days": 30,
+    "export_destination": "/path/to/export",
+    "description": "Optional export for external analysis tools"
+  }
+}

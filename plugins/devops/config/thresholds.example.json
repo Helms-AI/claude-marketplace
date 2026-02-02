@@ -1,0 +1,67 @@
+{
+  "description": "Alert threshold configuration for agent marketplace observability",
+  "version": "1.0.0",
+  "thresholds": {
+    "agent_error_rate": {
+      "threshold": 0.10,
+      "window_minutes": 15,
+      "severity": "critical",
+      "description": "Fires when agent error rate exceeds 10% over 15 minutes"
+    },
+    "handoff_stuck": {
+      "threshold_minutes": 5,
+      "severity": "critical",
+      "description": "Fires when cross-domain handoff is pending for > 5 minutes"
+    },
+    "tool_latency_slow": {
+      "p95_multiplier": 2.0,
+      "window_minutes": 30,
+      "severity": "warning",
+      "description": "Fires when tool P95 latency exceeds 2x baseline"
+    },
+    "retry_rate_high": {
+      "threshold": 0.20,
+      "window_hours": 1,
+      "severity": "warning",
+      "description": "Fires when retry rate exceeds 20% over 1 hour"
+    },
+    "disk_usage": {
+      "warning_threshold_percent": 80,
+      "critical_threshold_percent": 90,
+      "check_interval_minutes": 60,
+      "description": "Fires when telemetry disk usage exceeds thresholds"
+    }
+  },
+  "baselines": {
+    "tool_latency_ms": {
+      "Write": {"p50": 200, "p95": 500, "p99": 1000},
+      "Edit": {"p50": 150, "p95": 400, "p99": 800},
+      "Bash": {"p50": 500, "p95": 2000, "p99": 5000},
+      "Read": {"p50": 50, "p95": 100, "p99": 200}
+    },
+    "agent_success_rate": {
+      "target": 0.95,
+      "excellent": 0.99,
+      "warning": 0.90,
+      "critical": 0.85
+    },
+    "handoff_completion_rate": {
+      "target": 0.98,
+      "excellent": 0.995,
+      "warning": 0.95,
+      "critical": 0.90
+    }
+  },
+  "circuit_breaker": {
+    "consecutive_failures_threshold": 5,
+    "cooldown_minutes": 15,
+    "enabled": true,
+    "description": "Disables agent/skill after 5 consecutive failures for 15 minutes"
+  },
+  "log_rotation": {
+    "max_file_size_mb": 100,
+    "compress_after_days": 7,
+    "archive_after_days": 30,
+    "auto_rotate": true
+  }
+}

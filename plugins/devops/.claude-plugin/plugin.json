@@ -1,17 +1,12 @@
 {
   "name": "devops",
   "description": "DevOps and infrastructure including CI/CD, containerization, orchestration, and cloud infrastructure.",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "homepage": "https://github.com/Helms-AI/claude-marketplace",
   "repository": "https://github.com/Helms-AI/claude-marketplace",
   "license": "MIT",
   "keywords": ["devops", "ci-cd", "docker", "kubernetes", "terraform", "infrastructure"],
   "skills": ["./skills/"],
-  "hooks": "./hooks/hooks.json",
-  "mcp": "./mcp.json",
-  "lsp": "./lsp.json",
-  "statusLine": {
-    "template": "DevOps | Pipeline: ${pipeline_status} | Deploy: ${deploy_env}",
-    "refresh": "on-change"
-  }
+  "mcpServers": "./.claude-plugin/mcp.json",
+  "lspServers": "./.claude-plugin/lsp.json"
 }
