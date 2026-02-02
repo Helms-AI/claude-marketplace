@@ -10,6 +10,7 @@ import { SignalWatcher } from '../core/signal-watcher.js';
 import { AppStore } from '../../store/app-state.js';
 import '../atoms/icon.js';
 import '../atoms/segmented-control.js';
+import './events-panel.js';
 
 /**
  * Panel Registry - Register new panel types here
@@ -38,6 +39,19 @@ export const PANEL_REGISTRY = [
         label: 'Files',
         icon: 'folder',
         component: 'activity-file-tree'
+    },
+    {
+        id: 'events',
+        label: 'Events',
+        icon: 'radio',
+        component: 'events-panel',
+        badge: () => {
+            // Show unread count when paused, otherwise show events/sec if > 0
+            const unread = AppStore.sseUnreadCount?.value || 0;
+            if (unread > 0) return unread;
+            const rate = AppStore.sseEventsPerSecond?.value || 0;
+            return rate > 0 ? rate : null;
+        }
     },
     {
         id: 'attachments',
@@ -179,7 +193,9 @@ class ActivitiesPanelContainer extends SignalWatcher(LitElement) {
         super.connectedCallback();
         this.watchSignals([
             AppStore.activities,
-            AppStore.currentAttachments
+            AppStore.currentAttachments,
+            AppStore.sseUnreadCount,
+            AppStore.sseEventsPerSecond
         ]);
     }
 
@@ -266,6 +282,8 @@ class ActivitiesPanelContainer extends SignalWatcher(LitElement) {
                 return html`<activity-file-tree></activity-file-tree>`;
             case 'attachment-panel':
                 return html`<attachment-panel></attachment-panel>`;
+            case 'events-panel':
+                return html`<events-panel></events-panel>`;
             default:
                 return html`<div class="empty-state"><p>Unknown panel: ${tagName}</p></div>`;
         }

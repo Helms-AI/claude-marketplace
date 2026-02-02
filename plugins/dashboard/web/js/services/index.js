@@ -25,6 +25,7 @@ export { SkillService } from './skill-service.js';
 export { ChangesetService } from './changeset-service.js';
 export { ActivityService, ActivityStatus } from './activity-service.js';
 export { CommandService, CommandStatus } from './command-service.js';
+export { EventsService } from './events-service.js';
 
 // Input services
 export { AttachmentService, SUPPORTED_IMAGE_TYPES, MAX_FILE_SIZE, MAX_ATTACHMENTS } from './attachment-service.js';

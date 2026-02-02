@@ -15,6 +15,7 @@ import { SkillService } from './services/skill-service.js';
 import { ChangesetService } from './services/changeset-service.js';
 import { ActivityService } from './services/activity-service.js';
 import { CommandService } from './services/command-service.js';
+import { EventsService } from './services/events-service.js';
 
 // New services (Phase 3)
 import { TaskService } from './services/task-service.js';
@@ -182,18 +183,14 @@ class DashboardApp {
                 }
             }
 
-            // Route transcript messages to conversation AND terminal (real-time updates)
+            // Route transcript messages to conversation viewer
             if (type === 'transcript_message') {
                 const msgData = data?.data || data;
                 const watchedId = AppStore.watchedChangesetId.value;
-                const terminalSessionId = AppStore.sessionId.value;
-                const eventSessionId = msgData.session_id;
 
                 console.log('[SSE] transcript_message received:', {
                     changeset_id: msgData.changeset_id,
-                    session_id: eventSessionId,
                     watchedId,
-                    terminalSessionId,
                     source: msgData.source,
                     role: msgData.message?.role
                 });
@@ -253,36 +250,6 @@ class DashboardApp {
                         });
                     }
                 }
-
-                // Route to Terminal if session ID matches the terminal's session
-                // This allows the terminal to show real-time updates from file watching
-                if (terminalSessionId && eventSessionId && terminalSessionId === eventSessionId) {
-                    const message = msgData.message;
-                    if (message && message.role) {
-                        // Only add messages from the main transcript (not subagents) to terminal
-                        // since the terminal represents the main conversation
-                        if (msgData.source === 'main') {
-                            // Check if this message already exists in terminal (avoid duplicates)
-                            const existingMessages = AppStore.terminalMessages.value;
-                            const isDuplicate = existingMessages.some(m =>
-                                m.role === message.role &&
-                                m.content === message.text &&
-                                Math.abs(new Date(m.timestamp || 0) - new Date(message.timestamp || 0)) < 1000
-                            );
-
-                            if (!isDuplicate) {
-                                Actions.addTerminalMessage({
-                                    role: message.role,
-                                    content: message.text || '',
-                                    tools: message.tool_calls || [],
-                                    timestamp: message.timestamp,
-                                    fromSSE: true // Mark as from SSE for potential styling
-                                });
-                                console.log('[SSE] Added transcript_message to terminal');
-                            }
-                        }
-                    }
-                }
             }
 
             // Route conversation events
@@ -319,6 +286,9 @@ class DashboardApp {
         });
 
         SSEService.connect('/api/stream');
+
+        // Initialize EventsService to capture all SSE events for the Events Monitor
+        EventsService.init();
     }
 
     async _initSDK() {
@@ -349,12 +319,12 @@ class DashboardApp {
         window.DashboardActions = Actions;
         window.DashboardServices = {
             SSE: SSEService,
-            SDK: SDKClient,
             Agent: AgentService,
             Skill: SkillService,
             Changeset: ChangesetService,
             Activity: ActivityService,
             Command: CommandService,
+            Events: EventsService,
             // New services (Phase 3)
             Task: TaskService,
             Error: ErrorService,
@@ -371,7 +341,11 @@ class DashboardApp {
         // Note: SSE event routing is now consolidated in _initSSE()
     }
 
-    destroy() { SSEService.disconnect(); this._initialized = false; }
+    destroy() {
+        EventsService.disconnect();
+        SSEService.disconnect();
+        this._initialized = false;
+    }
 }
 
 const app = new DashboardApp();

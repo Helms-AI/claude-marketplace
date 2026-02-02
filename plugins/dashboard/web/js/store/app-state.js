@@ -166,6 +166,16 @@ export const AppStore = {
   streamingTools: signal([]),    // LEGACY: kept for backwards compatibility
 
   // ─────────────────────────────────────────────────────────────
+  // Tool Activity Indicator State (real-time tool display)
+  // ─────────────────────────────────────────────────────────────
+  // Current streaming tool for activity indicator display
+  // Structure: { tool: 'Read', input: {...}, id: '...', startTime: Date.now() }
+  currentStreamingTool: signal(null),
+  // Current agent context (if available from subagent)
+  // Structure: { name: 'Ryan Helms', role: 'Researcher', domain: 'frontend' }
+  currentStreamingAgent: signal(null),
+
+  // ─────────────────────────────────────────────────────────────
   // Token/Cost Tracking
   // ─────────────────────────────────────────────────────────────
   tokenUsage: signal({
@@ -231,6 +241,20 @@ export const AppStore = {
   // ─────────────────────────────────────────────────────────────
   pendingCommand: signal(null),                // { message, contextId, timestamp }
   passthroughActive: signal(false),            // Is parent Claude session active?
+
+  // ─────────────────────────────────────────────────────────────
+  // SSE Events Monitor State
+  // ─────────────────────────────────────────────────────────────
+  sseEvents: signal([]),                       // Circular buffer of SSE events
+  sseEventCount: signal(0),                    // Total running count of events received
+  sseEventsFilter: signal(''),                 // Keyword filter string
+  sseEventsFilterType: signal('all'),          // Category filter (all/changeset/activity/etc)
+  sseEventsPaused: signal(false),              // Auto-scroll pause state
+  sseLastEventTime: signal(null),              // Last event timestamp
+  sseEventsPerSecond: signal(0),               // Rolling throughput metric
+  sseUnreadCount: signal(0),                   // Events received while paused
+  sseEventBufferSize: signal(500),             // Configurable buffer limit (100-2000)
+  sseHiddenEventTypes: signal(['heartbeat']),  // Event types to hide (default: heartbeat)
 };
 
 // ─────────────────────────────────────────────────────────────────
@@ -389,6 +413,87 @@ export const filteredToolActivities = computed(() => {
     return toolName.toLowerCase().includes(filter) ||
            filePath.toLowerCase().includes(filter);
   });
+});
+
+/**
+ * SSE Events filtered by category and keyword, excluding hidden event types
+ */
+export const filteredSSEEvents = computed(() => {
+  const events = AppStore.sseEvents.value;
+  const filter = AppStore.sseEventsFilter.value.toLowerCase();
+  const filterType = AppStore.sseEventsFilterType.value;
+  const hiddenTypes = AppStore.sseHiddenEventTypes.value;
+
+  return events.filter(event => {
+    // Filter out hidden event types
+    if (hiddenTypes.includes(event.type)) return false;
+
+    // Filter by category
+    if (filterType !== 'all') {
+      const eventCategory = getSSEEventCategory(event.type);
+      if (eventCategory !== filterType) return false;
+    }
+
+    // Filter by keyword
+    if (filter) {
+      const searchText = JSON.stringify(event).toLowerCase();
+      if (!searchText.includes(filter)) return false;
+    }
+
+    return true;
+  });
+});
+
+/**
+ * Get the category for an SSE event type
+ */
+function getSSEEventCategory(type) {
+  if (!type) return 'system';
+  const t = type.toLowerCase();
+  if (t.includes('changeset')) return 'changeset';
+  if (t.includes('activity') || t.includes('tool')) return 'activity';
+  if (t.includes('conversation') || t.includes('transcript')) return 'conversation';
+  if (t.includes('graph') || t.includes('handoff')) return 'graph';
+  return 'system';
+}
+
+/**
+ * SSE Event statistics by type
+ */
+export const sseEventStats = computed(() => {
+  const events = AppStore.sseEvents.value;
+  const hiddenTypes = AppStore.sseHiddenEventTypes.value;
+
+  const stats = {
+    total: events.length,
+    visible: 0,
+    byCategory: {
+      all: 0,
+      changeset: 0,
+      activity: 0,
+      conversation: 0,
+      graph: 0,
+      system: 0
+    },
+    byType: {}
+  };
+
+  events.forEach(event => {
+    const type = event.type || 'unknown';
+    const category = getSSEEventCategory(type);
+
+    // Count by type
+    stats.byType[type] = (stats.byType[type] || 0) + 1;
+
+    // Count visible (not hidden)
+    if (!hiddenTypes.includes(type)) {
+      stats.visible++;
+      stats.byCategory.all++;
+      stats.byCategory[category]++;
+    }
+  });
+
+  return stats;
 });
 
 // ─────────────────────────────────────────────────────────────────
@@ -576,7 +681,29 @@ export const Actions = {
     batch(() => {
       AppStore.streamingContent.value = '';
       AppStore.streamingTools.value = [];
+      AppStore.currentStreamingTool.value = null;
+      AppStore.currentStreamingAgent.value = null;
     });
+  },
+
+  // Tool Activity Indicator Actions
+  setCurrentStreamingTool(toolData) {
+    AppStore.currentStreamingTool.value = toolData ? {
+      ...toolData,
+      startTime: Date.now()
+    } : null;
+  },
+
+  clearCurrentStreamingTool() {
+    AppStore.currentStreamingTool.value = null;
+  },
+
+  setCurrentStreamingAgent(agentData) {
+    AppStore.currentStreamingAgent.value = agentData;
+  },
+
+  clearCurrentStreamingAgent() {
+    AppStore.currentStreamingAgent.value = null;
   },
 
   resetSession() {
@@ -1098,6 +1225,159 @@ export const Actions = {
   isPendingForContext(contextId) {
     const current = AppStore.pendingCommand.value;
     return current && current.contextId === contextId;
+  },
+
+  // ─────────────────────────────────────────────────────────────
+  // SSE Events Monitor Actions
+  // ─────────────────────────────────────────────────────────────
+
+  /**
+   * Add an SSE event to the circular buffer
+   * @param {Object} event - The SSE event data
+   */
+  addSSEEvent(event) {
+    const newEvent = {
+      ...event,
+      id: event.id || crypto.randomUUID(),
+      receivedAt: Date.now(),
+    };
+
+    const maxSize = AppStore.sseEventBufferSize.value;
+    const events = AppStore.sseEvents.value;
+
+    // Add to front, trim to buffer size
+    const newEvents = [newEvent, ...events].slice(0, maxSize);
+
+    batch(() => {
+      AppStore.sseEvents.value = newEvents;
+      AppStore.sseEventCount.value += 1;
+      AppStore.sseLastEventTime.value = Date.now();
+
+      // Increment unread count if paused
+      if (AppStore.sseEventsPaused.value) {
+        AppStore.sseUnreadCount.value += 1;
+      }
+    });
+  },
+
+  /**
+   * Set the SSE events keyword filter
+   * @param {string} filter - Keyword filter string
+   */
+  setSSEEventsFilter(filter) {
+    AppStore.sseEventsFilter.value = filter;
+  },
+
+  /**
+   * Set the SSE events category filter type
+   * @param {string} filterType - Category filter (all/changeset/activity/etc)
+   */
+  setSSEEventsFilterType(filterType) {
+    AppStore.sseEventsFilterType.value = filterType;
+    this.saveEventPreferences();
+  },
+
+  /**
+   * Set the SSE events paused state
+   * @param {boolean} paused - Whether auto-scroll is paused
+   */
+  setSSEEventsPaused(paused) {
+    batch(() => {
+      AppStore.sseEventsPaused.value = paused;
+      if (!paused) {
+        AppStore.sseUnreadCount.value = 0;
+      }
+    });
+  },
+
+  /**
+   * Clear all SSE events
+   */
+  clearSSEEvents() {
+    batch(() => {
+      AppStore.sseEvents.value = [];
+      AppStore.sseEventCount.value = 0;
+      AppStore.sseUnreadCount.value = 0;
+      AppStore.sseEventsPerSecond.value = 0;
+    });
+  },
+
+  /**
+   * Update the events per second metric
+   * @param {number} rate - Events per second
+   */
+  updateSSEEventsPerSecond(rate) {
+    AppStore.sseEventsPerSecond.value = rate;
+  },
+
+  /**
+   * Set the event buffer size
+   * @param {number} size - Buffer size (100-2000)
+   */
+  setEventBufferSize(size) {
+    const clampedSize = Math.max(100, Math.min(2000, size));
+    AppStore.sseEventBufferSize.value = clampedSize;
+
+    // Trim existing events if needed
+    const events = AppStore.sseEvents.value;
+    if (events.length > clampedSize) {
+      AppStore.sseEvents.value = events.slice(0, clampedSize);
+    }
+
+    this.saveEventPreferences();
+  },
+
+  /**
+   * Toggle visibility of an event type
+   * @param {string} eventType - Event type to toggle
+   */
+  toggleEventTypeVisibility(eventType) {
+    const hidden = [...AppStore.sseHiddenEventTypes.value];
+    const index = hidden.indexOf(eventType);
+
+    if (index >= 0) {
+      hidden.splice(index, 1);
+    } else {
+      hidden.push(eventType);
+    }
+
+    AppStore.sseHiddenEventTypes.value = hidden;
+    this.saveEventPreferences();
+  },
+
+  /**
+   * Load event preferences from localStorage
+   */
+  loadEventPreferences() {
+    try {
+      const stored = localStorage.getItem('dashboard-events-preferences');
+      if (stored) {
+        const prefs = JSON.parse(stored);
+        if (prefs.bufferSize) AppStore.sseEventBufferSize.value = prefs.bufferSize;
+        if (prefs.hiddenEventTypes) AppStore.sseHiddenEventTypes.value = prefs.hiddenEventTypes;
+        if (prefs.filterType) AppStore.sseEventsFilterType.value = prefs.filterType;
+        if (prefs.filter) AppStore.sseEventsFilter.value = prefs.filter;
+      }
+    } catch (e) {
+      console.warn('[AppStore] Failed to load event preferences:', e);
+    }
+  },
+
+  /**
+   * Save event preferences to localStorage
+   */
+  saveEventPreferences() {
+    try {
+      const prefs = {
+        bufferSize: AppStore.sseEventBufferSize.value,
+        hiddenEventTypes: AppStore.sseHiddenEventTypes.value,
+        filterType: AppStore.sseEventsFilterType.value,
+        filter: AppStore.sseEventsFilter.value
+      };
+      localStorage.setItem('dashboard-events-preferences', JSON.stringify(prefs));
+    } catch (e) {
+      console.warn('[AppStore] Failed to save event preferences:', e);
+    }
   },
 };
 
