@@ -41,3 +41,7 @@ export { DashTabGroup } from './tab-group.js';
 
 // Activity components
 export { ActivityIndicator, ActivityIndicatorStatus } from './activity-indicator.js';
+
+// Artifact viewer components
+export { ArtifactIcon, EXTENSION_ICONS, MIME_ICONS } from './artifact-icon.js';
+export { CloseTabButton } from './close-tab-button.js';
