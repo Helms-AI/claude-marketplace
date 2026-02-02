@@ -31,7 +31,7 @@
       "name": "user-experience",
       "source": "./plugins/user-experience",
       "description": "Design thinking and ideation team with 8 specialized agent personas and 9 skills for distinctive, memorable design direction. Includes aesthetic direction, typography curation, color alchemy, layout composition, texture/atmosphere, micro-delight design, and user research.",
-      "version": "4.0.0",
+      "version": "4.3.0",
       "author": {
         "name": "Platform Team"
       },
@@ -75,7 +75,7 @@
       "name": "architecture",
       "source": "./plugins/architecture",
       "description": "Architecture team with 5 specialized agents for system design, design patterns, ADRs, technical diagrams, and API design.",
-      "version": "1.0.0",
+      "version": "1.3.0",
       "author": {
         "name": "Platform Team"
       },
@@ -93,7 +93,7 @@
       "name": "backend",
       "source": "./plugins/backend",
       "description": "Backend team with 5 specialized agents for API development, database design, authentication, services, and integrations.",
-      "version": "1.0.2",
+      "version": "1.3.0",
       "author": {
         "name": "Platform Team"
       },
@@ -111,7 +111,7 @@
       "name": "testing",
       "source": "./plugins/testing",
       "description": "Testing team with 6 specialized agents for test strategy, unit tests, integration tests, E2E tests, coverage analysis, and performance/load testing with k6 and Artillery.",
-      "version": "1.2.0",
+      "version": "1.3.0",
       "author": {
         "name": "Platform Team"
       },
@@ -131,7 +131,7 @@
       "name": "devops",
       "source": "./plugins/devops",
       "description": "DevOps team with 5 specialized agents for CI/CD pipelines, deployment, infrastructure as code, monitoring, and containerization. Includes production safety hooks.",
-      "version": "1.1.0",
+      "version": "1.4.0",
       "author": {
         "name": "Platform Team"
       },
@@ -150,7 +150,7 @@
       "name": "data",
       "source": "./plugins/data",
       "description": "Data team with 5 specialized agents for data modeling, pipelines, analytics, warehousing, and governance.",
-      "version": "1.0.1",
+      "version": "1.3.0",
       "author": {
         "name": "Platform Team"
       },
@@ -169,7 +169,7 @@
       "name": "security",
       "source": "./plugins/security",
       "description": "Security team with 5 specialized agents for audits, threat modeling, compliance, secrets management, and penetration testing guidance.",
-      "version": "1.1.0",
+      "version": "1.4.0",
       "author": {
         "name": "Platform Team"
       },
@@ -186,7 +186,7 @@
       "name": "documentation",
       "source": "./plugins/documentation",
       "description": "Documentation team with 5 specialized agents for API docs, guides, architecture documentation, runbooks, onboarding, and now documentation localization.",
-      "version": "1.1.0",
+      "version": "1.3.0",
       "author": {
         "name": "Platform Team"
       },
@@ -204,7 +204,7 @@
       "name": "dashboard",
       "source": "./plugins/dashboard",
       "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration.",
-      "version": "2.28.5",
+      "version": "2.34.0",
       "author": {
         "name": "Platform Team"
       },
@@ -221,7 +221,7 @@
       "name": "mobile",
       "source": "./plugins/mobile",
       "description": "Mobile development team with 5 specialized agents for iOS (Swift/SwiftUI), Android (Kotlin/Compose), React Native, Flutter, and mobile testing.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "Platform Team"
       },
@@ -241,7 +241,7 @@
       "name": "mlops",
       "source": "./plugins/mlops",
       "description": "MLOps team with 5 specialized agents for model training, deployment, feature engineering, experiment tracking, and ML monitoring.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "Platform Team"
       },
