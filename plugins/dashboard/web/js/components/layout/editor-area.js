@@ -18,6 +18,7 @@ import '../terminal/terminal-view.js';
 import '../organisms/welcome-panel.js';
 import '../conversation/changeset-viewer.js';
 import './activities-aside.js';
+import './artifact-shell.js';
 
 class EditorArea extends SignalWatcher(LitElement) {
     static properties = {
@@ -67,7 +68,9 @@ class EditorArea extends SignalWatcher(LitElement) {
             AppStore.streamingTools,
             AppStore.activitiesAsideCollapsed,
             AppStore.conversations,     // NEW: Per-tab conversations
-            AppStore.activeStreamingId  // NEW: Active streaming target
+            AppStore.activeStreamingId, // NEW: Active streaming target
+            AppStore.artifactTabs,      // Artifact viewer tabs
+            AppStore.activeArtifactId   // Active artifact
         ]);
     }
 
@@ -154,7 +157,8 @@ class EditorArea extends SignalWatcher(LitElement) {
             'skill': 'layers',
             'changeset': 'git-branch',
             'graph': 'share-2',
-            'welcome': 'home'
+            'welcome': 'home',
+            'artifacts': 'files'
         };
         return iconMap[tab.type] || 'file';
     }
@@ -212,6 +216,9 @@ class EditorArea extends SignalWatcher(LitElement) {
                     ></terminal-view>
                 `;
                 return this._wrapWithActivitiesAside(terminalContent);
+            case 'artifacts':
+                // Artifact viewer tab with full file viewer
+                return html`<artifact-shell></artifact-shell>`;
             case 'welcome':
             default:
                 return html`<welcome-panel></welcome-panel>`;

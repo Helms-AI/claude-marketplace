@@ -71,8 +71,20 @@ class TerminalView extends LitElement {
     }
 
     _handleSend(e) {
-        const { message } = e.detail;
-        this.dispatchEvent(new CustomEvent('send-message', { detail: { message, model: this.model }, bubbles: true, composed: true }));
+        // Forward all event details from terminal-input to editor-area
+        // terminal-input sends: {message, model, settings, contextId, attachments}
+        const { message, model, settings, contextId, attachments } = e.detail;
+        this.dispatchEvent(new CustomEvent('send-message', {
+            detail: {
+                message,
+                model: model || this.model,
+                settings,
+                contextId,
+                attachments
+            },
+            bubbles: true,
+            composed: true
+        }));
     }
 
     _handleInterrupt() {

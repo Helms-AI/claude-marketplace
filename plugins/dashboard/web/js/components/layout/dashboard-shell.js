@@ -5,11 +5,13 @@
 
 import { LitElement, html, css } from 'lit';
 import { SignalWatcher } from '../core/signal-watcher.js';
-import { AppStore, isConnected, domainList, ConnectionState } from '../../store/app-state.js';
+import { AppStore, Actions, isConnected, domainList, ConnectionState } from '../../store/app-state.js';
+import { ArtifactService } from '../../services/artifact-service.js';
 import './titlebar.js';
 import './sidebar-panel.js';
 import './editor-area.js';
 import './status-bar.js';
+import '../organisms/about-modal.js';
 
 class DashboardShell extends SignalWatcher(LitElement) {
     static properties = {
@@ -18,7 +20,9 @@ class DashboardShell extends SignalWatcher(LitElement) {
         sidebarWidth: { type: Number, attribute: 'sidebar-width' },
         bottomPanelVisible: { type: Boolean, attribute: 'bottom-panel-visible', reflect: true },
         bottomPanelHeight: { type: Number, attribute: 'bottom-panel-height' },
-        connected: { type: Boolean, reflect: true }
+        connected: { type: Boolean, reflect: true },
+        _aboutModalOpen: { type: Boolean, state: true },
+        _aboutVersion: { type: String, state: true }
     };
 
     static styles = css`
@@ -108,6 +112,8 @@ class DashboardShell extends SignalWatcher(LitElement) {
         this.bottomPanelVisible = false;  // Hidden by default - no content slotted
         this.bottomPanelHeight = 200;
         this.connected = false;
+        this._aboutModalOpen = false;
+        this._aboutVersion = '?.?.?';
     }
 
     connectedCallback() {
@@ -145,6 +151,48 @@ class DashboardShell extends SignalWatcher(LitElement) {
 
     _handleActivityClick(panel) {
         this.dispatchEvent(new CustomEvent('activity-change', { detail: { panel }, bubbles: true, composed: true }));
+    }
+
+    _handleVersionClick(e) {
+        this._aboutVersion = e.detail?.version || '?.?.?';
+        this._aboutModalOpen = true;
+    }
+
+    _handleAboutModalClose() {
+        this._aboutModalOpen = false;
+    }
+
+    /**
+     * Handle artifact open events from changeset tree
+     * Opens the Artifacts tab and loads the artifact content
+     */
+    async _handleArtifactOpen(e) {
+        const { changeset, artifact } = e.detail;
+
+        // Determine the artifact path - artifact can be an object or string
+        const artifactPath = typeof artifact === 'string'
+            ? artifact
+            : (artifact.path || artifact.name);
+
+        const changesetId = changeset?.id || changeset?.changeset_id || null;
+
+        console.log('[DashboardShell] Opening artifact:', artifactPath, 'from changeset:', changesetId);
+
+        // Open/switch to the Artifacts tab
+        Actions.openTab({
+            id: 'artifacts',
+            title: 'Artifacts',
+            type: 'artifacts',
+            closable: true
+        });
+
+        // Load the artifact (this will open it in the artifact viewer)
+        try {
+            await ArtifactService.loadArtifact(artifactPath, changesetId);
+        } catch (error) {
+            console.error('[DashboardShell] Failed to load artifact:', error);
+            // The error state is handled by ArtifactService.loadArtifact()
+        }
     }
 
     render() {
@@ -195,6 +243,7 @@ class DashboardShell extends SignalWatcher(LitElement) {
                 <sidebar-panel
                     ?collapsed=${this.sidebarCollapsed}
                     .width=${this.sidebarWidth}
+                    @artifact-open=${this._handleArtifactOpen}
                 >
                     <slot name="sidebar"></slot>
                 </sidebar-panel>
@@ -220,7 +269,14 @@ class DashboardShell extends SignalWatcher(LitElement) {
                 .tokenCount=${AppStore.tokenUsage.value.total}
                 .tokenCost=${AppStore.totalCost.value}
                 @theme-toggle=${this._handleThemeToggle}
+                @version-click=${this._handleVersionClick}
             ></status-bar>
+
+            <about-modal
+                ?open=${this._aboutModalOpen}
+                version=${this._aboutVersion}
+                @close=${this._handleAboutModalClose}
+            ></about-modal>
         `;
     }
 }

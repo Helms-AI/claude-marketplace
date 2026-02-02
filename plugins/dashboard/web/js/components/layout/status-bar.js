@@ -67,7 +67,25 @@ class StatusBar extends LitElement {
         this.tasksDone = 0;
         this.tasksTotal = 0;
         this.theme = 'dark';
-        this.version = 'v2.3.0';
+        this.version = '...';
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        this._fetchVersion();
+    }
+
+    async _fetchVersion() {
+        try {
+            const response = await fetch('/api/version');
+            if (response.ok) {
+                const data = await response.json();
+                this.version = `v${data.version}`;
+            }
+        } catch (error) {
+            console.warn('[StatusBar] Failed to fetch version:', error);
+            this.version = 'v?.?.?';
+        }
     }
 
     _handleConnectionClick() {
@@ -88,6 +106,10 @@ class StatusBar extends LitElement {
 
     _handleNetworkClick() {
         this.dispatchEvent(new CustomEvent('network-click', { bubbles: true, composed: true }));
+    }
+
+    _handleVersionClick() {
+        this.dispatchEvent(new CustomEvent('version-click', { bubbles: true, composed: true, detail: { version: this.version } }));
     }
 
     _formatCost(cost) {
@@ -132,7 +154,7 @@ class StatusBar extends LitElement {
                 <div class="item clickable theme-toggle" @click=${this._handleThemeClick}>
                     <span>${this.theme === 'dark' ? '☽' : '☀'}</span>
                 </div>
-                <div class="item">
+                <div class="item clickable" @click=${this._handleVersionClick}>
                     <span>${this.version}</span>
                 </div>
             </div>
