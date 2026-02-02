@@ -353,6 +353,66 @@ Cross-domain workflows use file-based handoffs stored in `.claude/handoffs/`:
         └── artifacts/            # Shared artifacts
 ```
 
+## OpenClaw Automated Analysis
+
+The marketplace includes an automated daily analysis job powered by [OpenClaw](https://openclaw.ai) that continuously improves the agent system.
+
+### What It Does
+
+| Step | Description |
+|------|-------------|
+| **1. Check for PR** | Looks for existing OpenClaw enhancement PRs |
+| **2. Clone Repository** | Fresh clone to `/tmp/` with appropriate branch |
+| **3. Analyze System** | Reviews all agents, skills, hooks, and dashboard code |
+| **4. Update Memory** | Stores findings in OpenClaw memory for continuity |
+| **5. Generate Enhancements** | Identifies improvements for collaboration & quality |
+| **6. Create PR** | Commits changes and creates/updates a pull request |
+
+### Analysis Focus Areas
+
+- **Agent Collaboration** - Better handoff protocols, clearer responsibilities
+- **Skill Effectiveness** - More powerful prompts, better tool restrictions
+- **Hook Coverage** - Additional safety/quality gates
+- **Dashboard Features** - Better visualization, monitoring, UX
+- **Cross-Domain Workflows** - Smoother orchestration, reduced friction
+- **Output Quality** - Better code generation, documentation, testing
+
+### Schedule
+
+- **Automatic**: Runs every hour at :00
+- **On-demand**: Can be triggered manually
+
+### Manual Execution
+
+**Option 1:** Ask OpenClaw directly:
+```
+"Run the agent analysis"
+"Analyze and improve the agents"
+```
+
+**Option 2:** Trigger via OpenClaw MCP tool:
+```javascript
+mcp__openclaw__openclaw_cron_run({
+  jobId: "7d6edef1-351a-47bf-a105-e5748d146421"
+})
+```
+
+**Option 3:** Use the OpenClaw CLI:
+```bash
+openclaw cron run claude-marketplace-agent-analysis
+```
+
+### Job Details
+
+| Field | Value |
+|-------|-------|
+| **Job ID** | `7d6edef1-351a-47bf-a105-e5748d146421` |
+| **Name** | `claude-marketplace-agent-analysis` |
+| **Schedule** | `0 * * * *` (every hour at :00) |
+| **Session** | Isolated (dedicated session per run) |
+
+---
+
 ## Contributing
 
 We welcome contributions! See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
