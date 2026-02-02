@@ -1,0 +1,28 @@
+{
+  "hooks": [
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Documentation: Quality Standards\n\nIf this is a documentation file (README, guide, API doc, runbook), verify:\n\n**README requirements:**\n- Project purpose clearly stated in first paragraph\n- Installation/setup instructions included\n- Usage examples provided\n- Contributing guidelines linked or included\n- License information present\n\n**API documentation requirements:**\n- All endpoints documented\n- Request/response examples for each\n- Authentication explained\n- Error codes listed with descriptions\n- Rate limits documented if applicable\n\n**Runbook requirements:**\n- Clear trigger conditions (when to use)\n- Step-by-step procedures\n- Rollback instructions\n- Escalation paths\n- Contact information\n\n**WARN if:**\n- Code examples without syntax highlighting hints\n- Missing table of contents for long docs\n- External links without context\n- Outdated version references\n\n**BLOCK:**\n- README without any installation instructions\n- Runbook without rollback procedure\n- API doc without authentication section for protected APIs\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    },
+    {
+      "type": "PostToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Documentation: Completeness Check\n\nAfter creating documentation, verify:\n\n- [ ] Spell check completed?\n- [ ] Links tested and working?\n- [ ] Code examples tested?\n- [ ] Screenshots/diagrams up to date?\n- [ ] Cross-references to related docs included?\n\nConsider running documentation through a linter or having another team member review."
+        }
+      ]
+    }
+  ]
+}

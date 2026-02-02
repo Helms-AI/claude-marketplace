@@ -1,0 +1,40 @@
+{
+  "hooks": [
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Frontend: Component Quality Check\n\nIf this is a React/Vue/Svelte component file, verify:\n\n**Required for components:**\n- TypeScript types defined for all props\n- Default values for optional props\n- Proper export (named or default as appropriate)\n- Component name matches filename\n\n**Accessibility (BLOCK if missing):**\n- Interactive elements have aria-labels\n- Images have alt text\n- Form inputs have associated labels\n- No div/span with onClick without role='button' and keyboard handling\n- Color contrast considerations noted\n\n**Performance (WARN if issues):**\n- Large inline functions in render\n- Missing React.memo for list items\n- Missing useMemo/useCallback for expensive computations\n- Inline object/array literals as props\n\n**BLOCK:**\n- Components without any accessibility considerations\n- Hardcoded colors instead of design tokens\n- Magic numbers for spacing (use tokens)\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    },
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Frontend: CSS/Style Safety\n\nIf this is a CSS/SCSS/Tailwind file, verify:\n\n**WARN:**\n- `!important` usage (breaks cascade)\n- Fixed pixel values for typography (use rem/em)\n- Fixed breakpoints instead of container queries where appropriate\n- z-index without documented z-index scale\n- Complex selectors with high specificity\n\n**BLOCK:**\n- `display: none` for accessibility (use visually-hidden pattern)\n- Removing focus outlines without alternative indication\n- Hardcoded colors not from design tokens\n\n**Good patterns:**\n- CSS custom properties for theming\n- Logical properties (inline/block vs left/right)\n- Container queries for component responsiveness\n- Design token references\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    },
+    {
+      "type": "PostToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## Frontend: Component Documentation Reminder\n\nAfter creating a component, remind about:\n\n- [ ] Storybook story created?\n- [ ] Props documented with JSDoc/TSDoc?\n- [ ] Usage example in README?\n- [ ] Accessibility notes documented?\n\nIf this is a new component, suggest creating a Storybook story with `/frontend-storybook`."
+        }
+      ]
+    }
+  ]
+}

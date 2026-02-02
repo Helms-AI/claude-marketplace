@@ -8,8 +8,8 @@
     {
       "name": "pm",
       "source": "./plugins/pm",
-      "description": "Project Manager broker for cross-domain orchestration. Routes requests to specialized domain plugins, manages workflow changesets, tracks decisions/artifacts, and resolves conflicts between domains.",
-      "version": "1.1.0",
+      "description": "Project Manager broker for cross-domain orchestration. Routes requests to specialized domain plugins, manages workflow changesets, tracks decisions/artifacts, and resolves conflicts between domains. Now with changeset validation hooks for handoff integrity.",
+      "version": "1.2.0",
       "author": {
         "name": "Platform Team"
       },
@@ -28,8 +28,8 @@
     {
       "name": "user-experience",
       "source": "./plugins/user-experience",
-      "description": "Design thinking and ideation team with 8 specialized agent personas and 9 skills for distinctive, memorable design direction. Includes aesthetic direction, typography curation, color alchemy, layout composition, texture/atmosphere, micro-delight design, and user research. Pre-code design phase that creates aesthetic briefs and hands off to frontend for implementation.",
-      "version": "4.0.0",
+      "description": "Design thinking and ideation team with 8 specialized agent personas and 9 skills for distinctive, memorable design direction. Includes aesthetic direction, typography curation, color alchemy, layout composition, texture/atmosphere, micro-delight design, and user research. Pre-code design phase that creates aesthetic briefs and hands off to frontend for implementation. Now with design asset validation hooks for color contrast and specification quality.",
+      "version": "4.1.0",
       "author": {
         "name": "Platform Team"
       },
@@ -54,8 +54,8 @@
     {
       "name": "frontend",
       "source": "./plugins/frontend",
-      "description": "Frontend implementation team with 14 specialized agent personas and 15 skills for building production-ready UI components. Includes design systems, component architecture, motion design, accessibility auditing, responsive engineering, performance optimization, progress UI, forms, navigation, data grids, data visualization, Storybook documentation, and Figma sync. React 19, Vue 3.5, Svelte 5, Tailwind 4.0, WCAG 2.2 accessibility.",
-      "version": "1.0.0",
+      "description": "Frontend implementation team with 14 specialized agent personas and 15 skills for building production-ready UI components. Includes design systems, component architecture, motion design, accessibility auditing, responsive engineering, performance optimization, progress UI, forms, navigation, data grids, data visualization, Storybook documentation, and Figma sync. React 19, Vue 3.5, Svelte 5, Tailwind 4.0, WCAG 2.2 accessibility. Now with component quality hooks for accessibility validation and CSS safety checks.",
+      "version": "1.1.0",
       "author": {
         "name": "Platform Team"
       },
@@ -87,8 +87,8 @@
     {
       "name": "architecture",
       "source": "./plugins/architecture",
-      "description": "Architecture team with 5 specialized agents for system design, design patterns, ADRs, technical diagrams, and API design. Includes high-level system architecture, scalability patterns, Mermaid/PlantUML/C4 diagrams, and REST/GraphQL/gRPC API specifications.",
-      "version": "1.0.0",
+      "description": "Architecture team with 5 specialized agents for system design, design patterns, ADRs, technical diagrams, and API design. Includes high-level system architecture, scalability patterns, Mermaid/PlantUML/C4 diagrams, and REST/GraphQL/gRPC API specifications. Now with ADR quality validation and API contract integrity hooks.",
+      "version": "1.1.0",
       "author": {
         "name": "Platform Team"
       },
@@ -141,8 +141,8 @@
     {
       "name": "testing",
       "source": "./plugins/testing",
-      "description": "Testing team with 5 specialized agents for test strategy, unit tests, integration tests, E2E tests, and coverage analysis. Includes Jest/Vitest for unit testing, API contract testing with Pact, Playwright/Cypress for E2E, and comprehensive coverage reporting. Enhanced orchestrator with quality gates and cross-domain handoff protocols.",
-      "version": "1.1.0",
+      "description": "Testing team with 5 specialized agents for test strategy, unit tests, integration tests, E2E tests, and coverage analysis. Includes Jest/Vitest for unit testing, API contract testing with Pact, Playwright/Cypress for E2E, and comprehensive coverage reporting. Enhanced orchestrator with quality gates and cross-domain handoff protocols. Now with test quality hooks for assertion validation and execution safety.",
+      "version": "1.2.0",
       "author": {
         "name": "Platform Team"
       },
@@ -196,8 +196,8 @@
     {
       "name": "data",
       "source": "./plugins/data",
-      "description": "Data team with 5 specialized agents for data modeling, pipelines, analytics, warehousing, and governance. Includes ERD design, DBML, Airflow DAGs, dbt models, star schemas, data quality rules, and compliance frameworks. Enhanced orchestrator with quality gates and cross-domain handoff protocols.",
-      "version": "1.1.0",
+      "description": "Data team with 5 specialized agents for data modeling, pipelines, analytics, warehousing, and governance. Includes ERD design, DBML, Airflow DAGs, dbt models, star schemas, data quality rules, and compliance frameworks. Enhanced orchestrator with quality gates and cross-domain handoff protocols. Now with pipeline safety hooks and data model validation.",
+      "version": "1.2.0",
       "author": {
         "name": "Platform Team"
       },
@@ -258,8 +258,8 @@
     {
       "name": "documentation",
       "source": "./plugins/documentation",
-      "description": "Documentation team with 5 specialized agents for API docs, guides, architecture documentation, runbooks, and onboarding materials. Includes OpenAPI/Swagger specs, tutorials, C4 diagrams, ADRs, incident playbooks, and developer onboarding.",
-      "version": "1.0.0",
+      "description": "Documentation team with 5 specialized agents for API docs, guides, architecture documentation, runbooks, and onboarding materials. Includes OpenAPI/Swagger specs, tutorials, C4 diagrams, ADRs, incident playbooks, and developer onboarding. Now with documentation quality standards hooks for README, API docs, and runbook validation.",
+      "version": "1.1.0",
       "author": {
         "name": "Platform Team"
       },

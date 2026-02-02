@@ -1,0 +1,28 @@
+{
+  "hooks": [
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## UX: Design Asset Validation\n\nIf this is a design specification, aesthetic brief, or design token file, verify:\n\n**Required for design specs:**\n- Clear aesthetic direction (not generic)\n- Anti-patterns explicitly listed (what to avoid)\n- Emotional/personality descriptors included\n- Measurable criteria where possible\n\n**Color system validation:**\n- Colors defined in OKLCH or similar perceptually uniform space\n- Sufficient contrast ratios documented (WCAG AA minimum)\n- Dark mode considerations included\n- Semantic color naming (not just visual: primary, secondary, etc.)\n\n**Typography validation:**\n- Font pairing rationale provided\n- Type scale defined (modular scale preferred)\n- Line height and letter spacing specified\n- Fallback fonts listed\n\n**WARN if:**\n- Design spec lacks anti-patterns section\n- Colors only defined in hex without OKLCH\n- No dark mode consideration\n\n**BLOCK:**\n- Design tokens with insufficient contrast (<4.5:1 for text)\n- Generic templates without distinctive direction\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    },
+    {
+      "type": "PostToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## UX: Design Handoff Checklist\n\nAfter creating design specifications, verify handoff readiness:\n\n- [ ] Aesthetic brief complete with archetype?\n- [ ] Typography specification with tokens?\n- [ ] Color system with all semantic tokens?\n- [ ] Layout/spacing system defined?\n- [ ] Atmosphere/effects documented?\n- [ ] Micro-interactions specified?\n- [ ] User context/research insights included?\n\nIf all complete, design is ready for `/frontend-orchestrator` handoff."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "hooks": [
+    {
+      "type": "PreToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## PM: Changeset Validation\n\nIf this is a changeset.json or handoff file, verify:\n\n**changeset.json requirements:**\n- `changeset_id` follows format: YYYYMMDD-HHMMSS-task-description\n- `created_at` is valid ISO timestamp\n- `original_request` captured verbatim\n- `domains_involved` is an array (can be empty initially)\n- `current_phase` is valid: design|foundation|implementation|quality|deployment|documentation\n- `status` is valid: active|paused|completed|blocked\n\n**handoff file requirements:**\n- `id` is unique handoff identifier\n- `changeset_id` matches parent changeset\n- `chain_position` is sequential integer\n- `source` and `target` have plugin and skill fields\n- `context` includes original_request\n- `status` is valid: pending|active|completed|failed\n\n**WARN if:**\n- Handoff missing context.constraints\n- No accumulated_decisions after first handoff\n- Domains involved not updated after routing\n\n**BLOCK:**\n- Changeset without original_request\n- Handoff with mismatched changeset_id\n- Invalid status values\n\nOutput: 'SAFE', 'BLOCKED: [reason]', or 'WARNING: [concern]'."
+        }
+      ]
+    },
+    {
+      "type": "PostToolUse",
+      "matcher": {
+        "tool_name": "Write"
+      },
+      "hooks": [
+        {
+          "type": "prompt",
+          "prompt": "## PM: Workflow Progress Check\n\nAfter updating changeset or handoff files:\n\n- [ ] domains_involved array updated?\n- [ ] handoff_count incremented?\n- [ ] decisions array updated with new decisions?\n- [ ] artifacts array updated with new files?\n- [ ] current_phase accurate?\n\nRemind user of changeset location: `.claude/changesets/<changeset-id>/`"
+        }
+      ]
+    }
+  ]
+}
