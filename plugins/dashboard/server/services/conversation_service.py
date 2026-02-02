@@ -122,24 +122,29 @@ class ConversationService:
             os.chdir(str(self.project_root))
 
             accumulated_text = ""
+            got_assistant_event = False  # Track if SDK sent a complete assistant message
 
             try:
                 # Stream using native SDK
                 async for event in query(prompt=message, options=options):
                     # Process SDK event and yield our event format
                     async for our_event in self._process_sdk_event(event, context_id):
-                        # Track accumulated text
-                        if our_event.get("type") == "text":
+                        event_type = our_event.get("type")
+                        # Track accumulated text for streaming
+                        if event_type == "text":
                             accumulated_text += our_event.get("content", "")
-                        elif our_event.get("type") == "assistant":
-                            accumulated_text = our_event.get("content", "")
+                        elif event_type == "assistant":
+                            # SDK sent complete message - mark it and clear accumulated
+                            got_assistant_event = True
+                            accumulated_text = ""
                         yield our_event
 
             finally:
                 os.chdir(original_cwd)
 
-            # If we didn't get a complete assistant message, yield accumulated text
-            if accumulated_text:
+            # Only emit fallback assistant message if SDK didn't send one
+            # and we have accumulated streaming text
+            if not got_assistant_event and accumulated_text:
                 yield {
                     "type": "assistant",
                     "content": accumulated_text,
@@ -217,7 +222,11 @@ class ConversationService:
         event_type = getattr(event, 'type', None) or type(event).__name__
 
         if self.debug:
-            print(f"[ConversationService] SDK event: {event_type}")
+            print(f"[ConversationService] SDK event: {event_type}, attrs: {dir(event)}")
+            # Log all attributes for debugging
+            for attr in ['event_type', 'text', 'content', 'name', 'id', 'tool_use_id']:
+                if hasattr(event, attr):
+                    print(f"  {attr}: {getattr(event, attr)!r}")
 
         # Handle different SDK message types
         if event_type == 'stream_event' or hasattr(event, 'event_type'):
@@ -269,12 +278,14 @@ class ConversationService:
                         text_parts.append(block['text'])
                 content = ''.join(text_parts)
 
-            yield {
-                "type": "assistant",
-                "content": content,
-                "context_id": context_id,
-                "timestamp": timestamp
-            }
+            # Only emit non-empty assistant messages
+            if content:
+                yield {
+                    "type": "assistant",
+                    "content": content,
+                    "context_id": context_id,
+                    "timestamp": timestamp
+                }
 
         elif event_type == 'tool_use':
             # Tool invocation
