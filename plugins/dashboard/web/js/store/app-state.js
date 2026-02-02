@@ -611,10 +611,12 @@ export const Actions = {
   },
 
   addActivity(activity) {
+    // Use provided id (tool_use_id) or generate new one
+    // This preserves the tool_use_id for matching with tool_result
     const newActivity = {
       ...activity,
-      id: crypto.randomUUID(),
-      timestamp: Date.now(),
+      id: activity.id || crypto.randomUUID(),
+      timestamp: activity.timestamp || Date.now(),
     };
 
     // Keep only 30 most recent activities
@@ -638,6 +640,40 @@ export const Actions = {
         ...completedActivities.slice(0, 29),
       ];
     }
+  },
+
+  /**
+   * Update an existing activity by id (tool_use_id)
+   * Used when tool_result arrives to update running → completed
+   */
+  updateActivity(id, updates) {
+    const currentActivities = AppStore.activities.value;
+    const index = currentActivities.findIndex(a => a.id === id);
+
+    if (index === -1) {
+      // Activity not found - might have been pruned, add as new
+      this.addActivity({ id, ...updates });
+      return;
+    }
+
+    // Update the activity in place
+    const updatedActivity = {
+      ...currentActivities[index],
+      ...updates,
+    };
+
+    // Re-sort: move from running to completed if status changed
+    const newActivities = [...currentActivities];
+    newActivities[index] = updatedActivity;
+
+    // Re-filter and re-organize
+    const runningActivities = newActivities.filter(a => a.status === 'running');
+    const completedActivities = newActivities.filter(a => a.status !== 'running');
+
+    AppStore.activities.value = [
+      ...runningActivities,
+      ...completedActivities.slice(0, 30),
+    ];
   },
 
   addError(error) {
