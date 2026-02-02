@@ -164,18 +164,33 @@ class ActivityServiceClass {
         // Batch update the store
         batch(() => {
             activities.forEach(activity => {
-                // Add to activities feed with result/error data
-                Actions.addActivity({
-                    type: activity.type,
-                    message: this._formatActivityMessage(activity),
-                    tool: activity.tool,
-                    file: activity.file,
-                    status: activity.status,
-                    duration: activity.duration,
-                    result: activity.result,     // Include result for expandable view
-                    error: activity.error,       // Include error message
-                    changesetId: activity.changesetId
-                });
+                // For tool_result, update existing activity instead of adding new
+                if (activity.type === 'tool_result') {
+                    Actions.updateActivity(activity.id, {
+                        type: activity.type,
+                        message: this._formatActivityMessage(activity),
+                        status: activity.status,
+                        duration: activity.duration,
+                        result: activity.result,
+                        error: activity.error,
+                        completedAt: activity.completedAt,
+                    });
+                } else {
+                    // For tool_use, add as new activity with preserved id
+                    Actions.addActivity({
+                        id: activity.id,  // Preserve tool_use_id for matching
+                        type: activity.type,
+                        message: this._formatActivityMessage(activity),
+                        tool: activity.tool,
+                        file: activity.file,
+                        status: activity.status,
+                        duration: activity.duration,
+                        result: activity.result,
+                        error: activity.error,
+                        changesetId: activity.changesetId,
+                        timestamp: activity.timestamp,
+                    });
+                }
 
                 // Also add to conversation events if we have a watched changeset
                 const watchedId = AppStore.watchedChangesetId.value;
