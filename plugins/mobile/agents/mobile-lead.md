@@ -2,11 +2,7 @@
 name: mobile-lead
 description: Mobile development team lead and orchestrator
 model: sonnet
-tools:
-  - Read
-  - Grep
-  - Glob
-  - Task
+tools: Read, Grep, Glob, Task
 skills:
   - mobile-orchestrator
   - mobile-team-session

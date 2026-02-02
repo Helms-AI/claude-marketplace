@@ -2,13 +2,7 @@
 name: ios-specialist
 description: iOS development specialist for Swift and SwiftUI
 model: sonnet
-tools:
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
-  - Bash
+tools: Read, Write, Edit, Grep, Glob, Bash
 skills:
   - mobile-ios-developer
 ---

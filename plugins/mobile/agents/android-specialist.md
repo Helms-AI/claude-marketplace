@@ -2,13 +2,7 @@
 name: android-specialist
 description: Android development specialist for Kotlin and Jetpack Compose
 model: sonnet
-tools:
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
-  - Bash
+tools: Read, Write, Edit, Grep, Glob, Bash
 skills:
   - mobile-android-developer
 ---

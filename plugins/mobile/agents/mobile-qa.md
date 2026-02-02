@@ -2,12 +2,7 @@
 name: mobile-qa
 description: Mobile quality assurance and testing specialist
 model: sonnet
-tools:
-  - Read
-  - Write
-  - Grep
-  - Glob
-  - Bash
+tools: Read, Write, Grep, Glob, Bash
 skills:
   - mobile-testing
 ---

@@ -2,13 +2,7 @@
 name: cross-platform
 description: Cross-platform mobile development specialist
 model: sonnet
-tools:
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
-  - Bash
+tools: Read, Write, Edit, Grep, Glob, Bash
 skills:
   - mobile-react-native
   - mobile-flutter
