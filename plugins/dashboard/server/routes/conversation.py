@@ -56,12 +56,18 @@ def send_message():
     context_id = data.get('context_id')
     settings_data = data.get('settings', {})
 
+    # Validate and normalize max_thinking_tokens (API requires >= 1024)
+    max_thinking_tokens = settings_data.get('max_thinking_tokens', 16000)
+    enable_thinking = settings_data.get('enable_thinking', True)
+    if enable_thinking and max_thinking_tokens < 1024:
+        max_thinking_tokens = 1024  # Enforce API minimum
+
     # Build settings
     settings = ConversationSettings(
         model=settings_data.get('model', 'sonnet'),
         max_turns=settings_data.get('max_turns', 50),
-        enable_thinking=settings_data.get('enable_thinking', True),
-        max_thinking_tokens=settings_data.get('max_thinking_tokens', 16000),
+        enable_thinking=enable_thinking,
+        max_thinking_tokens=max_thinking_tokens,
         permission_mode=settings_data.get('permission_mode', 'default'),
         system_prompt=settings_data.get('system_prompt')
     )
@@ -144,16 +150,18 @@ def get_status():
     """Get conversation service status.
 
     Returns:
-        JSON with service status
+        JSON with service status including SDK availability
     """
     try:
         service = get_conversation_service()
         return jsonify({
-            'available': True,
+            'available': service.sdk_available,
+            'sdk_available': service.sdk_available,
             'project_root': str(service.project_root)
         })
     except ValueError:
         return jsonify({
             'available': False,
+            'sdk_available': False,
             'error': 'Service not initialized'
         })
