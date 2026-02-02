@@ -2,13 +2,7 @@
 name: monitoring-engineer
 description: ML model monitoring and observability specialist
 model: sonnet
-tools:
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
-  - Bash
+tools: Read, Write, Edit, Grep, Glob, Bash
 skills:
   - mlops-monitoring
 ---

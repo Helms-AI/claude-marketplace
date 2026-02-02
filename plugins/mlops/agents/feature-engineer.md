@@ -2,13 +2,7 @@
 name: feature-engineer
 description: Feature engineering and feature store specialist
 model: sonnet
-tools:
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
-  - Bash
+tools: Read, Write, Edit, Grep, Glob, Bash
 skills:
   - mlops-feature-engineer
 ---

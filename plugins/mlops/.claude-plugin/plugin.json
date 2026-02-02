@@ -1,17 +1,11 @@
 {
   "name": "mlops",
   "description": "Machine learning operations including model training, deployment, and monitoring",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "homepage": "https://github.com/Helms-AI/claude-marketplace",
   "repository": "https://github.com/Helms-AI/claude-marketplace",
   "license": "MIT",
   "keywords": ["mlops", "machine-learning", "pytorch", "tensorflow", "mlflow", "kubeflow"],
   "skills": ["./skills/"],
-  "agents": ["./agents/"],
-  "hooks": "./hooks/hooks.json",
-  "lsp": "./lsp.json",
-  "statusLine": {
-    "template": "MLOps | Experiments: ${exp_count} | Models: ${model_count}",
-    "refresh": "on-change"
-  }
+  "lspServers": "./.claude-plugin/lsp.json"
 }

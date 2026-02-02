@@ -2,13 +2,7 @@
 name: deployment-specialist
 description: Model deployment and serving specialist
 model: sonnet
-tools:
-  - Read
-  - Write
-  - Edit
-  - Grep
-  - Glob
-  - Bash
+tools: Read, Write, Edit, Grep, Glob, Bash
 skills:
   - mlops-model-deployer
 ---

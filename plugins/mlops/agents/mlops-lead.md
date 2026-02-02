@@ -2,11 +2,7 @@
 name: mlops-lead
 description: MLOps team lead and orchestrator
 model: sonnet
-tools:
-  - Read
-  - Grep
-  - Glob
-  - Task
+tools: Read, Grep, Glob, Task
 skills:
   - mlops-orchestrator
   - mlops-team-session
