@@ -38,3 +38,17 @@ export { SliderRow } from './slider-row.js';
 // Re-export indicators (these are molecules too)
 export { ConnectionStatus, ConnectionState } from '../indicators/connection-status.js';
 export { ThinkingIndicator } from '../indicators/thinking-indicator.js';
+
+// Activity molecules
+export { ActivityItem, TOOL_ICONS } from './activity-item.js';
+export { ActivityGroup } from './activity-group.js';
+export { CollapsedPreview } from './collapsed-preview.js';
+export { ToolActivityBadge } from './tool-activity-badge.js';
+
+// Events molecules
+export { EventsFilterBar, CATEGORIES as EVENT_CATEGORIES } from './events-filter-bar.js';
+export { EventsSettingsDropdown } from './events-settings-dropdown.js';
+export { NetworkWidget } from './network-widget.js';
+
+// Data display molecules
+export { JsonViewer, VIEW_MODE as JSON_VIEW_MODE } from './json-viewer.js';

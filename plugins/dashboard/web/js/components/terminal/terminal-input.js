@@ -1,7 +1,8 @@
 /**
- * Terminal Input Component - Command line input for SDK interactions
+ * Terminal Input Component - Command line input for SDK or Passthrough interactions
  * Refactored to use Atomic Design pattern with composable molecules
  * Updated to use settings-panel for SDK configuration
+ * Supports both SDK mode (default) and Passthrough mode for parent session routing
  * @module components/terminal/terminal-input
  */
 
@@ -10,7 +11,10 @@ import '../atoms/icon.js';
 import '../molecules/model-toggle.js';
 import '../molecules/input-toolbar.js';
 import './settings-panel.js';
+import './terminal-input-activity-indicator.js';
 import { VoiceInputService } from '../../services/voice-input-service.js';
+import { AttachmentService } from '../../services/attachment-service.js';
+import { AppStore } from '../../store/app-state.js';
 
 class TerminalInput extends LitElement {
     static properties = {
@@ -20,12 +24,15 @@ class TerminalInput extends LitElement {
         value: { type: String },
         history: { type: Array },
         model: { type: String },
+        contextId: { type: String, attribute: 'context-id' },
         _historyIndex: { type: Number, state: true },
         _showSettingsPanel: { type: Boolean, state: true },
         _recording: { type: Boolean, state: true },
         _audioLevel: { type: Number, state: true },
         _interimTranscript: { type: String, state: true },
-        _currentSettings: { type: Object, state: true }
+        _currentSettings: { type: Object, state: true },
+        _attachments: { type: Array, state: true },
+        _dragOver: { type: Boolean, state: true }
     };
 
     static styles = css`
@@ -180,6 +187,95 @@ class TerminalInput extends LitElement {
         settings-panel {
             border-top: 1px solid var(--border-color, #3c3c3c);
         }
+
+        /* Attachments preview strip */
+        .attachments-strip {
+            display: flex;
+            gap: var(--spacing-xs, 4px);
+            padding: 6px var(--spacing-sm, 8px) 0;
+            flex-wrap: wrap;
+        }
+
+        .attachment-preview {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 6px;
+            background: var(--bg-tertiary, #2d2d2d);
+            border: 1px solid var(--border-color, #3c3c3c);
+            border-radius: var(--radius-sm, 4px);
+            max-width: 180px;
+        }
+
+        .attachment-preview img {
+            width: 32px;
+            height: 32px;
+            object-fit: cover;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        .attachment-info {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 1px;
+        }
+
+        .attachment-name {
+            font-size: 11px;
+            color: var(--text-primary, #ccc);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .attachment-size {
+            font-size: 10px;
+            color: var(--text-muted, #6e7681);
+        }
+
+        .attachment-remove {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--error-color, #ef4444);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 10px;
+            line-height: 1;
+            padding: 0;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .attachment-preview:hover .attachment-remove {
+            opacity: 1;
+        }
+
+        .attachment-remove:hover {
+            background: var(--error-color-dark, #dc2626);
+        }
+
+        /* Drag over state */
+        :host([drag-over]) .input-area {
+            border-color: var(--accent-color, #007acc);
+            background: rgba(0, 122, 204, 0.1);
+        }
+
+        /* Hidden file input */
+        .file-input {
+            display: none;
+        }
     `;
 
     constructor() {
@@ -190,20 +286,32 @@ class TerminalInput extends LitElement {
         this.value = '';
         this.history = [];
         this.model = 'sonnet';
+        this.contextId = 'main';
         this._historyIndex = -1;
         this._showSettingsPanel = false;
         this._recording = false;
         this._audioLevel = 0;
         this._interimTranscript = '';
         this._currentSettings = null;
+        this._attachments = [];
+        this._dragOver = false;
 
         // Initialize voice service
         this._voiceService = new VoiceInputService();
         this._voiceCleanup = [];
+
+        // Bind event handlers for paste/drag
+        this._handlePaste = this._handlePaste.bind(this);
+        this._handleDragOver = this._handleDragOver.bind(this);
+        this._handleDragLeave = this._handleDragLeave.bind(this);
+        this._handleDrop = this._handleDrop.bind(this);
     }
 
     connectedCallback() {
         super.connectedCallback();
+
+        // Add paste listener to document for clipboard images
+        document.addEventListener('paste', this._handlePaste);
 
         // Set up voice service callbacks
         this._voiceCleanup.push(
@@ -249,6 +357,8 @@ class TerminalInput extends LitElement {
 
     disconnectedCallback() {
         super.disconnectedCallback();
+        // Remove paste listener
+        document.removeEventListener('paste', this._handlePaste);
         // Clean up voice service callbacks
         this._voiceCleanup.forEach(cleanup => cleanup());
         this._voiceCleanup = [];
@@ -347,18 +457,21 @@ class TerminalInput extends LitElement {
         }
     }
 
-    _handleSend() {
+    async _handleSend() {
         const trimmed = this.value.trim();
-        if (!trimmed || this.disabled || this.streaming) return;
+        // Allow send if there's text OR attachments
+        if ((!trimmed && this._attachments.length === 0) || this.disabled || this.streaming) return;
 
-        // Include current settings in send event
+        // Dispatch send event - parent handles API call via ConversationClient
         const settings = this.getSettings();
 
         this.dispatchEvent(new CustomEvent('send', {
             detail: {
                 message: trimmed,
                 model: settings?.model || this.model,
-                settings: settings
+                settings: settings,
+                contextId: this.contextId,
+                attachments: this._attachments.length > 0 ? [...this._attachments] : undefined
             },
             bubbles: true,
             composed: true
@@ -366,6 +479,7 @@ class TerminalInput extends LitElement {
 
         this.value = '';
         this._historyIndex = -1;
+        this._attachments = [];  // Clear attachments after send
         const textarea = this.shadowRoot?.querySelector('.input');
         if (textarea) {
             textarea.value = '';
@@ -411,7 +525,128 @@ class TerminalInput extends LitElement {
     }
 
     _handleToolbarAttachment() {
-        this.dispatchEvent(new CustomEvent('attachment', { bubbles: true, composed: true }));
+        // Trigger file picker
+        const fileInput = this.shadowRoot?.querySelector('.file-input');
+        if (fileInput) {
+            fileInput.click();
+        }
+    }
+
+    /**
+     * Handle paste events for clipboard images
+     * @param {ClipboardEvent} e
+     */
+    async _handlePaste(e) {
+        // Only process if this input is focused or visible
+        if (!this.isConnected || this.disabled) return;
+
+        // Check if we're focused or the paste is within our component
+        const activeEl = this.shadowRoot?.activeElement || document.activeElement;
+        const isOurInput = this.shadowRoot?.contains(activeEl) || this.contains(document.activeElement);
+        if (!isOurInput) return;
+
+        const attachments = await AttachmentService.fromClipboard(e);
+        if (attachments.length > 0) {
+            e.preventDefault();
+            this._addAttachments(attachments);
+        }
+    }
+
+    /**
+     * Handle dragover event
+     * @param {DragEvent} e
+     */
+    _handleDragOver(e) {
+        if (this.disabled) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        this._dragOver = true;
+        this.setAttribute('drag-over', '');
+    }
+
+    /**
+     * Handle dragleave event
+     * @param {DragEvent} e
+     */
+    _handleDragLeave(e) {
+        // Only remove drag state if leaving the component entirely
+        if (!this.contains(e.relatedTarget)) {
+            this._dragOver = false;
+            this.removeAttribute('drag-over');
+        }
+    }
+
+    /**
+     * Handle drop event
+     * @param {DragEvent} e
+     */
+    async _handleDrop(e) {
+        e.preventDefault();
+        this._dragOver = false;
+        this.removeAttribute('drag-over');
+
+        if (this.disabled) return;
+
+        const attachments = await AttachmentService.fromDrop(e);
+        if (attachments.length > 0) {
+            this._addAttachments(attachments);
+        }
+    }
+
+    /**
+     * Handle file input change
+     * @param {Event} e
+     */
+    async _handleFileSelect(e) {
+        const input = e.target;
+        const attachments = await AttachmentService.fromFileInput(input);
+        if (attachments.length > 0) {
+            this._addAttachments(attachments);
+        }
+        // Reset input so same file can be selected again
+        input.value = '';
+    }
+
+    /**
+     * Add attachments (with limit check)
+     * @param {Array} newAttachments
+     */
+    _addAttachments(newAttachments) {
+        const remaining = AttachmentService.maxAttachments - this._attachments.length;
+        if (remaining <= 0) {
+            console.warn(`[TerminalInput] Maximum ${AttachmentService.maxAttachments} attachments allowed`);
+            return;
+        }
+
+        const toAdd = newAttachments.slice(0, remaining);
+        this._attachments = [...this._attachments, ...toAdd];
+
+        this.dispatchEvent(new CustomEvent('attachments-change', {
+            detail: { attachments: this._attachments },
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    /**
+     * Remove an attachment by ID
+     * @param {string} id
+     */
+    _removeAttachment(id) {
+        this._attachments = this._attachments.filter(a => a.id !== id);
+
+        this.dispatchEvent(new CustomEvent('attachments-change', {
+            detail: { attachments: this._attachments },
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    /**
+     * Clear all attachments
+     */
+    clearAttachments() {
+        this._attachments = [];
     }
 
     _handlePanelClose() {
@@ -456,15 +691,55 @@ class TerminalInput extends LitElement {
     }
 
     render() {
-        const canSubmit = this.value.trim().length > 0;
+        const canSubmit = this.value.trim().length > 0 || this._attachments.length > 0;
+        const isDisabled = this.disabled || this.streaming;
 
         return html`
-            <div class="input-container">
+            <!-- Hidden file input for attachment picker -->
+            <input
+                type="file"
+                class="file-input"
+                accept="${AttachmentService.acceptTypes}"
+                multiple
+                @change="${this._handleFileSelect}"
+            />
+
+            <!-- Attachments preview strip -->
+            ${this._attachments.length > 0 ? html`
+                <div class="attachments-strip">
+                    ${this._attachments.map(att => html`
+                        <div class="attachment-preview">
+                            <img src="${att.preview}" alt="${att.name}" />
+                            <div class="attachment-info">
+                                <span class="attachment-name">${att.name}</span>
+                                <span class="attachment-size">${AttachmentService.formatSize(att.size)}</span>
+                            </div>
+                            <button
+                                class="attachment-remove"
+                                title="Remove attachment"
+                                @click="${() => this._removeAttachment(att.id)}"
+                            >&times;</button>
+                        </div>
+                    `)}
+                </div>
+            ` : ''}
+
+            <!-- Activity indicator (Claude is thinking...) -->
+            <terminal-input-activity-indicator
+                ?active="${this.streaming}"
+            ></terminal-input-activity-indicator>
+
+            <div
+                class="input-container"
+                @dragover="${this._handleDragOver}"
+                @dragleave="${this._handleDragLeave}"
+                @drop="${this._handleDrop}"
+            >
                 <div class="input-area">
                     <div class="model-area">
                         <model-toggle
                             .model="${this.model}"
-                            ?disabled="${this.disabled || this.streaming}"
+                            ?disabled="${isDisabled}"
                             compact
                             @model-change="${this._handleModelChange}"
                         ></model-toggle>
@@ -472,7 +747,7 @@ class TerminalInput extends LitElement {
                     <button
                         class="mic-btn ${this._recording ? 'recording' : ''} ${!VoiceInputService.isSupported ? 'not-supported' : ''}"
                         title="${!VoiceInputService.isSupported ? 'Voice input not supported in this browser' : this._recording ? 'Stop recording' : 'Voice input'}"
-                        ?disabled="${this.disabled || this.streaming || !VoiceInputService.isSupported}"
+                        ?disabled="${isDisabled || !VoiceInputService.isSupported}"
                         @click="${this._handleMicClick}"
                     >
                         <dash-icon name="${this._recording ? 'mic-off' : 'mic'}" size="16"></dash-icon>
@@ -483,7 +758,7 @@ class TerminalInput extends LitElement {
                             rows="1"
                             .value="${this.value}"
                             placeholder="${this._recording && this._interimTranscript ? this._interimTranscript : this.placeholder}"
-                            ?disabled="${this.disabled || this.streaming}"
+                            ?disabled="${isDisabled}"
                             @input="${this._handleInput}"
                             @keydown="${this._handleKeyDown}"
                         ></textarea>
@@ -505,6 +780,7 @@ class TerminalInput extends LitElement {
                 </div>
             </div>
 
+            <!-- Settings panel -->
             <settings-panel
                 ?expanded="${this._showSettingsPanel}"
                 @panel-close="${this._handlePanelClose}"

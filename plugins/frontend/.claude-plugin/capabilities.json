@@ -125,6 +125,15 @@
       "intent_patterns": ["sync * Figma", "import * tokens", "connect * design", "extract * variables"],
       "skill": "/frontend-figma-sync",
       "priority": 5
+    },
+    {
+      "id": "frontend.create.i18n",
+      "verb": "create",
+      "artifacts": ["i18n-config", "locale-files", "translations"],
+      "keywords": ["i18n", "internationalization", "localization", "i18next", "react-intl", "translation", "locale", "RTL"],
+      "intent_patterns": ["set up * i18n", "add * internationalization", "translate * app", "create * locales", "support * languages"],
+      "skill": "/frontend-i18n-engineer",
+      "priority": 6
     }
   ],
   "orchestrator": {

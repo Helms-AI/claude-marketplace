@@ -5,6 +5,7 @@
 
 import { AppStore, Actions } from '../store/app-state.js';
 import { ConversationStorage } from '../conversation-storage.js';
+import { AttachmentService } from './attachment-service.js';
 
 // Internal event types used by the SDK client
 export const SDKEventType = {
@@ -35,6 +36,7 @@ class SDKClientClass {
         this._sessionId = null;
         this._baseUrl = '/api/input/sdk';
         this._storageInitialized = false;
+        this._activeConversationId = null;  // Track which conversation is streaming
     }
 
     /**
@@ -46,6 +48,11 @@ class SDKClientClass {
         try {
             await ConversationStorage.init();
             this._storageInitialized = true;
+
+            // Initialize the main terminal conversation BEFORE loading messages
+            // This ensures the per-conversation Map is ready to receive restored messages
+            const terminalConversationId = { type: 'terminal', id: 'main' };
+            Actions.initConversation(terminalConversationId);
 
             // Restore session ID from localStorage if still valid
             if (ConversationStorage.isSessionValid()) {
@@ -94,7 +101,25 @@ class SDKClientClass {
                 }));
 
                 // Set messages directly to avoid triggering save again
+                // Legacy: also set terminalMessages for backwards compatibility
                 AppStore.terminalMessages.value = terminalMessages;
+
+                // NEW: Also populate the per-conversation Map for terminal:main
+                const terminalConversationId = { type: 'terminal', id: 'main' };
+                const key = `${terminalConversationId.type}:${terminalConversationId.id}`;
+                const conversations = new Map(AppStore.conversations.value);
+                const conv = conversations.get(key);
+
+                if (conv) {
+                    conversations.set(key, {
+                        ...conv,
+                        messages: terminalMessages,
+                        lastActivity: Date.now()
+                    });
+                    AppStore.conversations.value = conversations;
+                    console.log('[SDK] Restored conversation history to per-conversation Map');
+                }
+
                 console.log('[SDK] Restored conversation history');
             }
         } catch (error) {
@@ -121,31 +146,80 @@ class SDKClientClass {
     }
 
     async sendMessage(prompt, options = {}) {
-        if (AppStore.isStreaming.value) return;
+        // Check if any conversation is streaming
+        if (AppStore.activeStreamingId.value || AppStore.isStreaming.value) {
+            console.warn('[SDK] A conversation is already streaming');
+            return;
+        }
+
         const {
+            conversationId = { type: 'terminal', id: 'main' },  // Default to main terminal
             model = AppStore.terminalModel.value || 'sonnet',
+            contextPrefix = null,
             resumeSession = true,
-            settings = {}
+            settings = {},
+            attachments = []  // Image attachments
         } = options;
+
+        // Initialize conversation if it doesn't exist
+        Actions.initConversation(conversationId);
 
         // Save model preference to localStorage
         ConversationStorage.setModel(model);
 
         this._abortController = new AbortController();
-        // Clear previous streaming content before starting new request
+        this._activeConversationId = conversationId;
+
+        // Set active streaming target
+        Actions.setActiveStreamingId(conversationId);
+        Actions.setConversationStreaming(conversationId, true);
+
+        // Clear previous streaming content for this conversation
+        Actions.clearConversationStreamingState(conversationId);
+        Actions.setConversationStreaming(conversationId, true);
+
+        // Legacy: also set global streaming state for backwards compatibility
         Actions.clearStreamingState();
         AppStore.isStreaming.value = true;
 
-        // Add user message and save to IndexedDB
-        const userMessage = { role: 'user', content: prompt, id: crypto.randomUUID() };
-        Actions.addTerminalMessage(userMessage);
+        // Add user message to specific conversation AND legacy terminalMessages
+        // Include attachment previews for display in conversation
+        const userMessage = {
+            role: 'user',
+            content: prompt,
+            id: crypto.randomUUID(),
+            ...(attachments.length > 0 && {
+                attachments: attachments.map(a => ({
+                    id: a.id,
+                    name: a.name,
+                    type: a.type,
+                    size: a.size,
+                    preview: a.preview
+                }))
+            })
+        };
+        Actions.addConversationMessage(conversationId, userMessage);
+
+        // Legacy: also add to terminalMessages for main terminal backwards compatibility
+        if (conversationId.type === 'terminal' && conversationId.id === 'main') {
+            Actions.addTerminalMessage(userMessage);
+        }
+
         this._saveMessage(userMessage);
 
+        // Build prompt with optional context prefix
+        const fullPrompt = contextPrefix ? `${contextPrefix}\n\nUser request: ${prompt}` : prompt;
+
         // Build request body with all settings
+        // Convert attachments to Claude API format if present
+        const images = attachments.length > 0 ? AttachmentService.toClaudeFormat(attachments) : undefined;
+
         const requestBody = {
-            prompt,
+            prompt: fullPrompt,  // Use full prompt with context prefix if provided
             model: settings.model || model,
             resume: resumeSession ? this._sessionId : null,
+            // Image attachments in Claude format
+            ...(images && { images }),
             // SDK options from settings panel
             ...(settings.maxTurns !== undefined && { max_turns: settings.maxTurns }),
             ...(settings.extendedThinking !== undefined && { enable_thinking: settings.extendedThinking }),
@@ -176,10 +250,34 @@ class SDKClientClass {
                 console.error('[SDK] Request error:', error);
                 this._notifyListeners(SDKEventType.ERROR, { message: error.message, code: 'REQUEST_ERROR' });
                 Actions.addError({ type: 'sdk', message: error.message });
+
+                // Add error message to conversation so users see feedback
+                const errorMessage = {
+                    role: 'assistant',
+                    content: `⚠️ **Connection Error**: ${error.message}`,
+                    id: crypto.randomUUID(),
+                    isError: true,
+                    errorCode: 'REQUEST_ERROR'
+                };
+
+                if (this._activeConversationId) {
+                    Actions.addConversationMessage(this._activeConversationId, errorMessage);
+                }
+                if (this._activeConversationId?.type === 'terminal' && this._activeConversationId?.id === 'main') {
+                    Actions.addTerminalMessage(errorMessage);
+                }
             }
         } finally {
+            // Clear streaming state for the conversation
+            if (this._activeConversationId) {
+                Actions.clearConversationStreamingState(this._activeConversationId);
+            }
+            Actions.setActiveStreamingId(null);
+
+            // Legacy: clear global streaming state
             AppStore.isStreaming.value = false;
             this._abortController = null;
+            this._activeConversationId = null;
         }
     }
 
@@ -211,7 +309,17 @@ class SDKClientClass {
             if (currentAssistantMessage) {
                 // Add ID if not present
                 currentAssistantMessage.id = currentAssistantMessage.id || crypto.randomUUID();
-                Actions.addTerminalMessage(currentAssistantMessage);
+
+                // Add to specific conversation
+                if (this._activeConversationId) {
+                    Actions.addConversationMessage(this._activeConversationId, currentAssistantMessage);
+                }
+
+                // Legacy: also add to terminalMessages for main terminal backwards compatibility
+                if (this._activeConversationId?.type === 'terminal' && this._activeConversationId?.id === 'main') {
+                    Actions.addTerminalMessage(currentAssistantMessage);
+                }
+
                 // Save assistant message to IndexedDB
                 this._saveMessage(currentAssistantMessage);
             }
@@ -295,7 +403,38 @@ class SDKClientClass {
 
             // === SDK Bridge: Error message ===
             case 'error':
-                Actions.addError({ type: 'sdk', message: event.content || event.error?.message, code: event.error?.code });
+                const errorMessage = event.content || event.error?.message || 'An unknown error occurred';
+                const errorCode = event.error?.code || 'unknown_error';
+
+                // Add to error store for logging/debugging
+                Actions.addError({ type: 'sdk', message: errorMessage, code: errorCode });
+
+                // Check if this is an SDK not installed error - offer auto-install
+                if (errorCode === 'sdk_not_installed') {
+                    // Attempt auto-install
+                    this._handleSdkNotInstalled(errorMessage);
+                } else {
+                    // IMPORTANT: Also create an error message in the conversation
+                    // so users can see what went wrong (fixes missing feedback issue)
+                    const errorAssistantMessage = {
+                        role: 'assistant',
+                        content: `⚠️ **Error**: ${errorMessage}`,
+                        id: crypto.randomUUID(),
+                        isError: true,
+                        errorCode: errorCode
+                    };
+
+                    // Add error message to the active conversation
+                    if (this._activeConversationId) {
+                        Actions.addConversationMessage(this._activeConversationId, errorAssistantMessage);
+                    }
+
+                    // Legacy: also add to terminalMessages for main terminal
+                    if (this._activeConversationId?.type === 'terminal' && this._activeConversationId?.id === 'main') {
+                        Actions.addTerminalMessage(errorAssistantMessage);
+                    }
+                }
+
                 this._notifyListeners(SDKEventType.ERROR, event);
                 break;
 
@@ -342,18 +481,21 @@ class SDKClientClass {
                 if (block_type === 'tool_use') {
                     if (!currentMessage) currentMessage = { role: 'assistant', content: '', tools: [] };
                     currentMessage.tools = currentMessage.tools || [];
-                    currentMessage.tools.push({
+                    const toolData = {
                         id: event.tool_id,
                         name: event.tool_name,
                         input: {},
                         status: 'running'
-                    });
-                    Actions.updateStreamingTool({
-                        id: event.tool_id,
-                        name: event.tool_name,
-                        input: {},
-                        status: 'running'
-                    });
+                    };
+                    currentMessage.tools.push(toolData);
+
+                    // Update conversation-specific streaming tools
+                    if (this._activeConversationId) {
+                        Actions.updateConversationStreamingTool(this._activeConversationId, toolData);
+                    }
+
+                    // Legacy: also update global streaming tools
+                    Actions.updateStreamingTool(toolData);
                     this._notifyListeners(SDKEventType.TOOL_START, { tool_use_id: event.tool_id, tool_name: event.tool_name });
                 } else if (block_type === 'thinking') {
                     this._notifyListeners(SDKEventType.THINKING, { start: true });
@@ -367,7 +509,13 @@ class SDKClientClass {
                     if (!currentMessage) currentMessage = { role: 'assistant', content: '', tools: [] };
                     const text = event.text || '';
                     currentMessage.content += text;
-                    // Update streaming content for real-time UI display
+
+                    // Update streaming content for specific conversation
+                    if (this._activeConversationId) {
+                        Actions.appendConversationStreamingContent(this._activeConversationId, text);
+                    }
+
+                    // Legacy: also update global streaming content for backwards compatibility
                     Actions.appendStreamingContent(text);
                     this._notifyListeners(SDKEventType.TEXT, { content: text, fullContent: currentMessage.content });
                 } else if (delta_type === 'input_json_delta') {
@@ -509,8 +657,12 @@ class SDKClientClass {
         // Persist to localStorage
         ConversationStorage.setSessionId(sessionId);
 
-        // Clear current messages from UI
+        // Clear current messages from UI (legacy)
         AppStore.terminalMessages.value = [];
+
+        // Also clear the per-conversation Map for terminal:main
+        const terminalConversationId = { type: 'terminal', id: 'main' };
+        Actions.clearConversationMessages(terminalConversationId);
 
         // Load stored messages for the new session from IndexedDB
         await this._loadStoredMessages(sessionId);
@@ -552,6 +704,115 @@ class SDKClientClass {
             return !data.error && data.config !== null;
         }
         catch { return false; }
+    }
+
+    /**
+     * Handle SDK not installed error - offer auto-install
+     * @private
+     */
+    async _handleSdkNotInstalled(originalError) {
+        // Capture conversation ID before async operations (it may be cleared in finally block)
+        const conversationId = this._activeConversationId;
+        const isTerminalMain = conversationId?.type === 'terminal' && conversationId?.id === 'main';
+
+        // Show initial message with install option
+        const installMessage = {
+            role: 'assistant',
+            content: `⚠️ **SDK Not Installed**
+
+The Claude Agent SDK is not installed. Would you like me to install it automatically?
+
+**Installing now...** (this may take a moment)`,
+            id: crypto.randomUUID(),
+            isError: true,
+            errorCode: 'sdk_not_installed'
+        };
+
+        if (conversationId) {
+            Actions.addConversationMessage(conversationId, installMessage);
+        }
+        if (isTerminalMain) {
+            Actions.addTerminalMessage(installMessage);
+        }
+
+        // Attempt auto-install
+        try {
+            const installUrl = `${this._baseUrl}/install`;
+            console.log('[SDK] Attempting auto-install at:', installUrl);
+            const response = await fetch(installUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            console.log('[SDK] Install response status:', response.status);
+            const result = await response.json();
+            console.log('[SDK] Install result:', result);
+
+            let followUpMessage;
+            if (result.success) {
+                if (result.already_installed) {
+                    followUpMessage = {
+                        role: 'assistant',
+                        content: `✅ **SDK Already Installed**
+
+The Claude Agent SDK is already installed. Please refresh the page to reinitialize the connection.`,
+                        id: crypto.randomUUID()
+                    };
+                } else {
+                    followUpMessage = {
+                        role: 'assistant',
+                        content: `✅ **SDK Installed Successfully!**
+
+The Claude Agent SDK has been installed. Please **refresh the page** to start using Claude.`,
+                        id: crypto.randomUUID()
+                    };
+                }
+            } else {
+                followUpMessage = {
+                    role: 'assistant',
+                    content: `❌ **Installation Failed**
+
+Could not install the SDK automatically: ${result.message || result.error}
+
+**Manual installation:** Run this command in your terminal:
+\`\`\`
+pip install claude-agent-sdk
+\`\`\``,
+                    id: crypto.randomUUID(),
+                    isError: true
+                };
+            }
+
+            if (conversationId) {
+                Actions.addConversationMessage(conversationId, followUpMessage);
+            }
+            if (isTerminalMain) {
+                Actions.addTerminalMessage(followUpMessage);
+            }
+
+        } catch (error) {
+            console.error('[SDK] Auto-install failed:', error);
+            const errorFollowUp = {
+                role: 'assistant',
+                content: `❌ **Installation Failed**
+
+Could not connect to install endpoint: ${error.message}
+
+**Manual installation:** Run this command in your terminal:
+\`\`\`
+pip install claude-agent-sdk
+\`\`\``,
+                id: crypto.randomUUID(),
+                isError: true
+            };
+
+            if (conversationId) {
+                Actions.addConversationMessage(conversationId, errorFollowUp);
+            }
+            if (isTerminalMain) {
+                Actions.addTerminalMessage(errorFollowUp);
+            }
+        }
     }
 
     subscribe(callback) { this._listeners.add(callback); return () => this._listeners.delete(callback); }

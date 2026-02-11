@@ -71,6 +71,16 @@
       "command": "/testing-coverage-analyzer",
       "description": "Coverage analysis and gap identification",
       "capabilities": ["coverage reporting", "gap analysis", "coverage improvement", "metrics tracking"]
+    },
+    "testing-load-engineer": {
+      "command": "/testing-load-engineer",
+      "description": "Load and stress testing with k6, Artillery, and Locust",
+      "capabilities": ["load testing", "stress testing", "performance benchmarking", "k6", "artillery"]
+    },
+    "testing-performance-analyzer": {
+      "command": "/testing-performance-analyzer",
+      "description": "Performance analysis and optimization recommendations",
+      "capabilities": ["lighthouse", "core web vitals", "bundle analysis", "profiling", "bottleneck detection"]
     }
   }
 }

@@ -13,6 +13,9 @@ import { SDKClient } from './services/sdk-client.js';
 import { AgentService } from './services/agent-service.js';
 import { SkillService } from './services/skill-service.js';
 import { ChangesetService } from './services/changeset-service.js';
+import { ActivityService } from './services/activity-service.js';
+import { CommandService } from './services/command-service.js';
+import { EventsService } from './services/events-service.js';
 
 // New services (Phase 3)
 import { TaskService } from './services/task-service.js';
@@ -35,6 +38,7 @@ import './components/atoms/avatar.js';
 import './components/atoms/tag.js';
 import './components/atoms/empty-state.js';
 import './components/atoms/divider.js';
+import './components/atoms/activity-indicator.js';
 
 // Import molecules (self-registering)
 import './components/molecules/search-input.js';
@@ -43,6 +47,10 @@ import './components/molecules/activity-list.js';
 import './components/molecules/modal-section.js';
 import './components/molecules/modal-identity.js';
 import './components/molecules/detail-section.js';
+import './components/molecules/activity-item.js';
+import './components/molecules/activity-group.js';
+import './components/molecules/collapsed-preview.js';
+import './components/molecules/tool-activity-badge.js';
 
 // Import organisms (self-registering)
 import './components/organisms/token-meter.js';
@@ -58,6 +66,8 @@ import './components/organisms/welcome-panel.js';
 import './components/organisms/activity-panel.js';
 import './components/organisms/agent-detail-modal.js';
 import './components/organisms/skill-detail-modal.js';
+import './components/organisms/activity-timeline.js';
+import './components/organisms/activity-file-tree.js';
 
 // Import all legacy components (self-registering)
 import './components/core/icon-button.js';
@@ -66,6 +76,7 @@ import './components/core/resizable-panel.js';
 import './components/conversation/message-bubble.js';
 import './components/conversation/conversation-stream.js';
 import './components/conversation/changeset-viewer.js';
+import './components/conversation/conversation-input.js';
 import './components/indicators/thinking-indicator.js';
 import './components/indicators/connection-status.js';
 import './components/tool-cards/tool-card-base.js';
@@ -94,6 +105,7 @@ import './components/layout/sidebar-panel.js';
 import './components/layout/editor-area.js';
 import './components/layout/tab-bar.js';
 import './components/layout/status-bar.js';
+import './components/layout/activities-aside.js';
 
 class DashboardApp {
     constructor() { this._initialized = false; }
@@ -143,13 +155,140 @@ class DashboardApp {
     }
 
     _initSSE() {
+        // Central SSE event router - dispatches events to appropriate services
         SSEService.subscribe((eventType, data) => {
-            // Skip logging heartbeat messages (can come as named event or in data.type)
-            if (eventType !== SSEEventType.HEARTBEAT && data?.type !== 'heartbeat') {
-                console.log(`[SSE] ${eventType}:`, data);
+            // Skip heartbeat logging
+            if (eventType === SSEEventType.HEARTBEAT || data?.type === 'heartbeat') {
+                return;
+            }
+
+            // Debug logging (can be disabled in production)
+            console.log(`[SSE] ${eventType}:`, data);
+
+            // Determine the actual event type (can come from named event or data.type)
+            const type = eventType !== 'message' ? eventType : (data?.type || eventType);
+
+            // Route changeset events to ChangesetService
+            if (type === 'changeset_created' || type === 'changeset_updated' || type === 'changeset_deleted') {
+                ChangesetService.handleSSEEvent({ type, data: data?.data || data });
+
+                // Add activity feed entry for changeset events
+                if (type === 'changeset_created') {
+                    const changesetId = data?.data?.id || data?.id || data?.changeset_id;
+                    Actions.addActivity({
+                        type: 'changeset',
+                        message: `Changeset ${changesetId} created`,
+                        changesetId
+                    });
+                }
+            }
+
+            // Route transcript messages to conversation viewer
+            if (type === 'transcript_message') {
+                const msgData = data?.data || data;
+                const watchedId = AppStore.watchedChangesetId.value;
+
+                console.log('[SSE] transcript_message received:', {
+                    changeset_id: msgData.changeset_id,
+                    watchedId,
+                    source: msgData.source,
+                    role: msgData.message?.role
+                });
+
+                // Route to ChangesetViewer if watching this changeset
+                if (watchedId && msgData.changeset_id === watchedId) {
+                    Actions.addConversationEvent({
+                        type: 'transcript_message',
+                        message: msgData.message,
+                        source: msgData.source,
+                        changeset_id: msgData.changeset_id,
+                        timestamp: msgData.timestamp
+                    });
+                    console.log('[SSE] Added transcript_message to conversation events');
+
+                    // Extract tool calls and route to ActivityService for Activities Aside
+                    const toolCalls = msgData.message?.tool_calls || [];
+                    if (toolCalls.length > 0) {
+                        console.log(`[SSE] Extracting ${toolCalls.length} tool calls for ActivityService`);
+                        toolCalls.forEach(toolCall => {
+                            const toolId = toolCall.id || crypto.randomUUID();
+
+                            // Determine if this tool call has completed (has result or output)
+                            const hasResult = toolCall.result !== undefined ||
+                                              toolCall.output !== undefined ||
+                                              toolCall.content !== undefined;
+                            const isError = toolCall.status === 'error' || toolCall.is_error;
+
+                            if (hasResult) {
+                                // Tool has completed - send as completed activity
+                                ActivityService.handleToolEvent({
+                                    type: 'tool_result',
+                                    data: {
+                                        name: toolCall.name,
+                                        tool_use_id: toolId,
+                                        input: toolCall.input,
+                                        output: toolCall.result || toolCall.output || toolCall.content,
+                                        is_error: isError,
+                                        changeset_id: msgData.changeset_id,
+                                        timestamp: msgData.timestamp
+                                    }
+                                });
+                            } else {
+                                // Tool is still running - send as tool_use
+                                ActivityService.handleToolEvent({
+                                    type: 'tool_use',
+                                    data: {
+                                        name: toolCall.name,
+                                        tool_use_id: toolId,
+                                        input: toolCall.input,
+                                        status: toolCall.status,
+                                        changeset_id: msgData.changeset_id,
+                                        timestamp: msgData.timestamp
+                                    }
+                                });
+                            }
+                        });
+                    }
+                }
+            }
+
+            // Route conversation events
+            if (type === 'conversation_event') {
+                const eventData = data?.data || data;
+                const watchedId = AppStore.watchedChangesetId.value;
+
+                if (watchedId && eventData.changeset_id === watchedId) {
+                    Actions.addConversationEvent(eventData);
+                }
+            }
+
+            // Route task events to TaskService
+            if (type === SSEEventType.TASK_STATE_CHANGE || type === 'task_state_change') {
+                TaskService.handleTaskEvent(data);
+            }
+
+            // Route tool events to ActivityService (batched handling)
+            if (type === 'tool_use' || type === 'tool_result') {
+                ActivityService.handleToolEvent({ type, data: data?.data || data });
+            }
+
+            // Route command events (passthrough mode)
+            if (type === 'command_completed' || type === 'command_error') {
+                const cmdData = data?.data || data;
+                console.log('[SSE] Command event:', type, cmdData);
+                CommandService.handleCommandComplete({
+                    command_id: cmdData.command_id,
+                    context_id: cmdData.context_id,
+                    status: type === 'command_error' ? 'error' : 'completed',
+                    error: cmdData.error
+                });
             }
         });
+
         SSEService.connect('/api/stream');
+
+        // Initialize EventsService to capture all SSE events for the Events Monitor
+        EventsService.init();
     }
 
     async _initSDK() {
@@ -180,10 +319,12 @@ class DashboardApp {
         window.DashboardActions = Actions;
         window.DashboardServices = {
             SSE: SSEService,
-            SDK: SDKClient,
             Agent: AgentService,
             Skill: SkillService,
             Changeset: ChangesetService,
+            Activity: ActivityService,
+            Command: CommandService,
+            Events: EventsService,
             // New services (Phase 3)
             Task: TaskService,
             Error: ErrorService,
@@ -197,16 +338,14 @@ class DashboardApp {
         };
         window.addEventListener('theme-change', (e) => Actions.setTheme(e.detail.theme));
         window.addEventListener('sidebar-toggle', () => Actions.toggleSidebar());
-
-        // Connect SSE events to services
-        SSEService.subscribe((eventType, data) => {
-            if (eventType === SSEEventType.TASK_STATE_CHANGE) {
-                TaskService.handleTaskEvent(data);
-            }
-        });
+        // Note: SSE event routing is now consolidated in _initSSE()
     }
 
-    destroy() { SSEService.disconnect(); this._initialized = false; }
+    destroy() {
+        EventsService.disconnect();
+        SSEService.disconnect();
+        this._initialized = false;
+    }
 }
 
 const app = new DashboardApp();

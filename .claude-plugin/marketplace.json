@@ -8,8 +8,8 @@
     {
       "name": "pm",
       "source": "./plugins/pm",
-      "description": "Project Manager broker for cross-domain orchestration. Routes requests to specialized domain plugins, manages workflow changesets, tracks decisions/artifacts, and resolves conflicts between domains.",
-      "version": "1.1.0",
+      "description": "Project Manager broker for cross-domain orchestration. Routes requests to specialized domain plugins, manages workflow changesets, tracks decisions/artifacts, resolves conflicts, and now includes /discover for skill finding, /tutorial for onboarding, /recipe for workflow templates, and /autonomy for action control.",
+      "version": "1.4.0",
       "author": {
         "name": "Platform Team"
       },
@@ -22,14 +22,16 @@
         "cross-domain",
         "routing",
         "conflict-resolution",
-        "capability-matching"
+        "discovery",
+        "recipes",
+        "autonomy"
       ]
     },
     {
       "name": "user-experience",
       "source": "./plugins/user-experience",
-      "description": "Design thinking and ideation team with 8 specialized agent personas and 9 skills for distinctive, memorable design direction. Includes aesthetic direction, typography curation, color alchemy, layout composition, texture/atmosphere, micro-delight design, and user research. Pre-code design phase that creates aesthetic briefs and hands off to frontend for implementation.",
-      "version": "4.0.0",
+      "description": "Design thinking and ideation team with 8 specialized agent personas and 9 skills for distinctive, memorable design direction. Includes aesthetic direction, typography curation, color alchemy, layout composition, texture/atmosphere, micro-delight design, and user research.",
+      "version": "4.3.0",
       "author": {
         "name": "Platform Team"
       },
@@ -43,19 +45,14 @@
         "layout",
         "texture",
         "micro-interactions",
-        "user-research",
-        "personas",
-        "journey-mapping",
-        "brand",
-        "visual-identity",
-        "design-thinking"
+        "user-research"
       ]
     },
     {
       "name": "frontend",
       "source": "./plugins/frontend",
-      "description": "Frontend implementation team with 14 specialized agent personas and 15 skills for building production-ready UI components. Includes design systems, component architecture, motion design, accessibility auditing, responsive engineering, performance optimization, progress UI, forms, navigation, data grids, data visualization, Storybook documentation, and Figma sync. React 19, Vue 3.5, Svelte 5, Tailwind 4.0, WCAG 2.2 accessibility.",
-      "version": "1.0.0",
+      "description": "Frontend implementation team with 15 specialized agent personas and 17 skills. Includes design systems, component architecture, motion design, accessibility, responsive engineering, performance, forms, navigation, data grids, data visualization, Storybook, Figma sync, and i18n internationalization.",
+      "version": "1.3.0",
       "author": {
         "name": "Platform Team"
       },
@@ -66,29 +63,19 @@
         "design-system",
         "components",
         "accessibility",
-        "wcag",
         "performance",
-        "responsive",
-        "animation",
         "react",
         "vue",
         "svelte",
-        "tailwind",
-        "data-visualization",
-        "figma",
-        "storybook",
-        "forms",
-        "navigation",
-        "data-grid",
-        "progress-ui",
-        "loading-states"
+        "i18n",
+        "internationalization"
       ]
     },
     {
       "name": "architecture",
       "source": "./plugins/architecture",
-      "description": "Architecture team with 5 specialized agents for system design, design patterns, ADRs, technical diagrams, and API design. Includes high-level system architecture, scalability patterns, Mermaid/PlantUML/C4 diagrams, and REST/GraphQL/gRPC API specifications.",
-      "version": "1.0.0",
+      "description": "Architecture team with 5 specialized agents for system design, design patterns, ADRs, technical diagrams, and API design.",
+      "version": "1.3.0",
       "author": {
         "name": "Platform Team"
       },
@@ -99,23 +86,14 @@
         "design-patterns",
         "adr",
         "diagrams",
-        "mermaid",
-        "plantuml",
-        "c4",
-        "api-design",
-        "rest",
-        "graphql",
-        "grpc",
-        "scalability",
-        "microservices",
-        "distributed-systems"
+        "api-design"
       ]
     },
     {
       "name": "backend",
       "source": "./plugins/backend",
-      "description": "Backend team with 5 specialized agents for API development, database design, authentication, services, and third-party integrations. Includes REST/GraphQL endpoints, PostgreSQL/MongoDB schemas, OAuth/JWT/RBAC auth, microservices patterns, and integration with external APIs.",
-      "version": "1.0.2",
+      "description": "Backend team with 5 specialized agents for API development, database design, authentication, services, and integrations.",
+      "version": "1.3.0",
       "author": {
         "name": "Platform Team"
       },
@@ -126,23 +104,14 @@
         "rest",
         "graphql",
         "database",
-        "postgresql",
-        "mongodb",
-        "redis",
-        "authentication",
-        "oauth",
-        "jwt",
-        "rbac",
-        "microservices",
-        "message-queues",
-        "integrations"
+        "authentication"
       ]
     },
     {
       "name": "testing",
       "source": "./plugins/testing",
-      "description": "Testing team with 5 specialized agents for test strategy, unit tests, integration tests, E2E tests, and coverage analysis. Includes Jest/Vitest for unit testing, API contract testing with Pact, Playwright/Cypress for E2E, and comprehensive coverage reporting.",
-      "version": "1.0.1",
+      "description": "Testing team with 6 specialized agents for test strategy, unit tests, integration tests, E2E tests, coverage analysis, and performance/load testing with k6 and Artillery.",
+      "version": "1.3.0",
       "author": {
         "name": "Platform Team"
       },
@@ -151,25 +120,18 @@
         "testing",
         "qa",
         "unit-tests",
-        "jest",
-        "vitest",
-        "integration-tests",
-        "contract-testing",
-        "pact",
         "e2e",
         "playwright",
-        "cypress",
-        "coverage",
-        "test-strategy",
-        "tdd",
-        "mocking"
+        "load-testing",
+        "k6",
+        "performance"
       ]
     },
     {
       "name": "devops",
       "source": "./plugins/devops",
-      "description": "DevOps team with 5 specialized agents for CI/CD pipelines, deployment strategies, infrastructure as code, monitoring/observability, and containerization. Includes GitHub Actions, blue-green/canary deployments, Terraform, Kubernetes, and Prometheus/Grafana observability. Now with PreToolUse safety hooks for production protection.",
-      "version": "1.1.0",
+      "description": "DevOps team with 5 specialized agents for CI/CD pipelines, deployment, infrastructure as code, monitoring, and containerization. Includes production safety hooks.",
+      "version": "1.4.0",
       "author": {
         "name": "Platform Team"
       },
@@ -177,27 +139,18 @@
       "tags": [
         "devops",
         "ci-cd",
-        "github-actions",
-        "jenkins",
         "deployment",
-        "blue-green",
-        "canary",
-        "infrastructure",
         "terraform",
         "kubernetes",
         "docker",
-        "monitoring",
-        "prometheus",
-        "grafana",
-        "observability",
-        "alerting"
+        "monitoring"
       ]
     },
     {
       "name": "data",
       "source": "./plugins/data",
-      "description": "Data team with 5 specialized agents for data modeling, pipelines, analytics, warehousing, and governance. Includes ERD design, DBML, Airflow DAGs, dbt models, star schemas, data quality rules, and compliance frameworks. Pipeline skills now require manual invocation for safety.",
-      "version": "1.0.1",
+      "description": "Data team with 5 specialized agents for data modeling, pipelines, analytics, warehousing, and governance.",
+      "version": "1.3.0",
       "author": {
         "name": "Platform Team"
       },
@@ -205,31 +158,18 @@
       "tags": [
         "data",
         "data-modeling",
-        "erd",
-        "dbml",
         "etl",
-        "elt",
         "pipelines",
-        "airflow",
         "dbt",
         "analytics",
-        "bi",
-        "dashboards",
-        "data-warehouse",
-        "snowflake",
-        "bigquery",
-        "redshift",
-        "governance",
-        "data-quality",
-        "compliance",
-        "lineage"
+        "data-warehouse"
       ]
     },
     {
       "name": "security",
       "source": "./plugins/security",
-      "description": "Security team with 5 specialized agents for security audits, threat modeling, compliance, secrets management, and penetration testing guidance. Defensive security focus covering OWASP, STRIDE, SOC2, GDPR, HIPAA, PCI-DSS, HashiCorp Vault, and security code review. Now with hooks for credential protection and secret exposure scanning.",
-      "version": "1.1.0",
+      "description": "Security team with 5 specialized agents for audits, threat modeling, compliance, secrets management, and penetration testing guidance.",
+      "version": "1.4.0",
       "author": {
         "name": "Platform Team"
       },
@@ -237,29 +177,16 @@
       "tags": [
         "security",
         "audit",
-        "vulnerability",
         "threat-modeling",
-        "stride",
         "compliance",
-        "soc2",
-        "gdpr",
-        "hipaa",
-        "pci-dss",
-        "secrets",
-        "vault",
-        "kms",
-        "owasp",
-        "code-review",
-        "penetration-testing",
-        "risk-assessment",
-        "defensive-security"
+        "secrets"
       ]
     },
     {
       "name": "documentation",
       "source": "./plugins/documentation",
-      "description": "Documentation team with 5 specialized agents for API docs, guides, architecture documentation, runbooks, and onboarding materials. Includes OpenAPI/Swagger specs, tutorials, C4 diagrams, ADRs, incident playbooks, and developer onboarding.",
-      "version": "1.0.0",
+      "description": "Documentation team with 5 specialized agents for API docs, guides, architecture documentation, runbooks, onboarding, and now documentation localization.",
+      "version": "1.3.0",
       "author": {
         "name": "Platform Team"
       },
@@ -267,25 +194,17 @@
       "tags": [
         "documentation",
         "api-docs",
-        "openapi",
-        "swagger",
-        "tutorials",
         "guides",
-        "architecture",
-        "c4",
-        "adr",
         "runbooks",
-        "playbooks",
-        "onboarding",
-        "sre",
-        "technical-writing"
+        "localization",
+        "i18n"
       ]
     },
     {
       "name": "dashboard",
       "source": "./plugins/dashboard",
-      "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration. Features agent explorer, skill browser, changeset viewer with live SSE, inline subagent conversations, D3.js domain graph with agent clustering and live activity pulse, handoff timeline, semantic tool renderers, extended thinking indicator, error stream panel, token usage meter with cost tracking, Claude Agent SDK integration with rich conversation view (tool cards, avatars, markdown rendering, full lifecycle event streaming), model selection, max turns/budget safety limits, security hooks, interrupt support, file checkpointing/undo, session management (create/continue/fork) with IndexedDB-based session persistence across browser refreshes, custom MCP tools for marketplace operations, retry logic with exponential backoff, beta features support, sandbox configuration, interactive AskUserQuestion handling (selectable options, multi-select, other text input, form submission to continue conversation with session continuity), and 58 marketplace agents across 11 domains.",
-      "version": "2.28.5",
+      "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration. Now includes passthrough mode for unified conversation context and SSE events monitoring.",
+      "version": "2.37.0",
       "author": {
         "name": "Platform Team"
       },
@@ -295,18 +214,46 @@
         "visualization",
         "monitoring",
         "agents",
-        "skills",
-        "changesets",
-        "real-time",
-        "sse",
-        "d3js",
-        "graph",
-        "timeline",
-        "handoffs",
-        "observability",
-        "sdk",
-        "hooks",
-        "security"
+        "skills"
+      ]
+    },
+    {
+      "name": "mobile",
+      "source": "./plugins/mobile",
+      "description": "Mobile development team with 5 specialized agents for iOS (Swift/SwiftUI), Android (Kotlin/Compose), React Native, Flutter, and mobile testing.",
+      "version": "1.1.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "mobile",
+      "tags": [
+        "mobile",
+        "ios",
+        "android",
+        "swift",
+        "kotlin",
+        "react-native",
+        "flutter",
+        "cross-platform"
+      ]
+    },
+    {
+      "name": "mlops",
+      "source": "./plugins/mlops",
+      "description": "MLOps team with 5 specialized agents for model training, deployment, feature engineering, experiment tracking, and ML monitoring.",
+      "version": "1.1.0",
+      "author": {
+        "name": "Platform Team"
+      },
+      "category": "mlops",
+      "tags": [
+        "mlops",
+        "machine-learning",
+        "model-training",
+        "model-deployment",
+        "mlflow",
+        "pytorch",
+        "tensorflow"
       ]
     }
   ]

@@ -1,0 +1,61 @@
+{
+  "plugin": {
+    "name": "mlops",
+    "version": "1.0.0"
+  },
+  "domain": {
+    "primary": "mlops",
+    "subdomains": ["training", "deployment", "monitoring", "features", "experiments"],
+    "collaborates_with": ["data", "backend", "devops", "security"]
+  },
+  "capabilities": [
+    {
+      "id": "mlops.train.model",
+      "verb": "train",
+      "artifacts": ["model", "experiment"],
+      "keywords": ["train", "model", "pytorch", "tensorflow", "machine learning"],
+      "intent_patterns": ["train * model", "create * ml *", "machine learning *"],
+      "skill": "/mlops-model-trainer",
+      "priority": 8
+    },
+    {
+      "id": "mlops.deploy.model",
+      "verb": "deploy",
+      "artifacts": ["model-endpoint", "inference-service"],
+      "keywords": ["deploy", "serve", "inference", "endpoint", "production"],
+      "intent_patterns": ["deploy * model", "serve * model", "inference *"],
+      "skill": "/mlops-model-deployer",
+      "priority": 8
+    },
+    {
+      "id": "mlops.monitor.model",
+      "verb": "monitor",
+      "artifacts": ["metrics", "alerts", "dashboards"],
+      "keywords": ["monitor", "drift", "performance", "alert", "observability"],
+      "intent_patterns": ["monitor * model", "track * performance", "detect * drift"],
+      "skill": "/mlops-monitoring",
+      "priority": 7
+    },
+    {
+      "id": "mlops.engineer.features",
+      "verb": "engineer",
+      "artifacts": ["features", "feature-store"],
+      "keywords": ["feature", "engineering", "preprocessing", "feast"],
+      "intent_patterns": ["create * features", "feature * store", "engineer * data"],
+      "skill": "/mlops-feature-engineer",
+      "priority": 7
+    },
+    {
+      "id": "mlops.track.experiments",
+      "verb": "track",
+      "artifacts": ["experiment", "metrics", "artifacts"],
+      "keywords": ["experiment", "mlflow", "wandb", "track", "log"],
+      "intent_patterns": ["track * experiment", "log * metrics", "mlflow *"],
+      "skill": "/mlops-experiment-tracker",
+      "priority": 7
+    }
+  ],
+  "orchestrator": {
+    "skill": "/mlops-orchestrator"
+  }
+}

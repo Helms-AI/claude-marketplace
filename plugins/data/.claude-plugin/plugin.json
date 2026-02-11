@@ -1,17 +1,12 @@
 {
   "name": "data",
   "description": "Data engineering including pipelines, warehousing, ETL/ELT, and analytics infrastructure.",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "homepage": "https://github.com/Helms-AI/claude-marketplace",
   "repository": "https://github.com/Helms-AI/claude-marketplace",
   "license": "MIT",
   "keywords": ["data", "etl", "dbt", "pipeline", "warehouse", "analytics"],
   "skills": ["./skills/"],
-  "hooks": "./hooks/hooks.json",
-  "mcp": "./mcp.json",
-  "lsp": "./lsp.json",
-  "statusLine": {
-    "template": "Data | Models: ${model_count} | Pipeline: ${pipeline_status}",
-    "refresh": "on-change"
-  }
+  "mcpServers": "./.claude-plugin/mcp.json",
+  "lspServers": "./.claude-plugin/lsp.json"
 }

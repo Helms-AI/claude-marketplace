@@ -1,0 +1,15 @@
+{
+  "lspServers": {
+    "python": {
+      "command": "pylsp",
+      "args": [],
+      "languages": ["python"],
+      "rootMarkers": ["mlflow.yaml", "kubeflow", "requirements.txt", "pyproject.toml"],
+      "settings": {
+        "pylsp.plugins.pycodestyle.enabled": true,
+        "pylsp.plugins.pyflakes.enabled": true
+      },
+      "description": "Python for ML libraries (PyTorch, TensorFlow, scikit-learn)"
+    }
+  }
+}

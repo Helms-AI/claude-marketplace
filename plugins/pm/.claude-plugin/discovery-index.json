@@ -1,0 +1,447 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2026-02-01",
+  "skills": [
+    {
+      "name": "pm",
+      "domain": "pm",
+      "keywords": ["orchestrate", "workflow", "multi-domain", "project", "coordinate"],
+      "description": "Cross-domain workflow orchestration",
+      "useCases": ["complex features", "multi-team projects", "full-stack development"]
+    },
+    {
+      "name": "pm-status",
+      "domain": "pm",
+      "keywords": ["status", "progress", "workflow", "changeset", "tracking"],
+      "description": "View workflow status and progress",
+      "useCases": ["check progress", "view handoffs", "see decisions"]
+    },
+    {
+      "name": "pm-resolve",
+      "domain": "pm",
+      "keywords": ["conflict", "resolve", "decision", "trade-off"],
+      "description": "Resolve cross-domain conflicts",
+      "useCases": ["resolve conflicts", "make trade-offs", "prioritize"]
+    },
+    {
+      "name": "frontend-orchestrator",
+      "domain": "frontend",
+      "keywords": ["frontend", "ui", "component", "react", "vue", "svelte"],
+      "description": "Frontend implementation coordination",
+      "useCases": ["build UI", "create components", "implement designs"]
+    },
+    {
+      "name": "frontend-component-architect",
+      "domain": "frontend",
+      "keywords": ["component", "react", "vue", "svelte", "build", "create"],
+      "description": "Build UI components",
+      "useCases": ["create button", "build form", "make modal", "design card"]
+    },
+    {
+      "name": "frontend-design-system",
+      "domain": "frontend",
+      "keywords": ["design system", "tokens", "theme", "tailwind", "css"],
+      "description": "Design system and theming",
+      "useCases": ["setup tokens", "create theme", "configure tailwind"]
+    },
+    {
+      "name": "frontend-accessibility-auditor",
+      "domain": "frontend",
+      "keywords": ["accessibility", "a11y", "wcag", "aria", "screen reader"],
+      "description": "Accessibility audits",
+      "useCases": ["audit accessibility", "fix a11y", "add aria"]
+    },
+    {
+      "name": "frontend-performance-engineer",
+      "domain": "frontend",
+      "keywords": ["performance", "speed", "fast", "optimize", "core web vitals"],
+      "description": "Frontend performance optimization",
+      "useCases": ["improve speed", "optimize bundle", "fix LCP"]
+    },
+    {
+      "name": "frontend-form-experience",
+      "domain": "frontend",
+      "keywords": ["form", "input", "validation", "wizard", "multi-step"],
+      "description": "Form patterns and validation",
+      "useCases": ["build form", "add validation", "create wizard"]
+    },
+    {
+      "name": "frontend-data-grid",
+      "domain": "frontend",
+      "keywords": ["table", "grid", "data", "sorting", "filtering", "pagination"],
+      "description": "Data tables and grids",
+      "useCases": ["create table", "add sorting", "build data grid"]
+    },
+    {
+      "name": "frontend-data-viz",
+      "domain": "frontend",
+      "keywords": ["chart", "graph", "visualization", "d3", "recharts"],
+      "description": "Charts and data visualization",
+      "useCases": ["create chart", "build dashboard", "visualize data"]
+    },
+    {
+      "name": "frontend-motion-designer",
+      "domain": "frontend",
+      "keywords": ["animation", "motion", "gsap", "framer", "transition"],
+      "description": "Animations and motion",
+      "useCases": ["add animation", "create transition", "animate component"]
+    },
+    {
+      "name": "backend-orchestrator",
+      "domain": "backend",
+      "keywords": ["backend", "api", "server", "database", "service"],
+      "description": "Backend development coordination",
+      "useCases": ["build API", "create service", "setup database"]
+    },
+    {
+      "name": "backend-api-builder",
+      "domain": "backend",
+      "keywords": ["api", "rest", "graphql", "endpoint", "route"],
+      "description": "Build API endpoints",
+      "useCases": ["create endpoint", "build REST API", "add route"]
+    },
+    {
+      "name": "backend-database-modeler",
+      "domain": "backend",
+      "keywords": ["database", "schema", "model", "migration", "prisma"],
+      "description": "Database schema design",
+      "useCases": ["design schema", "create migration", "model data"]
+    },
+    {
+      "name": "backend-auth-architect",
+      "domain": "backend",
+      "keywords": ["auth", "authentication", "oauth", "jwt", "login"],
+      "description": "Authentication systems",
+      "useCases": ["add login", "setup OAuth", "implement JWT"]
+    },
+    {
+      "name": "testing-orchestrator",
+      "domain": "testing",
+      "keywords": ["test", "testing", "qa", "quality"],
+      "description": "Test strategy coordination",
+      "useCases": ["setup testing", "create test plan", "improve coverage"]
+    },
+    {
+      "name": "testing-unit-specialist",
+      "domain": "testing",
+      "keywords": ["unit test", "jest", "vitest", "function test"],
+      "description": "Unit testing",
+      "useCases": ["write unit tests", "test function", "mock dependencies"]
+    },
+    {
+      "name": "testing-e2e-engineer",
+      "domain": "testing",
+      "keywords": ["e2e", "playwright", "cypress", "end to end", "browser test"],
+      "description": "End-to-end testing",
+      "useCases": ["write E2E tests", "test user flow", "browser automation"]
+    },
+    {
+      "name": "testing-integration-specialist",
+      "domain": "testing",
+      "keywords": ["integration", "api test", "contract", "pact"],
+      "description": "Integration testing",
+      "useCases": ["test API", "integration tests", "contract testing"]
+    },
+    {
+      "name": "security-orchestrator",
+      "domain": "security",
+      "keywords": ["security", "audit", "vulnerability", "secure"],
+      "description": "Security review coordination",
+      "useCases": ["security audit", "find vulnerabilities", "review code"]
+    },
+    {
+      "name": "security-auditor",
+      "domain": "security",
+      "keywords": ["audit", "review", "scan", "vulnerability", "owasp"],
+      "description": "Security audits",
+      "useCases": ["audit code", "find issues", "security review"]
+    },
+    {
+      "name": "security-threat-modeler",
+      "domain": "security",
+      "keywords": ["threat", "model", "attack", "risk", "stride"],
+      "description": "Threat modeling",
+      "useCases": ["model threats", "identify risks", "attack surface"]
+    },
+    {
+      "name": "devops-orchestrator",
+      "domain": "devops",
+      "keywords": ["devops", "deploy", "infrastructure", "ci", "cd"],
+      "description": "DevOps coordination",
+      "useCases": ["setup CI/CD", "deploy app", "infrastructure"]
+    },
+    {
+      "name": "devops-deployment-engineer",
+      "domain": "devops",
+      "keywords": ["deploy", "release", "ship", "production", "staging"],
+      "description": "Deployment management",
+      "useCases": ["deploy to prod", "release version", "rollback"]
+    },
+    {
+      "name": "devops-ci-architect",
+      "domain": "devops",
+      "keywords": ["ci", "pipeline", "github actions", "workflow", "automation"],
+      "description": "CI/CD pipelines",
+      "useCases": ["setup CI", "create pipeline", "automate builds"]
+    },
+    {
+      "name": "devops-infrastructure-specialist",
+      "domain": "devops",
+      "keywords": ["infrastructure", "terraform", "aws", "cloud", "iac"],
+      "description": "Infrastructure as code",
+      "useCases": ["setup infra", "terraform", "cloud resources"]
+    },
+    {
+      "name": "devops-container-specialist",
+      "domain": "devops",
+      "keywords": ["docker", "container", "kubernetes", "k8s", "helm"],
+      "description": "Container orchestration",
+      "useCases": ["dockerize", "kubernetes", "create helm chart"]
+    },
+    {
+      "name": "data-orchestrator",
+      "domain": "data",
+      "keywords": ["data", "pipeline", "etl", "analytics"],
+      "description": "Data engineering coordination",
+      "useCases": ["build pipeline", "data workflow", "analytics"]
+    },
+    {
+      "name": "data-pipeline-architect",
+      "domain": "data",
+      "keywords": ["pipeline", "etl", "airflow", "dbt", "transform"],
+      "description": "Data pipelines",
+      "useCases": ["create pipeline", "ETL job", "data transform"]
+    },
+    {
+      "name": "data-modeler",
+      "domain": "data",
+      "keywords": ["model", "schema", "warehouse", "dimensional"],
+      "description": "Data modeling",
+      "useCases": ["design model", "star schema", "data warehouse"]
+    },
+    {
+      "name": "architecture-orchestrator",
+      "domain": "architecture",
+      "keywords": ["architecture", "design", "system", "pattern"],
+      "description": "Architecture coordination",
+      "useCases": ["system design", "architecture review", "patterns"]
+    },
+    {
+      "name": "arch-system-designer",
+      "domain": "architecture",
+      "keywords": ["system", "design", "microservices", "monolith", "scale"],
+      "description": "System design",
+      "useCases": ["design system", "scale architecture", "microservices"]
+    },
+    {
+      "name": "arch-api-designer",
+      "domain": "architecture",
+      "keywords": ["api", "contract", "openapi", "graphql", "specification"],
+      "description": "API design",
+      "useCases": ["design API", "create spec", "API contract"]
+    },
+    {
+      "name": "arch-adr-writer",
+      "domain": "architecture",
+      "keywords": ["adr", "decision", "record", "document", "why"],
+      "description": "Architecture Decision Records",
+      "useCases": ["write ADR", "document decision", "record rationale"]
+    },
+    {
+      "name": "docs-orchestrator",
+      "domain": "documentation",
+      "keywords": ["docs", "documentation", "write", "document"],
+      "description": "Documentation coordination",
+      "useCases": ["write docs", "document feature", "create guide"]
+    },
+    {
+      "name": "docs-api-writer",
+      "domain": "documentation",
+      "keywords": ["api docs", "swagger", "openapi", "reference"],
+      "description": "API documentation",
+      "useCases": ["document API", "create reference", "swagger docs"]
+    },
+    {
+      "name": "docs-guide-writer",
+      "domain": "documentation",
+      "keywords": ["guide", "tutorial", "how-to", "walkthrough"],
+      "description": "User guides",
+      "useCases": ["write guide", "create tutorial", "how-to docs"]
+    },
+    {
+      "name": "user-experience-orchestrator",
+      "domain": "user-experience",
+      "keywords": ["ux", "design", "user", "experience"],
+      "description": "UX design coordination",
+      "useCases": ["design UX", "user research", "improve experience"]
+    },
+    {
+      "name": "user-experience-aesthetic-director",
+      "domain": "user-experience",
+      "keywords": ["aesthetic", "style", "look", "feel", "brand"],
+      "description": "Visual aesthetics",
+      "useCases": ["define style", "brand direction", "visual design"]
+    },
+    {
+      "name": "user-experience-user-researcher",
+      "domain": "user-experience",
+      "keywords": ["research", "user", "persona", "interview", "survey"],
+      "description": "User research",
+      "useCases": ["user research", "create personas", "interviews"]
+    },
+    {
+      "name": "pm-discover",
+      "domain": "pm",
+      "keywords": ["discover", "find", "search", "recommend", "skill"],
+      "description": "Find the right skill for any task",
+      "useCases": ["find skill", "discover tools", "get recommendations"]
+    },
+    {
+      "name": "pm-tutorial",
+      "domain": "pm",
+      "keywords": ["tutorial", "learn", "onboard", "guide", "getting started"],
+      "description": "Interactive onboarding tutorial",
+      "useCases": ["learn system", "get started", "new user guide"]
+    },
+    {
+      "name": "pm-recipe",
+      "domain": "pm",
+      "keywords": ["recipe", "workflow", "template", "pattern", "cookbook"],
+      "description": "Execute pre-built workflow recipes",
+      "useCases": ["run recipe", "workflow template", "common patterns"]
+    },
+    {
+      "name": "pm-autonomy",
+      "domain": "pm",
+      "keywords": ["autonomy", "control", "confirmation", "oversight", "settings"],
+      "description": "Configure action autonomy levels",
+      "useCases": ["set autonomy", "control confirmations", "action settings"]
+    },
+    {
+      "name": "mobile-orchestrator",
+      "domain": "mobile",
+      "keywords": ["mobile", "ios", "android", "app", "cross-platform"],
+      "description": "Mobile development coordination",
+      "useCases": ["mobile app", "ios development", "android development"]
+    },
+    {
+      "name": "mobile-ios-developer",
+      "domain": "mobile",
+      "keywords": ["ios", "swift", "swiftui", "iphone", "ipad", "apple"],
+      "description": "iOS development with Swift",
+      "useCases": ["ios app", "swift code", "swiftui views"]
+    },
+    {
+      "name": "mobile-android-developer",
+      "domain": "mobile",
+      "keywords": ["android", "kotlin", "compose", "jetpack", "google"],
+      "description": "Android development with Kotlin",
+      "useCases": ["android app", "kotlin code", "compose ui"]
+    },
+    {
+      "name": "mobile-react-native",
+      "domain": "mobile",
+      "keywords": ["react native", "expo", "cross-platform", "javascript"],
+      "description": "React Native cross-platform apps",
+      "useCases": ["react native app", "expo project", "cross-platform mobile"]
+    },
+    {
+      "name": "mobile-flutter",
+      "domain": "mobile",
+      "keywords": ["flutter", "dart", "cross-platform", "material"],
+      "description": "Flutter cross-platform apps",
+      "useCases": ["flutter app", "dart code", "cross-platform mobile"]
+    },
+    {
+      "name": "mobile-testing",
+      "domain": "mobile",
+      "keywords": ["mobile test", "appium", "detox", "xctest", "espresso"],
+      "description": "Mobile app testing",
+      "useCases": ["test mobile app", "appium tests", "device testing"]
+    },
+    {
+      "name": "mlops-orchestrator",
+      "domain": "mlops",
+      "keywords": ["mlops", "machine learning", "ml", "ai", "models"],
+      "description": "MLOps coordination",
+      "useCases": ["ml workflow", "model lifecycle", "ml operations"]
+    },
+    {
+      "name": "mlops-model-trainer",
+      "domain": "mlops",
+      "keywords": ["train", "model", "pytorch", "tensorflow", "ml training"],
+      "description": "Train ML models",
+      "useCases": ["train model", "ml training", "deep learning"]
+    },
+    {
+      "name": "mlops-model-deployer",
+      "domain": "mlops",
+      "keywords": ["deploy", "serve", "inference", "endpoint", "production ml"],
+      "description": "Deploy ML models to production",
+      "useCases": ["deploy model", "inference endpoint", "model serving"]
+    },
+    {
+      "name": "mlops-feature-engineer",
+      "domain": "mlops",
+      "keywords": ["feature", "engineering", "preprocessing", "feast", "feature store"],
+      "description": "Feature engineering and stores",
+      "useCases": ["create features", "feature store", "data preprocessing"]
+    },
+    {
+      "name": "mlops-experiment-tracker",
+      "domain": "mlops",
+      "keywords": ["experiment", "mlflow", "wandb", "tracking", "metrics"],
+      "description": "Track ML experiments",
+      "useCases": ["track experiments", "log metrics", "mlflow setup"]
+    },
+    {
+      "name": "mlops-monitoring",
+      "domain": "mlops",
+      "keywords": ["monitor", "drift", "model health", "alerting", "observability"],
+      "description": "Monitor ML models in production",
+      "useCases": ["monitor models", "detect drift", "model alerts"]
+    },
+    {
+      "name": "testing-load-engineer",
+      "domain": "testing",
+      "keywords": ["load test", "stress test", "k6", "artillery", "performance"],
+      "description": "Load and stress testing",
+      "useCases": ["load testing", "stress test", "performance benchmarking"]
+    },
+    {
+      "name": "testing-performance-analyzer",
+      "domain": "testing",
+      "keywords": ["performance", "lighthouse", "core web vitals", "profiling"],
+      "description": "Performance analysis and optimization",
+      "useCases": ["analyze performance", "lighthouse audit", "optimize speed"]
+    },
+    {
+      "name": "frontend-i18n-engineer",
+      "domain": "frontend",
+      "keywords": ["i18n", "internationalization", "localization", "translation", "locale"],
+      "description": "Internationalization setup",
+      "useCases": ["add i18n", "setup translations", "support languages"]
+    },
+    {
+      "name": "docs-localization",
+      "domain": "documentation",
+      "keywords": ["localization", "translation", "multilingual", "l10n"],
+      "description": "Documentation localization",
+      "useCases": ["translate docs", "multilingual docs", "localize content"]
+    }
+  ],
+  "domains": {
+    "pm": {"color": "#6366f1", "priority": 1},
+    "frontend": {"color": "#22c55e", "priority": 2},
+    "backend": {"color": "#3b82f6", "priority": 3},
+    "testing": {"color": "#f59e0b", "priority": 4},
+    "security": {"color": "#ef4444", "priority": 5},
+    "devops": {"color": "#8b5cf6", "priority": 6},
+    "data": {"color": "#06b6d4", "priority": 7},
+    "architecture": {"color": "#ec4899", "priority": 8},
+    "documentation": {"color": "#84cc16", "priority": 9},
+    "user-experience": {"color": "#f97316", "priority": 10},
+    "mobile": {"color": "#14b8a6", "priority": 11},
+    "mlops": {"color": "#a855f7", "priority": 12}
+  }
+}

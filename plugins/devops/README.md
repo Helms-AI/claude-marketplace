@@ -113,3 +113,59 @@ User: /devops-team-session We're migrating from a monolith to microservices.
 User: /devops-infrastructure-specialist Our AWS bill has grown 3x in 6 months.
       Help me identify optimization opportunities in our Terraform.
 ```
+
+## Agent Marketplace Observability
+
+This plugin includes a comprehensive **observability system** for monitoring all 58 agents across the marketplace. The system provides:
+
+### Features
+
+- **Real-time Telemetry**: Hooks capture events from agent invocations, tool executions, and cross-domain handoffs
+- **Health Dashboards**: CLI dashboards showing agent success rates, performance metrics, and failure patterns
+- **Alert System**: Automatic detection of performance degradation, stuck handoffs, and error spikes
+- **Request Tracing**: Trace entire workflows across multiple domains using correlation IDs
+- **Self-Learning Foundation**: Telemetry data enables pattern detection and continuous improvement
+
+### Quick Start
+
+View agent health metrics:
+```bash
+cd plugins/devops
+./dashboards/agent-health.sh 24h
+```
+
+Trace a specific request:
+```bash
+./dashboards/handoff-trace.sh <changeset-id>
+```
+
+Compute health report:
+```bash
+./scripts/telemetry/compute-health.sh 24h
+```
+
+### Documentation
+
+- **Quick Start Guide**: See `OBSERVABILITY-QUICKSTART.md` for 5-minute setup
+- **Full Documentation**: See `OBSERVABILITY.md` for comprehensive reference
+- **Configuration**: Example configs in `config/` directory
+
+### Key Metrics
+
+| Metric | Target | Purpose |
+|--------|--------|---------|
+| Agent Success Rate | > 95% | Primary health indicator |
+| Handoff Completion | > 98% | Cross-domain collaboration reliability |
+| Tool P95 Latency | < 500ms | Performance monitoring |
+| Active Alerts | 0 | System stability |
+
+### Storage
+
+Telemetry data is stored in `.claude/telemetry/`:
+- Events: Daily JSONL logs with 30-day retention
+- Metrics: Hourly/daily aggregations
+- Alerts: Active alerts and history
+
+### Integration
+
+The observability system is automatically active when the DevOps plugin is loaded. No configuration required to start capturing telemetry.

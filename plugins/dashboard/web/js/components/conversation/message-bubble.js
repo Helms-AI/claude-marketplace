@@ -11,7 +11,8 @@ class MessageBubble extends LitElement {
         message: { type: Object },
         showAvatar: { type: Boolean, attribute: 'show-avatar' },
         user: { type: Boolean, reflect: true },
-        streaming: { type: Boolean, reflect: true }
+        streaming: { type: Boolean, reflect: true },
+        _lightboxImage: { type: String, state: true }
     };
 
     static styles = css`
@@ -50,9 +51,93 @@ class MessageBubble extends LitElement {
         .tool-indicator.error { background: var(--error-bg, #ffe6e6); color: var(--error-color, #dc3545); }
         .tool-indicator svg { width: 12px; height: 12px; }
         :host(:not([streaming])) .bubble:empty { display: none; }
+
+        /* Image attachments */
+        .attachments {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm, 8px);
+            margin-bottom: var(--spacing-sm, 8px);
+        }
+        .attachment-image {
+            position: relative;
+            border-radius: var(--radius-md, 8px);
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        .attachment-image:hover {
+            transform: scale(1.02);
+        }
+        .attachment-image img {
+            display: block;
+            max-width: 280px;
+            max-height: 200px;
+            object-fit: contain;
+            border-radius: var(--radius-md, 8px);
+            background: var(--bg-tertiary, #e9ecef);
+        }
+        :host([user]) .attachment-image img {
+            background: rgba(0, 0, 0, 0.1);
+        }
+        .attachment-image .image-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
+            background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
+            color: white;
+            font-size: var(--font-size-xs, 11px);
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+        .attachment-image:hover .image-info {
+            opacity: 1;
+        }
+        /* Lightbox overlay for full-size image view */
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease-out;
+        }
+        .lightbox img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: var(--radius-md, 8px);
+        }
+        .lightbox-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease;
+        }
+        .lightbox-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        .lightbox-close svg {
+            width: 24px;
+            height: 24px;
+        }
     `;
 
-    constructor() { super(); this.message = null; this.showAvatar = true; this.user = false; this.streaming = false; }
+    constructor() { super(); this.message = null; this.showAvatar = true; this.user = false; this.streaming = false; this._lightboxImage = null; }
 
     updated(changedProperties) { if (changedProperties.has('message') && this.message) this.user = this.message.role === 'user'; }
 
@@ -84,11 +169,96 @@ class MessageBubble extends LitElement {
         return html`<svg class="spinning" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>`;
     }
 
+    _formatFileSize(bytes) {
+        if (!bytes) return '';
+        const units = ['B', 'KB', 'MB'];
+        let size = bytes;
+        let unitIndex = 0;
+        while (size >= 1024 && unitIndex < units.length - 1) {
+            size /= 1024;
+            unitIndex++;
+        }
+        return `${size.toFixed(unitIndex > 0 ? 1 : 0)} ${units[unitIndex]}`;
+    }
+
+    _openLightbox(dataUrl) {
+        this._lightboxImage = dataUrl;
+    }
+
+    _closeLightbox() {
+        this._lightboxImage = null;
+    }
+
+    _handleLightboxKeydown(e) {
+        if (e.key === 'Escape') {
+            this._closeLightbox();
+        }
+    }
+
+    _renderAttachments() {
+        const attachments = this.message?.attachments;
+        if (!attachments?.length) return '';
+
+        // Filter to only image attachments
+        const images = attachments.filter(att => att.type?.startsWith('image/'));
+        if (!images.length) return '';
+
+        return html`
+            <div class="attachments">
+                ${images.map(img => html`
+                    <div class="attachment-image"
+                         @click=${() => this._openLightbox(img.dataUrl || `data:${img.type};base64,${img.data}`)}
+                         title="Click to view full size">
+                        <img src=${img.thumbnail || img.dataUrl || `data:${img.type};base64,${img.data}`}
+                             alt=${img.name || 'Image attachment'}
+                             loading="lazy" />
+                        <div class="image-info">
+                            ${img.name ? html`<span>${img.name}</span>` : ''}
+                            ${img.size ? html`<span> · ${this._formatFileSize(img.size)}</span>` : ''}
+                        </div>
+                    </div>
+                `)}
+            </div>
+        `;
+    }
+
+    _renderLightbox() {
+        if (!this._lightboxImage) return '';
+        return html`
+            <div class="lightbox"
+                 @click=${this._closeLightbox}
+                 @keydown=${this._handleLightboxKeydown}
+                 tabindex="0">
+                <button class="lightbox-close" @click=${this._closeLightbox} aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+                <img src=${this._lightboxImage} alt="Full size image" @click=${e => e.stopPropagation()} />
+            </div>
+        `;
+    }
+
     render() {
         if (!this.message) return '';
         const { role, content, timestamp } = this.message;
         const author = role === 'user' ? 'You' : 'Claude';
-        return html`${this._renderAvatar()}<div class="bubble"><div class="header"><span class="author">${author}</span>${timestamp ? html`<span class="time">${this._formatTime(timestamp)}</span>` : ''}</div><div class="content-wrapper"><div class="content">${unsafeHTML(this._formatContent(content))}</div>${this._renderTools()}</div></div>`;
+        return html`
+            ${this._renderAvatar()}
+            <div class="bubble">
+                <div class="header">
+                    <span class="author">${author}</span>
+                    ${timestamp ? html`<span class="time">${this._formatTime(timestamp)}</span>` : ''}
+                </div>
+                <div class="content-wrapper">
+                    ${this._renderAttachments()}
+                    <div class="content">${unsafeHTML(this._formatContent(content))}</div>
+                    ${this._renderTools()}
+                </div>
+            </div>
+            ${this._renderLightbox()}
+        `;
     }
 }
 

@@ -247,10 +247,23 @@ class ChangesetServiceClass {
 
         switch (type) {
             case 'changeset_created':
-                Actions.addChangeset(data);
+                // Normalize: backend sends changeset_id, frontend expects id
+                const normalizedChangeset = {
+                    ...data,
+                    id: data.id || data.changeset_id,
+                    name: data.name || data.changeset_id || data.id
+                };
+                Actions.addChangeset(normalizedChangeset);
                 break;
             case 'changeset_updated':
-                Actions.updateChangeset(data.id, data);
+                // Normalize: backend sends changeset_id, frontend expects id
+                const updateId = data.id || data.changeset_id;
+                const normalizedUpdate = {
+                    ...data,
+                    id: updateId,
+                    name: data.name || data.changeset_id || data.id
+                };
+                Actions.updateChangeset(updateId, normalizedUpdate);
                 break;
             case 'changeset_deleted':
                 Actions.removeChangeset(data.changeset_id || data.id);

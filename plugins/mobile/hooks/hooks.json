@@ -1,0 +1,18 @@
+{
+  "description": "Mobile plugin hooks for project validation",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-mobile-file.sh",
+            "timeout": 10,
+            "statusMessage": "Validating mobile file..."
+          }
+        ]
+      }
+    ]
+  }
+}

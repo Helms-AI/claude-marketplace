@@ -16,7 +16,7 @@ import '../molecules/slider-row.js';
  */
 const DEFAULT_SETTINGS = {
     model: 'opus',                    // enum: sonnet, opus
-    permissionMode: 'default',        // enum: default, acceptEdits, bypassPermissions
+    permissionMode: 'bypassPermissions',  // enum: default, acceptEdits, bypassPermissions
     extendedThinking: true,           // boolean
     continueConversation: false,      // boolean
     maxTurns: 50,                     // integer: 10-200

@@ -10,7 +10,17 @@ import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { SignalWatcher } from '../core/signal-watcher.js';
 import { AppStore, Actions } from '../../store/app-state.js';
 import { ChangesetService } from '../../services/changeset-service.js';
+import { ConversationClient } from '../../services/conversation-client.js';
 import '../common/changeset-name.js';
+import '../molecules/tool-activity-badge.js';
+import '../terminal/terminal-input.js';
+import './conversation-input.js';
+import {
+    filterInlineTools,
+    filterAsideTools,
+    hasAsideTools,
+    getAsideToolNamesSummary
+} from '../../services/tool-render-service.js';
 
 // Domain configuration
 const DOMAIN_CONFIG = {
@@ -158,9 +168,21 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
         /* Conversation Container */
         .conversation-container {
             flex: 1;
+            min-height: 0; /* Critical for flex layout with terminal-input */
             overflow-y: auto;
             overflow-x: hidden;
             padding: var(--spacing-md, 12px);
+        }
+
+        /* Terminal Input Integration */
+        terminal-input {
+            flex-shrink: 0;
+            border-top: 2px solid var(--accent-color, #007acc);
+        }
+
+        /* Conversation Input (Passthrough Mode) */
+        conversation-input {
+            flex-shrink: 0;
         }
 
         /* Chat Stream - matches original vanilla JS */
@@ -422,6 +444,13 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
             display: flex;
             flex-direction: column;
             gap: var(--spacing-xs, 4px);
+        }
+
+        /* Aside tools badge indicator */
+        .aside-tools-indicator {
+            margin-top: var(--spacing-sm, 8px);
+            display: flex;
+            align-items: center;
         }
 
         .tool-card {
@@ -687,6 +716,7 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
         this._loading = false;
         this._autoScroll = true;
         this._agentMetadata = {};
+        this._processedEventIds = new Set(); // Track which SSE events we've already processed
     }
 
     connectedCallback() {
@@ -696,8 +726,93 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
             AppStore.conversationEvents,
             AppStore.transcript,
             AppStore.conversationViewMode,
-            AppStore.loadingConversation
+            AppStore.loadingConversation,
+            AppStore.conversations  // Watch conversation messages from ConversationClient
         ]);
+
+        // Track previous event count for auto-scroll on new events
+        this._prevEventCount = 0;
+    }
+
+    willUpdate(changedProperties) {
+        super.willUpdate && super.willUpdate(changedProperties);
+
+        // Process new SSE events and append to merged timeline for real-time updates
+        const storeEvents = AppStore.conversationEvents.value || [];
+        const currentEventCount = storeEvents.length;
+
+        if (currentEventCount > this._prevEventCount) {
+            // Process only new events
+            const newEvents = storeEvents.slice(this._prevEventCount);
+            this._processRealtimeEvents(newEvents);
+
+            // Schedule scroll after render if auto-scroll is enabled
+            if (this._autoScroll) {
+                this.updateComplete.then(() => this._scrollToBottom());
+            }
+        }
+        this._prevEventCount = currentEventCount;
+    }
+
+    /**
+     * Process real-time SSE events and append to local transcript timeline
+     * This enables unified view to update in real-time without full re-fetch
+     */
+    _processRealtimeEvents(newEvents) {
+        if (!newEvents?.length) return;
+
+        // Only process transcript_message events for the unified timeline
+        for (const event of newEvents) {
+            // Skip if already processed (dedup by id)
+            if (event.id && this._processedEventIds.has(event.id)) continue;
+            if (event.id) this._processedEventIds.add(event.id);
+
+            // Handle transcript_message events - append to merged timeline
+            if (event.type === 'transcript_message' && event.message) {
+                this._appendToTimeline(event.message, event.source || 'main');
+            }
+        }
+
+        // Trigger re-render by creating a new transcript reference
+        if (this._transcript) {
+            this._transcript = { ...this._transcript };
+            this.requestUpdate(); // Explicitly request re-render
+        }
+    }
+
+    /**
+     * Append a message to the merged timeline
+     */
+    _appendToTimeline(message, source) {
+        if (!this._transcript) {
+            // Initialize transcript if not loaded yet
+            this._transcript = {
+                messages: [],
+                subagents: {},
+                merged_timeline: [],
+                agent_metadata: {}
+            };
+        }
+
+        // Ensure merged_timeline exists
+        if (!this._transcript.merged_timeline) {
+            this._transcript.merged_timeline = [];
+        }
+
+        // Create timeline entry matching the format from transcript reader
+        const timelineEntry = {
+            message: {
+                role: message.role,
+                text: message.text || '',
+                tool_calls: message.tool_calls || [],
+                timestamp: message.timestamp
+            },
+            source: source,
+            timestamp: message.timestamp
+        };
+
+        this._transcript.merged_timeline.push(timelineEntry);
+        console.log(`[ChangesetViewer] Appended ${message.role} message from ${source} to timeline`);
     }
 
     updated(changedProperties) {
@@ -937,15 +1052,37 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
     _renderMessage(message, source, isSubagent, isConsecutive) {
         const { role, text, tool_calls, timestamp } = message;
 
+        // Check if text has actual content after formatting (removes system-reminder tags, etc.)
+        const formattedText = text ? this._formatContent(text) : '';
+        const hasVisibleText = formattedText && formattedText.trim().length > 0;
+
         if (role === 'user') {
-            // Skip empty tool_result messages
-            if (!text && message.content?.every(c => c.type === 'tool_result')) return '';
+            // Skip empty messages or tool_result-only messages
+            if (!hasVisibleText && (!text || message.content?.every(c => c.type === 'tool_result'))) return '';
+            if (!hasVisibleText) return '';
             return this._renderUserMessage(text, timestamp, isSubagent, source, isConsecutive);
         }
 
         if (role === 'assistant') {
-            if (!text && (!tool_calls || !tool_calls.length)) return '';
+            // Check if there are any inline tools to show (aside tools are hidden)
+            const inlineTools = filterInlineTools(tool_calls || []);
+            const hasInlineTools = inlineTools.length > 0;
+
+            // Skip if no visible text AND no inline tools
+            if (!hasVisibleText && !hasInlineTools) return '';
             return this._renderAssistantMessage(text, tool_calls, timestamp, isSubagent, source, isConsecutive);
+        }
+
+        // Warn about unhandled roles so they can be added later
+        // Known possible roles: 'system', 'tool_use', 'tool_result'
+        if (role) {
+            console.warn(`[ChangesetViewer] Unhandled timeline message role: "${role}"`, {
+                role,
+                text: text?.substring?.(0, 100) || text,
+                source,
+                isSubagent,
+                timestamp
+            });
         }
 
         return '';
@@ -999,15 +1136,123 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
                     </div>
                     <div class="message-content">
                         ${text ? html`<div class="transcript-text">${unsafeHTML(this._formatContent(text))}</div>` : ''}
-                        ${toolCalls?.length ? html`
-                            <div class="tool-cards transcript-tools">
-                                ${toolCalls.map(tool => this._renderToolCard(tool))}
-                            </div>
-                        ` : ''}
+                        ${this._renderToolsSection(toolCalls)}
                     </div>
                 </div>
             </div>
         `;
+    }
+
+    /**
+     * Render tools section with mode-based filtering
+     * - Inline tools (AskUserQuestion) render as full cards
+     * - Aside tools are NOT shown in conversation (visible in activities panel)
+     */
+    _renderToolsSection(toolCalls) {
+        if (!toolCalls?.length) return '';
+
+        // Only render inline/interactive tools (e.g., AskUserQuestion)
+        // Aside tools (Read, Write, Bash, etc.) are shown in the activities panel instead
+        const inlineTools = filterInlineTools(toolCalls);
+
+        if (!inlineTools.length) return '';
+
+        return html`
+            <div class="tool-cards transcript-tools">
+                ${inlineTools.map(tool => this._renderToolCard(tool))}
+            </div>
+        `;
+    }
+
+    /**
+     * Handle badge click to expand activities aside
+     */
+    _handleBadgeClick(e) {
+        // Expand the activities aside panel
+        Actions.setActivitiesAsideCollapsed(false);
+        // Could add scroll-to-tool behavior in the future
+    }
+
+    /**
+     * Get the conversation ID for this changeset
+     * @returns {{type: string, id: string}}
+     */
+    get _conversationId() {
+        return { type: 'changeset', id: this.changesetId || 'unknown' };
+    }
+
+    /**
+     * Build context prefix for changeset conversations
+     * @returns {string|null}
+     */
+    _buildContextPrefix() {
+        const changeset = this._changeset;
+        if (!changeset) return null;
+
+        return `You are assisting with changeset: ${changeset.id || this.changesetId}
+Phase: ${changeset.phase || 'active'}
+Domains involved: ${(changeset.domains_involved || []).join(', ') || 'none specified'}
+${changeset.task ? `Task: ${changeset.task}` : ''}
+
+Please provide responses in the context of this changeset.`.trim();
+    }
+
+    /**
+     * Get messages for this changeset's conversation
+     * @returns {Array}
+     */
+    get _conversationMessages() {
+        const conv = Actions.getConversation(this._conversationId);
+        return conv?.messages || [];
+    }
+
+    /**
+     * Get streaming state for this changeset's conversation
+     * @returns {boolean}
+     */
+    get _conversationIsStreaming() {
+        const conv = Actions.getConversation(this._conversationId);
+        return conv?.isStreaming || false;
+    }
+
+    /**
+     * Handle send from terminal input - routes to ConversationClient with changeset context
+     */
+    _handleTerminalSend(e) {
+        const { message, model, settings, attachments } = e.detail;
+
+        // Use ConversationClient for direct SDK messaging via server
+        ConversationClient.sendMessage(message, {
+            conversationId: this._conversationId,
+            settings: {
+                model: model || settings?.model || 'sonnet',
+                maxTurns: settings?.maxTurns || 50,
+                extendedThinking: settings?.extendedThinking !== false,
+                maxThinkingTokens: settings?.maxThinkingTokens || 16000,
+                permissionMode: settings?.permissionMode || 'bypassPermissions',
+                systemPrompt: settings?.systemPrompt || this._buildContextPrefix()
+            },
+            contextId: `changeset:${this.changesetId}`
+        });
+
+        // Force scroll to bottom when user sends message
+        this._autoScroll = true;
+        this.removeAttribute('user-scrolled');
+        this.updateComplete.then(() => this._scrollToBottom());
+    }
+
+    /**
+     * Handle interrupt from terminal input
+     */
+    _handleTerminalInterrupt() {
+        ConversationClient.cancel();
+    }
+
+    /**
+     * Handle model change from terminal input
+     */
+    _handleTerminalModelChange(e) {
+        Actions.setTerminalModel(e.detail.model);
     }
 
     _renderToolCard(tool) {
@@ -1085,7 +1330,17 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
 
         const timeline = this._transcript?.merged_timeline || [];
         const messages = this._transcript?.messages || [];
-        const events = this._events || [];
+        // Use store's conversation events for real-time updates, fallback to local state
+        const storeEvents = AppStore.conversationEvents.value || [];
+        const events = storeEvents.length > 0 ? storeEvents : (this._events || []);
+
+        // Check for active conversation messages (from ConversationClient)
+        // Access conversations signal directly to ensure reactive tracking
+        const conversations = AppStore.conversations.value;
+        const localMessages = this._conversationMessages;
+        if (localMessages.length > 0 || timeline.length > 0) {
+            return this._renderConversationWithTimeline(localMessages, timeline);
+        }
 
         // Choose view based on mode and available data
         if (this._viewMode === 'unified' || this._viewMode === 'transcript') {
@@ -1103,6 +1358,103 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
         }
 
         return this._renderEmpty();
+    }
+
+    /**
+     * Render conversation with timeline - merges local user messages with SSE timeline chronologically
+     */
+    _renderConversationWithTimeline(localMessages, timeline) {
+        const elements = [];
+
+        // Create unified array with type markers for sorting
+        const unifiedMessages = [];
+
+        // Add timeline entries with their timestamps
+        timeline.forEach((entry) => {
+            const ts = entry.message?.timestamp || 0;
+            unifiedMessages.push({
+                type: 'timeline',
+                timestamp: typeof ts === 'string' ? new Date(ts).getTime() : ts,
+                entry
+            });
+        });
+
+        // Add local conversation messages
+        localMessages.forEach((msg) => {
+            unifiedMessages.push({
+                type: 'local',
+                timestamp: msg.timestamp || 0,
+                message: msg
+            });
+        });
+
+        // Sort all messages chronologically by timestamp
+        unifiedMessages.sort((a, b) => a.timestamp - b.timestamp);
+
+        // Render in chronological order, tracking subagent context
+        let currentSource = null;
+        let prevRole = null;
+        let prevSource = null;
+
+        unifiedMessages.forEach((item) => {
+            if (item.type === 'timeline') {
+                const { message, source } = item.entry;
+                const isSubagent = source !== 'main';
+
+                // Handle subagent context transitions
+                if (isSubagent && currentSource !== source) {
+                    if (currentSource) elements.push(this._renderSubagentEnd(currentSource));
+                    elements.push(this._renderSubagentStart(source));
+                    currentSource = source;
+                } else if (!isSubagent && currentSource) {
+                    elements.push(this._renderSubagentEnd(currentSource));
+                    currentSource = null;
+                }
+
+                const isConsecutive = prevRole === message.role && prevSource === source;
+                elements.push(this._renderMessage(message, source, isSubagent, isConsecutive));
+
+                prevRole = message.role;
+                prevSource = source;
+            } else if (item.type === 'local') {
+                const msg = item.message;
+
+                // Close any open subagent context for local messages
+                if (currentSource) {
+                    elements.push(this._renderSubagentEnd(currentSource));
+                    currentSource = null;
+                }
+
+                const isConsecutive = prevRole === msg.role && prevSource === 'local';
+                if (msg.role === 'user') {
+                    elements.push(this._renderUserMessage(msg.content, msg.timestamp, false, 'local', isConsecutive));
+                } else if (msg.role === 'assistant') {
+                    // Render assistant messages from local conversation (ConversationClient)
+                    elements.push(this._renderAssistantMessage(msg.content, [], msg.timestamp, false, 'local', isConsecutive));
+                } else {
+                    // Warn about unhandled roles so they can be added later
+                    // Known possible roles: 'system', 'tool_use', 'tool_result'
+                    console.warn(`[ChangesetViewer] Unhandled local message role: "${msg.role}"`, {
+                        role: msg.role,
+                        content: msg.content?.substring?.(0, 100) || msg.content,
+                        timestamp: msg.timestamp,
+                        id: msg.id
+                    });
+                }
+
+                prevRole = msg.role;
+                prevSource = 'local';
+            }
+        });
+
+        // Close any remaining subagent context
+        if (currentSource) elements.push(this._renderSubagentEnd(currentSource));
+
+        if (elements.length === 0) {
+            return this._renderEmpty();
+        }
+
+        return html`<div class="chat-stream">${elements}</div>`;
     }
 
     _renderEvent(event) {
@@ -1196,12 +1548,31 @@ class ChangesetViewer extends SignalWatcher(LitElement) {
         `;
     }
 
+    _renderInput() {
+        // Direct API input - sends to server via ConversationClient
+        return html`
+            <terminal-input
+                context-id="changeset:${this.changesetId}"
+                .model=${AppStore.terminalModel?.value || 'sonnet'}
+                .history=${this._conversationMessages
+                    .filter(m => m.role === 'user')
+                    .map(m => m.content)}
+                ?streaming=${this._conversationIsStreaming}
+                placeholder="Chat with this changeset..."
+                @send=${this._handleTerminalSend}
+                @interrupt=${this._handleTerminalInterrupt}
+                @model-change=${this._handleTerminalModelChange}
+            ></terminal-input>
+        `;
+    }
+
     render() {
         return html`
             ${this._renderHeader()}
             <div class="conversation-container" @scroll=${this._handleScroll}>
                 ${this._renderConversation()}
             </div>
+            ${this._renderInput()}
             <button class="scroll-bottom" @click=${this._scrollToBottom} title="Scroll to bottom">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
             </button>

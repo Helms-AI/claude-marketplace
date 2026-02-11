@@ -1,16 +1,11 @@
 {
   "name": "testing",
   "description": "Test strategy, implementation, and quality assurance. Covers unit, integration, E2E, visual regression, and performance testing.",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "homepage": "https://github.com/Helms-AI/claude-marketplace",
   "repository": "https://github.com/Helms-AI/claude-marketplace",
   "license": "MIT",
   "keywords": ["testing", "jest", "vitest", "playwright", "e2e", "unit-tests"],
   "skills": ["./skills/"],
-  "hooks": "./hooks/hooks.json",
-  "lsp": "./lsp.json",
-  "statusLine": {
-    "template": "Testing | Coverage: ${coverage}% | Tests: ${test_count}",
-    "refresh": "on-test"
-  }
+  "lspServers": "./.claude-plugin/lsp.json"
 }

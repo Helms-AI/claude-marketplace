@@ -1,0 +1,32 @@
+{
+  "lspServers": {
+    "swift": {
+      "command": "sourcekit-lsp",
+      "args": [],
+      "languages": ["swift"],
+      "rootMarkers": ["Package.swift", "*.xcodeproj", "*.xcworkspace"],
+      "description": "Swift language server for iOS development"
+    },
+    "kotlin": {
+      "command": "kotlin-language-server",
+      "args": [],
+      "languages": ["kotlin"],
+      "rootMarkers": ["build.gradle.kts", "build.gradle", "settings.gradle"],
+      "description": "Kotlin language server for Android development"
+    },
+    "dart": {
+      "command": "dart",
+      "args": ["language-server"],
+      "languages": ["dart"],
+      "rootMarkers": ["pubspec.yaml"],
+      "description": "Dart language server for Flutter development"
+    },
+    "typescript": {
+      "command": "typescript-language-server",
+      "args": ["--stdio"],
+      "languages": ["typescript", "typescriptreact"],
+      "rootMarkers": ["metro.config.js", "app.json", "expo.json"],
+      "description": "TypeScript for React Native"
+    }
+  }
+}

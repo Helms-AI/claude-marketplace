@@ -170,6 +170,158 @@ export function formatBytes(bytes) {
     return parseFloat((bytes / Math.pow(1024, i)).toFixed(2)) + ' ' + units[i];
 }
 
+// ============================================================
+// Time Period Utilities for Changeset Grouping
+// ============================================================
+
+/**
+ * Check if two dates are the same day
+ * @param {Date} d1 - First date
+ * @param {Date} d2 - Second date
+ * @returns {boolean} True if same day
+ */
+export function isSameDay(d1, d2) {
+    return d1.getFullYear() === d2.getFullYear() &&
+           d1.getMonth() === d2.getMonth() &&
+           d1.getDate() === d2.getDate();
+}
+
+/**
+ * Check if d1 is yesterday relative to d2
+ * @param {Date} d1 - Date to check
+ * @param {Date} d2 - Reference date (usually now)
+ * @returns {boolean} True if d1 is yesterday
+ */
+export function isYesterday(d1, d2) {
+    const yesterday = new Date(d2);
+    yesterday.setDate(yesterday.getDate() - 1);
+    return isSameDay(d1, yesterday);
+}
+
+/**
+ * Get the start of the week (Monday) for a given date
+ * @param {Date} date - Date to get week start for
+ * @returns {Date} Monday of that week
+ */
+function getWeekStart(date) {
+    const d = new Date(date);
+    const day = d.getDay();
+    // Adjust: Sunday (0) becomes 6, Monday (1) becomes 0, etc.
+    const diff = day === 0 ? 6 : day - 1;
+    d.setDate(d.getDate() - diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+}
+
+/**
+ * Check if two dates are in the same week (Monday-Sunday)
+ * @param {Date} d1 - First date
+ * @param {Date} d2 - Second date
+ * @returns {boolean} True if same week
+ */
+export function isSameWeek(d1, d2) {
+    const week1 = getWeekStart(d1);
+    const week2 = getWeekStart(d2);
+    return week1.getTime() === week2.getTime();
+}
+
+/**
+ * Check if d1 is in the week before d2's week
+ * @param {Date} d1 - Date to check
+ * @param {Date} d2 - Reference date (usually now)
+ * @returns {boolean} True if d1 is in last week
+ */
+export function isLastWeek(d1, d2) {
+    const lastWeekStart = getWeekStart(d2);
+    lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+    const lastWeekEnd = new Date(lastWeekStart);
+    lastWeekEnd.setDate(lastWeekEnd.getDate() + 7);
+    return d1 >= lastWeekStart && d1 < lastWeekEnd;
+}
+
+/**
+ * Check if two dates are in the same month
+ * @param {Date} d1 - First date
+ * @param {Date} d2 - Second date
+ * @returns {boolean} True if same month and year
+ */
+export function isSameMonth(d1, d2) {
+    return d1.getFullYear() === d2.getFullYear() &&
+           d1.getMonth() === d2.getMonth();
+}
+
+/**
+ * Check if two dates are in the same year
+ * @param {Date} d1 - First date
+ * @param {Date} d2 - Second date
+ * @returns {boolean} True if same year
+ */
+export function isSameYear(d1, d2) {
+    return d1.getFullYear() === d2.getFullYear();
+}
+
+/**
+ * Get the time period key for a date
+ * Used for grouping changesets by time hierarchy
+ * @param {Date|string} date - Date to categorize
+ * @returns {string} Time period key
+ */
+export function getTimePeriod(date) {
+    const dateObj = date instanceof Date ? date : new Date(date);
+    if (isNaN(dateObj.getTime())) return 'unknown';
+
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+    if (dateObj >= oneHourAgo) return 'last-hour';
+    if (isSameDay(dateObj, now)) return 'earlier-today';
+    if (isYesterday(dateObj, now)) return 'yesterday';
+    if (isSameWeek(dateObj, now)) return 'this-week';
+    if (isLastWeek(dateObj, now)) return 'last-week';
+    if (isSameMonth(dateObj, now)) return 'this-month';
+    if (isSameYear(dateObj, now)) return dateObj.toLocaleString('default', { month: 'long' });
+    return dateObj.getFullYear().toString();
+}
+
+/**
+ * Format a week as a date range (e.g., "Jan 27-31" or "Jan 27 - Feb 2")
+ * @param {Date} date - Any date within the week
+ * @returns {string} Formatted week range
+ */
+export function formatWeekRange(date) {
+    const weekStart = getWeekStart(date);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    const startMonth = weekStart.toLocaleString('default', { month: 'short' });
+    const endMonth = weekEnd.toLocaleString('default', { month: 'short' });
+    const startDay = weekStart.getDate();
+    const endDay = weekEnd.getDate();
+
+    if (startMonth === endMonth) {
+        return `${startMonth} ${startDay}-${endDay}`;
+    }
+    return `${startMonth} ${startDay} - ${endMonth} ${endDay}`;
+}
+
+/**
+ * Get the week range for "this week" or "last week" labels
+ * @param {string} periodKey - 'this-week' or 'last-week'
+ * @returns {string} Formatted week range
+ */
+export function getWeekLabel(periodKey) {
+    const now = new Date();
+    if (periodKey === 'this-week') {
+        return formatWeekRange(now);
+    }
+    if (periodKey === 'last-week') {
+        const lastWeek = new Date(now);
+        lastWeek.setDate(lastWeek.getDate() - 7);
+        return formatWeekRange(lastWeek);
+    }
+    return '';
+}
+
 // Export all formatters as a namespace for convenience
 export const Formatters = {
     formatRelativeTime,
@@ -181,5 +333,15 @@ export const Formatters = {
     getDomainClass,
     truncateText,
     formatNumber,
-    formatBytes
+    formatBytes,
+    // Time period utilities
+    isSameDay,
+    isYesterday,
+    isSameWeek,
+    isLastWeek,
+    isSameMonth,
+    isSameYear,
+    getTimePeriod,
+    formatWeekRange,
+    getWeekLabel
 };

@@ -1,0 +1,17 @@
+{
+  "description": "MLOps plugin hooks for model validation",
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/validate-ml-config.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

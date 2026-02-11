@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/passthrough/check-queue.sh",
+            "timeout": 2,
+            "statusMessage": "Checking dashboard command queue..."
+          }
+        ]
+      }
+    ]
+  }
+}

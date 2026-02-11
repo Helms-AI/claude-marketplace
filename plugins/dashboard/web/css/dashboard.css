@@ -66,6 +66,14 @@
     --tabbar-height: 36px;
     --breadcrumb-height: 28px;
 
+    /* Activities aside dimensions */
+    --aside-width-collapsed: 48px;
+    --aside-width-default: 320px;
+    --aside-width-min: 240px;
+    --aside-width-max: 480px;
+    --aside-animation-duration: 250ms;
+    --aside-animation-easing: ease-out;
+
     /* Spacing */
     --spacing-xs: 4px;
     --spacing-sm: 8px;

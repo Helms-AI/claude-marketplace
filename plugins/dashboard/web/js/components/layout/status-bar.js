@@ -4,6 +4,7 @@
  */
 
 import { LitElement, html, css } from 'lit';
+import '../molecules/network-widget.js';
 
 class StatusBar extends LitElement {
     static properties = {
@@ -85,6 +86,10 @@ class StatusBar extends LitElement {
         this.dispatchEvent(new CustomEvent('theme-toggle', { bubbles: true, composed: true }));
     }
 
+    _handleNetworkClick() {
+        this.dispatchEvent(new CustomEvent('network-click', { bubbles: true, composed: true }));
+    }
+
     _formatCost(cost) {
         return `$${cost.toFixed(2)}`;
     }
@@ -123,6 +128,7 @@ class StatusBar extends LitElement {
                 <div class="item clickable" @click=${this._handleTasksClick}>
                     <span>Tasks: ${this.tasksDone}/${this.tasksTotal}</span>
                 </div>
+                <network-widget @network-click=${this._handleNetworkClick}></network-widget>
                 <div class="item clickable theme-toggle" @click=${this._handleThemeClick}>
                     <span>${this.theme === 'dark' ? '☽' : '☀'}</span>
                 </div>

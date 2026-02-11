@@ -39,6 +39,65 @@ See `docs/MIGRATION-GUIDE.md` for detailed migration instructions.
 1. `plugins/<name>/.claude-plugin/plugin.json` - the `version` field
 2. `.claude-plugin/marketplace.json` - the corresponding plugin's `version` field
 
+## Browser Validation Requirement (Playwright MCP)
+
+**CRITICAL:** Any changes to the server, plugins, or dashboard MUST be validated in the browser using Playwright MCP before a task is considered complete.
+
+### When Browser Validation is Required
+
+Browser validation is **mandatory** for changes to:
+- `plugins/dashboard/` - Any dashboard component, service, or style changes
+- `plugins/dashboard/server/` - Flask server routes, SSE, or API changes
+- `plugins/*/` - Plugin changes that affect dashboard rendering or behavior
+- Any file that impacts the web UI functionality
+
+### Validation Workflow
+
+**Before completing any task that touches the above paths:**
+
+1. **Start the Dashboard Server** (if not running):
+   ```bash
+   cd plugins/dashboard && python3 -m server.app
+   ```
+
+   **Note:** Always use `python3` to execute Python files in this project.
+
+2. **Navigate to the Dashboard**:
+   - Use Playwright MCP to open `http://localhost:24282`
+
+3. **Validate the Changes**:
+   - Use `browser_snapshot` to capture the current state
+   - Use `browser_click`, `browser_navigate`, etc. to interact with affected features
+   - Verify the functionality works as expected in the browser
+
+4. **A task is ONLY complete when**:
+   - The browser shows the expected behavior
+   - No console errors related to the changes
+   - Visual rendering matches expectations
+
+### Playwright MCP Tools to Use
+
+| Tool | Purpose |
+|------|---------|
+| `browser_navigate` | Open the dashboard URL |
+| `browser_snapshot` | Capture current page state and accessibility tree |
+| `browser_click` | Interact with UI elements |
+| `browser_type` | Enter text in form fields |
+| `browser_console_messages` | Check for JavaScript errors |
+| `browser_take_screenshot` | Visual verification |
+
+### Example Validation Flow
+
+```
+1. browser_navigate → http://localhost:24282
+2. browser_snapshot → verify page loaded correctly
+3. browser_click → interact with changed component
+4. browser_console_messages → check for errors
+5. browser_snapshot → verify expected state after interaction
+```
+
+**DO NOT mark a task as complete if browser validation fails or was not performed for changes in the required paths.**
+
 ## Architecture
 
 ```
@@ -164,7 +223,7 @@ Real-time web dashboard for visualizing the marketplace:
   - Handoff Timeline: Visual swimlane view of cross-domain handoffs
   - SDK Terminal: Interactive Claude terminal with streaming responses
 - **Tech**: Flask server, Lit Web Components, Preact Signals, D3.js
-- **Launch**: `/dashboard` or `python -m server.app --open-browser`
+- **Launch**: `/dashboard` or `python3 -m server.app --open-browser`
 - **URL**: http://localhost:24282
 
 See [Dashboard Frontend Architecture](#dashboard-frontend-architecture) for component development requirements.
@@ -232,15 +291,16 @@ Test plugins locally before committing:
   "license": "MIT",
   "keywords": ["keyword1", "keyword2"],
   "skills": ["./skills/"],
-  "hooks": "./hooks/hooks.json",
-  "mcp": "./mcp.json",
-  "lsp": "./lsp.json",
-  "statusLine": {
-    "template": "Plugin | Status: ${status}",
-    "refresh": "on-change"
-  }
+  "agents": ["./agents/"],
+  "mcpServers": "./mcp.json",
+  "lspServers": "./lsp.json",
+  "outputStyles": "./styles.json"
 }
 ```
+
+**Important Notes:**
+- `hooks/hooks.json` is **auto-loaded** by Claude Code - do NOT reference it in plugin.json (causes duplicate hooks error)
+- `statusLine` is NOT supported in plugin.json - it's configured in user/project settings.json instead
 
 **Modern Plugin Structure:**
 ```
@@ -383,6 +443,51 @@ You are **Agent Name**, the [Role] - [brief description].
 
 ## Key Responsibilities
 - What the agent does
+```
+
+## Dashboard Server Management
+
+### Starting the Server
+
+```bash
+cd plugins/dashboard && python3 -m server.app --no-parent-monitor
+```
+
+**Important:** Always use `python3` (not `python`) to execute Python files.
+
+### Server Options
+
+| Option | Purpose |
+|--------|---------|
+| `--no-parent-monitor` | Run standalone without parent process monitoring |
+| `--open-browser` | Open browser automatically on startup |
+| `--port PORT` | Use custom port (default: 24282) |
+| `--remote` | Allow remote connections (requires auth token) |
+
+### Stopping the Server
+
+```bash
+# Find and kill the server process
+lsof -ti:24282 | xargs kill -9
+
+# Or use the API endpoint
+curl -X POST http://localhost:24282/api/server/kill
+```
+
+### Restarting the Server
+
+```bash
+# Kill existing and start new
+lsof -ti:24282 | xargs kill -9 2>/dev/null || true
+sleep 2
+cd plugins/dashboard && python3 -m server.app --no-parent-monitor &
+```
+
+### Checking Server Status
+
+```bash
+curl -s http://localhost:24282/api/health
+# Returns: {"pid": 12345, "status": "healthy"}
 ```
 
 ## Dashboard Frontend Architecture
@@ -591,3 +696,102 @@ class MyTreeItem extends LitElement {
     static styles = [treeItemBaseStyles, css`/* additional */`];
 }
 ```
+
+### SSE Real-Time Event Pattern
+
+The dashboard uses Server-Sent Events (SSE) for real-time updates. **Follow this pattern when adding new event types:**
+
+#### Event Flow Architecture
+
+```
+Backend (sse.py)          Frontend
+     │                        │
+     │ broadcast_event()      │
+     ▼                        │
+  EventSource ───────────────▶ SSEService.connect()
+                              │
+                              ▼
+                         app.js router
+                              │
+                    ┌─────────┴─────────┐
+                    ▼                   ▼
+              ChangesetService    Other Services
+                    │                   │
+                    ▼                   ▼
+              Actions.xxx()       Actions.xxx()
+                    │                   │
+                    ▼                   ▼
+              AppStore signals    AppStore signals
+                    │                   │
+                    ▼                   ▼
+              SignalWatcher Components (auto-update)
+```
+
+#### Data Normalization Pattern
+
+**CRITICAL:** Backend uses `changeset_id`, frontend expects `id`. Always normalize in service handlers:
+
+```javascript
+// In service handleSSEEvent():
+case 'changeset_created':
+    const normalized = {
+        ...data,
+        id: data.id || data.changeset_id,           // Normalize ID
+        name: data.name || data.changeset_id || data.id  // Ensure name exists
+    };
+    Actions.addChangeset(normalized);
+    break;
+```
+
+#### Adding New Event Types
+
+1. **Backend** - Add to `sse.py` broadcast:
+```python
+broadcast_event('my_event_type', {'entity_id': '123', 'status': 'active'})
+```
+
+2. **Frontend Router** - Handle in `app.js`:
+```javascript
+SSEService.on('my_event_type', (data) => {
+    MyService.handleSSEEvent({ type: 'my_event_type', data });
+});
+```
+
+3. **Service Handler** - Process in service class:
+```javascript
+handleSSEEvent(eventData) {
+    const { type, data } = eventData;
+    switch (type) {
+        case 'my_event_type':
+            Actions.updateMyEntity(data.entity_id, data);
+            break;
+    }
+}
+```
+
+4. **Store Action** - Add to `app-state.js`:
+```javascript
+updateMyEntity: (id, updates) => {
+    const entities = AppStore.myEntities.value;
+    const index = entities.findIndex(e => e.id === id);
+    if (index !== -1) {
+        const updated = [...entities];
+        updated[index] = { ...updated[index], ...updates };
+        AppStore.myEntities.value = updated;
+    }
+}
+```
+
+Components using `SignalWatcher` mixin automatically re-render when store signals change.
+
+#### Available Event Types
+
+| Event Type | Payload | Purpose |
+|------------|---------|---------|
+| `changeset_created` | `{changeset_id, ...}` | New changeset started |
+| `changeset_updated` | `{changeset_id, phase, ...}` | Changeset state changed |
+| `changeset_deleted` | `{changeset_id}` | Changeset removed |
+| `handoff` | `{from_domain, to_domain, ...}` | Domain handoff occurred |
+| `conversation_event` | `{changeset_id, event, ...}` | Transcript event for watched changeset |
+
+See `plugins/dashboard/README.md` for comprehensive SSE documentation with examples.

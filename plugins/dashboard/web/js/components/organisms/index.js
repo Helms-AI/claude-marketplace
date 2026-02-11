@@ -15,3 +15,13 @@ export { DashActivityPanel } from './activity-panel.js';
 // Detail modal organisms
 export { AgentDetailModal } from './agent-detail-modal.js';
 export { SkillDetailModal } from './skill-detail-modal.js';
+
+// Activity organisms
+export { ActivityTimeline } from './activity-timeline.js';
+export { ActivityFileTree } from './activity-file-tree.js';
+export { ActivitiesPanelContainer, PANEL_REGISTRY, registerPanel } from './activities-panel-container.js';
+export { AttachmentPanel } from './attachment-panel.js';
+
+// Events organisms
+export { EventsPanel } from './events-panel.js';
+export { EventItem, EVENT_TYPE_CONFIG } from './event-item.js';
