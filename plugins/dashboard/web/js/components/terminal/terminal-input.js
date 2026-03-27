@@ -175,6 +175,26 @@ class TerminalInput extends LitElement {
             --toggle-size: 28px;
         }
 
+        /* Permission mode badge - icon only */
+        .permission-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 26px;
+            height: 26px;
+            padding: 0;
+            border-radius: var(--radius-sm, 4px);
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s ease;
+        }
+        .permission-badge svg { width: 15px; height: 15px; }
+        .permission-badge:hover { filter: brightness(1.3); }
+        .permission-badge.default { background: var(--bg-tertiary, #333); color: var(--text-secondary, #aaa); }
+        .permission-badge.plan { background: rgba(168, 130, 255, 0.15); color: #a882ff; }
+        .permission-badge.acceptEdits { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+        .permission-badge.bypassPermissions { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
+
         /* Toolbar inside input area */
         .toolbar-area {
             flex-shrink: 0;
@@ -491,6 +511,37 @@ class TerminalInput extends LitElement {
         this.dispatchEvent(new CustomEvent('interrupt', { bubbles: true, composed: true }));
     }
 
+    _cyclePermissionMode() {
+        const modes = ['default', 'plan', 'acceptEdits', 'bypassPermissions'];
+        const labels = { default: 'Ask', plan: 'Plan', acceptEdits: 'Auto', bypassPermissions: 'YOLO' };
+        const current = this._currentSettings?.permissionMode || 'bypassPermissions';
+        const idx = modes.indexOf(current);
+        const next = modes[(idx + 1) % modes.length];
+        // Update settings
+        const panel = this.shadowRoot?.querySelector('settings-panel');
+        if (panel) panel._updateSetting('permissionMode', next);
+        this._currentSettings = { ...this._currentSettings, permissionMode: next };
+    }
+
+    _getPermissionIcon() {
+        const mode = this._currentSettings?.permissionMode || this._getInitialPermissionMode();
+        const icons = {
+            default: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 12 15 16 10"></polyline></svg>`,
+            plan: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>`,
+            acceptEdits: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`,
+            bypassPermissions: html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>`
+        };
+        return icons[mode] || icons.bypassPermissions;
+    }
+
+    _getInitialPermissionMode() {
+        try {
+            const stored = localStorage.getItem('claude-sdk-settings');
+            if (stored) return JSON.parse(stored).permissionMode || 'bypassPermissions';
+        } catch {}
+        return 'bypassPermissions';
+    }
+
     _handleModelChange(e) {
         this.model = e.detail.model;
 
@@ -737,6 +788,12 @@ class TerminalInput extends LitElement {
             >
                 <div class="input-area">
                     <div class="model-area">
+                        <button
+                            class="permission-badge ${this._currentSettings?.permissionMode || this._getInitialPermissionMode()}"
+                            title="Permission mode: ${this._currentSettings?.permissionMode || this._getInitialPermissionMode()} (click to cycle)"
+                            ?disabled="${isDisabled}"
+                            @click="${this._cyclePermissionMode}"
+                        >${this._getPermissionIcon()}</button>
                         <model-toggle
                             .model="${this.model}"
                             ?disabled="${isDisabled}"

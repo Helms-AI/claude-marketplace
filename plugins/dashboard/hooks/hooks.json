@@ -1,5 +1,18 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/scripts/auto-start-server.sh",
+            "timeout": 10,
+            "statusMessage": "Starting dashboard server..."
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": ".*",

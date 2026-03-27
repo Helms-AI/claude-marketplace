@@ -34,3 +34,7 @@ npm-debug.log*
 
 __pycache__
 .pytest_cache
+
+# Dashboard runtime files
+.dashboard.pid
+.dashboard.port

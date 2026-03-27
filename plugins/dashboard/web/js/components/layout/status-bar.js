@@ -10,6 +10,7 @@ class StatusBar extends LitElement {
     static properties = {
         connected: { type: Boolean, reflect: true },
         pmStatus: { type: String, attribute: 'pm-status' },
+        sessionCount: { type: Number, attribute: 'session-count' },
         domainCount: { type: Number, attribute: 'domain-count' },
         tokenCount: { type: Number, attribute: 'token-count' },
         tokenCost: { type: Number, attribute: 'token-cost' },
@@ -132,6 +133,12 @@ class StatusBar extends LitElement {
                 <div class="item">
                     <span>PM: ${this.pmStatus}</span>
                 </div>
+                ${this.sessionCount > 0 ? html`
+                <div class="item">
+                    <span class="status-dot connected"></span>
+                    <span>${this.sessionCount} session${this.sessionCount > 1 ? 's' : ''}</span>
+                </div>
+                ` : ''}
             </div>
             <div class="section">
                 <div class="item">

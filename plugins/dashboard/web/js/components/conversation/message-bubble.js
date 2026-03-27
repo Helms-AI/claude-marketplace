@@ -52,6 +52,36 @@ class MessageBubble extends LitElement {
         .tool-indicator svg { width: 12px; height: 12px; }
         :host(:not([streaming])) .bubble:empty { display: none; }
 
+        /* Tool call cards */
+        .tool-calls { display: flex; flex-direction: column; gap: var(--spacing-xs, 4px); margin-top: var(--spacing-xs, 4px); }
+        .tool-call { padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px); background: var(--bg-tertiary, rgba(255, 255, 255, 0.03)); border: 1px solid var(--border-color, #2d2d2d); border-radius: var(--radius-sm, 4px); font-size: var(--font-size-xs, 11px); }
+        .tool-call-header { display: flex; align-items: center; gap: var(--spacing-xs, 4px); color: var(--text-secondary, #a0a0a0); }
+        .tool-call.has-result .tool-call-header { cursor: pointer; }
+        .tool-call.has-result .tool-call-header:hover { color: var(--text-primary, #e0e0e0); }
+        .tool-call-name { font-weight: 600; color: var(--accent-color, #4a90d9); }
+        .tool-call-desc { opacity: 0.7; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 400px; }
+        .tool-call-status { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+        .tool-call-status.success { color: var(--success-color, #28a745); }
+        .tool-call-status.error { color: var(--error-color, #dc3545); }
+        .tool-call-status.running { color: var(--info-color, #4a90d9); }
+        .tool-call-status.running svg { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .tool-call-result { margin-top: var(--spacing-xs, 4px); padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px); background: var(--bg-primary, #1e1e1e); border-radius: var(--radius-sm, 4px); font-family: var(--font-mono, monospace); font-size: 11px; max-height: 120px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; color: var(--text-secondary, #a0a0a0); display: none; }
+        .tool-call.expanded .tool-call-result { display: block; }
+        .tool-call-chevron { transition: transform 0.15s; font-size: 10px; visibility: hidden; }
+        .tool-call.has-result .tool-call-chevron { visibility: visible; }
+        .tool-call.expanded .tool-call-chevron { transform: rotate(90deg); }
+
+        /* Thinking block */
+        .thinking-block { display: flex; align-items: center; gap: var(--spacing-xs, 4px); padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px); font-size: var(--font-size-xs, 11px); color: var(--text-muted, #888); background: var(--bg-tertiary, rgba(255, 255, 255, 0.03)); border-radius: var(--radius-sm, 4px); margin-bottom: var(--spacing-xs, 4px); cursor: pointer; }
+        .thinking-block svg { width: 12px; height: 12px; opacity: 0.6; }
+        .thinking-content { display: none; margin-top: var(--spacing-xs, 4px); padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px); font-size: 11px; color: var(--text-muted, #888); font-style: italic; max-height: 100px; overflow-y: auto; }
+        .thinking-block.expanded + .thinking-content { display: block; }
+
+        /* Error message */
+        .error-wrapper { background: var(--error-bg, #2a1a1a); border-color: var(--error-color, #dc3545); }
+        .error-wrapper .error-icon { display: inline; margin-right: var(--spacing-xs, 4px); }
+
         /* Image attachments */
         .attachments {
             display: flex;
@@ -137,7 +167,7 @@ class MessageBubble extends LitElement {
         }
     `;
 
-    constructor() { super(); this.message = null; this.showAvatar = true; this.user = false; this.streaming = false; this._lightboxImage = null; }
+    constructor() { super(); this.message = null; this.showAvatar = true; this.user = false; this.streaming = false; this._lightboxImage = null; this._mdCache = { text: null, result: '' }; }
 
     updated(changedProperties) { if (changedProperties.has('message') && this.message) this.user = this.message.role === 'user'; }
 
@@ -145,8 +175,12 @@ class MessageBubble extends LitElement {
 
     _formatContent(text) {
         if (!text) return '';
-        if (typeof marked !== 'undefined') { try { return marked.parse(text, { breaks: true, gfm: true }); } catch {} }
-        return this._escapeHtml(text).replace(/\n/g, '<br>');
+        if (this._mdCache.text === text) return this._mdCache.result;
+        let result;
+        if (typeof marked !== 'undefined') { try { result = marked.parse(text, { breaks: true, gfm: true }); } catch { result = this._escapeHtml(text).replace(/\n/g, '<br>'); } }
+        else { result = this._escapeHtml(text).replace(/\n/g, '<br>'); }
+        this._mdCache = { text, result };
+        return result;
     }
 
     _escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
@@ -161,6 +195,53 @@ class MessageBubble extends LitElement {
         const tools = this.message?.tools;
         if (!tools?.length) return '';
         return html`<div class="tools">${tools.map(tool => html`<span class="tool-indicator ${tool.status || 'running'}">${this._getToolIcon(tool)}<span>${tool.name}</span></span>`)}</div>`;
+    }
+
+    _getToolDescription(tc) {
+        const input = tc.input || {};
+        if (tc.name === 'Bash') return input.description || input.command?.slice(0, 80) || '';
+        if (tc.name === 'Read') return input.file_path || '';
+        if (tc.name === 'Edit') return input.file_path || '';
+        if (tc.name === 'Write') return input.file_path || '';
+        if (tc.name === 'Glob') return input.pattern || '';
+        if (tc.name === 'Grep') return input.pattern || '';
+        if (tc.name === 'Agent') return input.description || input.subagent_type || '';
+        if (tc.name === 'WebFetch') return input.url || '';
+        if (tc.name === 'TaskCreate') return input.subject || '';
+        if (tc.name === 'TaskUpdate') return `#${input.taskId} → ${input.status || ''}`;
+        if (tc.name === 'Skill') return input.skill || '';
+        return Object.values(input).find(v => typeof v === 'string')?.slice(0, 60) || '';
+    }
+
+    _toggleToolCall(e) {
+        const card = e.currentTarget.closest('.tool-call');
+        if (card) card.classList.toggle('expanded');
+    }
+
+    _renderToolCalls() {
+        const toolCalls = this.message?.tool_calls;
+        if (!toolCalls?.length) return '';
+        return html`
+            <div class="tool-calls">
+                ${toolCalls.map(tc => html`
+                    <div class="tool-call">
+                        <div class="tool-call-header" @click=${this._toggleToolCall}>
+                            <span class="tool-call-chevron">&#9654;</span>
+                            <span class="tool-call-name">${tc.name}</span>
+                            <span class="tool-call-desc">${this._getToolDescription(tc)}</span>
+                            ${tc.result != null ? html`
+                                <span class="tool-call-status ${tc.is_error ? 'error' : 'success'}">
+                                    ${tc.is_error ? '!' : '&#10003;'}
+                                </span>
+                            ` : ''}
+                        </div>
+                        ${tc.result != null ? html`
+                            <div class="tool-call-result">${typeof tc.result === 'string' ? tc.result.slice(0, 2000) : JSON.stringify(tc.result, null, 2).slice(0, 2000)}</div>
+                        ` : ''}
+                    </div>
+                `)}
+            </div>
+        `;
     }
 
     _getToolIcon(tool) {
@@ -240,10 +321,84 @@ class MessageBubble extends LitElement {
         `;
     }
 
+    _renderBlocks(blocks) {
+        if (!blocks?.length) return '';
+        // Group: render tool_use + tool_result pairs together
+        const toolResultMap = new Map();
+        for (const b of blocks) {
+            if (b.type === 'tool_result') {
+                const id = b.toolUseId || b.tool_use_id;
+                if (id) toolResultMap.set(id, b);
+            }
+        }
+
+        return blocks.map(block => {
+            switch (block.type) {
+                case 'text':
+                    return block.text ? html`<div class="content">${unsafeHTML(this._formatContent(block.text))}</div>` : '';
+                case 'thinking':
+                    return html`
+                        <div class="thinking-block" @click=${e => e.currentTarget.classList.toggle('expanded')}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                            <span>Thinking...</span>
+                        </div>
+                        ${block.thinking ? html`<div class="thinking-content">${block.thinking.slice(0, 500)}</div>` : ''}
+                    `;
+                case 'tool_use': {
+                    const result = toolResultMap.get(block.id);
+                    const hasResult = !!result;
+                    return html`
+                        <div class="tool-call ${hasResult ? 'has-result' : ''}">
+                            <div class="tool-call-header" @click=${hasResult ? this._toggleToolCall : null}>
+                                <span class="tool-call-chevron">&#9654;</span>
+                                <span class="tool-call-name">${block.name}</span>
+                                <span class="tool-call-desc">${this._getToolDescription(block)}</span>
+                                ${hasResult ? html`
+                                    <span class="tool-call-status ${result.isError || result.is_error ? 'error' : 'success'}">
+                                        ${result.isError || result.is_error ? html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>` : html`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><polyline points="20 6 9 17 4 12"></polyline></svg>`}
+                                    </span>
+                                ` : html`
+                                    <span class="tool-call-status running">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
+                                    </span>
+                                `}
+                            </div>
+                            ${hasResult && (result.content || result.is_error) ? html`
+                                <div class="tool-call-result">${String(result.content || '').slice(0, 2000)}</div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+                case 'tool_result':
+                    // Rendered inline with tool_use above
+                    return '';
+                case 'image':
+                    if (block.source?.data) {
+                        const src = `data:${block.source.media_type || 'image/png'};base64,${block.source.data}`;
+                        return html`<div class="attachment-image"><img src=${src} alt="Image" loading="lazy" /></div>`;
+                    }
+                    return '';
+                default:
+                    return '';
+            }
+        });
+    }
+
     render() {
         if (!this.message) return '';
-        const { role, content, timestamp } = this.message;
+        const { role, content, timestamp, blocks, tool_calls, isError } = this.message;
+
+        // Block-based rendering: filter out thinking blocks (handled by thinking indicator)
+        const renderableBlocks = blocks?.filter(b => b.type !== 'thinking') || [];
+        const hasBlocks = renderableBlocks.length > 0;
+        // Legacy rendering
+        const hasText = !hasBlocks && content && content.trim && content.trim().length > 0;
+        const hasToolCalls = !hasBlocks && tool_calls?.length > 0;
+
+        if (!hasBlocks && !hasText && !hasToolCalls && !this.streaming) return '';
+
         const author = role === 'user' ? 'You' : 'Claude';
+        const wrapperClass = isError ? 'content-wrapper error-wrapper' : 'content-wrapper';
         return html`
             ${this._renderAvatar()}
             <div class="bubble">
@@ -251,10 +406,14 @@ class MessageBubble extends LitElement {
                     <span class="author">${author}</span>
                     ${timestamp ? html`<span class="time">${this._formatTime(timestamp)}</span>` : ''}
                 </div>
-                <div class="content-wrapper">
+                <div class="${wrapperClass}">
                     ${this._renderAttachments()}
-                    <div class="content">${unsafeHTML(this._formatContent(content))}</div>
-                    ${this._renderTools()}
+                    ${isError ? html`<span class="error-icon">&#9888;</span>` : ''}
+                    ${hasBlocks ? this._renderBlocks(renderableBlocks) : html`
+                        ${hasText ? html`<div class="content">${unsafeHTML(this._formatContent(content))}</div>` : ''}
+                        ${this._renderToolCalls()}
+                        ${this._renderTools()}
+                    `}
                 </div>
             </div>
             ${this._renderLightbox()}

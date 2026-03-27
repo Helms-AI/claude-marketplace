@@ -3,6 +3,7 @@
 
 import argparse
 import atexit
+import json
 import os
 import signal
 import sys
@@ -11,7 +12,7 @@ import time
 import webbrowser
 from pathlib import Path
 
-from flask import Flask, send_from_directory, Response, jsonify
+from flask import Flask, send_from_directory, Response, jsonify, request
 
 
 # Global flag for shutdown
@@ -30,6 +31,7 @@ from .services.conversation_service import get_conversation_service
 from .services.transcript_reader import TranscriptReader
 from .services.transcript_watcher import TranscriptWatcher
 from .services.command_service import CommandService
+from .services.session_scanner import SessionScanner
 
 
 def find_project_root(start_path: str = None) -> str:
@@ -327,7 +329,7 @@ def create_app(local_only: bool = True) -> Flask:
     transcript_watcher = TranscriptWatcher(
         transcript_reader,
         broadcast_callback=transcript_broadcast,
-        poll_interval=0.5,
+        poll_interval=0.15,
         debug=debug_mode,
         command_service=command_service
     )
@@ -407,6 +409,74 @@ def create_app(local_only: bool = True) -> Flask:
     )
     print("Started changeset scanner (5s interval for reconciliation)")
 
+    # Initialize session scanner for auto-detecting active Claude Code sessions
+    # Include both project_paths (for changesets) and the project root (for session matching)
+    session_scan_paths = list(set(project_paths + [project_root]))
+    session_scanner = SessionScanner(
+        project_paths=session_scan_paths,
+        debug=debug_mode
+    )
+
+    # Track which sessions we've already started watching
+    _watched_session_ids = set()
+
+    # Auto-watch active sessions on startup
+    def auto_watch_sessions():
+        """Scan for active sessions and start watching their transcripts."""
+        sessions = session_scanner.scan()
+        new_sessions, ended_sessions = session_scanner.get_new_and_ended(sessions)
+
+        if new_sessions or ended_sessions:
+            print(f"[SessionScanner] New: {len(new_sessions)}, Ended: {len(ended_sessions)}, Active: {len(sessions)}", flush=True)
+
+        for session in new_sessions:
+            print(f"[SessionScanner] Broadcasting session_detected: {session.session_id} (PID {session.pid})", flush=True)
+            sse_manager.broadcast(
+                session_scanner.to_dict(session),
+                event_type='session_detected'
+            )
+
+        # Try to watch ALL active sessions (handles transcript appearing after detection)
+        for session in sessions:
+            if session.session_id not in _watched_session_ids and session.transcript_path:
+                watch_key = f"session-{session.session_id}"
+                success = transcript_watcher.watch_changeset(
+                    watch_key, session.cwd, session.session_id
+                )
+                if success:
+                    _watched_session_ids.add(session.session_id)
+                    print(f"Auto-watching session: {session.session_id} (PID {session.pid})")
+
+        for session in ended_sessions:
+            watch_key = f"session-{session.session_id}"
+            transcript_watcher.unwatch_changeset(watch_key)
+            _watched_session_ids.discard(session.session_id)
+            print(f"[SessionScanner] Broadcasting session_ended: {session.session_id} (PID {session.pid})", flush=True)
+            sse_manager.broadcast(
+                session_scanner.to_dict(session),
+                event_type='session_ended'
+            )
+
+    # Run initial scan
+    auto_watch_sessions()
+
+    # Start periodic session scanner thread
+    def session_scan_loop():
+        while not _shutdown_event.is_set():
+            time.sleep(5)
+            if _shutdown_event.is_set():
+                break
+            try:
+                auto_watch_sessions()
+            except Exception as e:
+                import traceback
+                print(f"Error in session scanner: {e}", flush=True)
+                traceback.print_exc()
+
+    session_scan_thread = threading.Thread(target=session_scan_loop, daemon=True)
+    session_scan_thread.start()
+    print("Started session scanner (5s interval for auto-detection)")
+
     # Initialize auth
     auth_manager.initialize(local_only=local_only)
 
@@ -427,6 +497,7 @@ def create_app(local_only: bool = True) -> Flask:
     app.config['command_service'] = command_service
     app.config['plugin_paths'] = plugin_paths
     app.config['project_paths'] = project_paths
+    app.config['session_scanner'] = session_scanner
 
     # Register blueprints
     app.register_blueprint(agents_bp)
@@ -483,6 +554,268 @@ def create_app(local_only: bool = True) -> Flask:
         if not local_only:
             return {'error': 'Token only available locally'}, 403
         return {'token': auth_manager.get_token()}
+
+    # Active sessions endpoint
+    @app.route('/api/sessions')
+    def get_sessions():
+        """Return active Claude Code sessions for the current project."""
+        sessions = session_scanner.scan()
+        # Don't call get_new_and_ended() here - that's for the periodic scanner only
+        return jsonify({
+            'sessions': [session_scanner.to_dict(s) for s in sessions],
+            'count': len(sessions)
+        })
+
+    @app.route('/api/sessions/all')
+    def get_all_sessions():
+        """List all sessions (active + historical) for the project."""
+        from flask import request as req
+        limit = req.args.get('limit', 50, type=int)
+        offset = req.args.get('offset', 0, type=int)
+
+        project_paths = app.config.get('project_paths', [])
+        all_transcripts = []
+
+        for path in project_paths:
+            transcripts = transcript_reader.list_transcripts(path)
+            # Only main transcripts (not subagents)
+            main_transcripts = [t for t in transcripts if not t.get('is_subagent', False)]
+            all_transcripts.extend(main_transcripts)
+
+        # Get active sessions to mark which are live
+        active_sessions = session_scanner.scan()
+        active_session_ids = {s.session_id for s in active_sessions}
+        active_session_map = {s.session_id: s for s in active_sessions}
+
+        sessions = []
+        for transcript in all_transcripts:
+            session_id = transcript['session_id']
+            filepath = transcript['filepath']
+            modified = transcript['modified']
+
+            # Get preview
+            try:
+                preview = transcript_reader.get_transcript_preview(filepath)
+            except Exception:
+                preview = {'first_user_message': '', 'line_count': 0}
+
+            # Get metadata
+            try:
+                metadata = transcript_reader.get_session_metadata(session_id)
+            except Exception:
+                metadata = None
+
+            is_active = session_id in active_session_ids
+            active = active_session_map.get(session_id)
+
+            # Determine cwd: from active session or metadata
+            cwd = None
+            pid = None
+            if active:
+                cwd = active.cwd
+                pid = active.pid
+            elif metadata:
+                cwd = metadata.get('cwd')
+
+            # started_at: use file mtime as fallback
+            started_at = None
+            if metadata:
+                started_at = metadata.get('startedAt') or metadata.get('createdAt')
+            if not started_at:
+                # Try first line of transcript
+                try:
+                    with open(filepath, 'r') as f:
+                        first_line = f.readline().strip()
+                    if first_line:
+                        entry = json.loads(first_line)
+                        started_at = entry.get('timestamp')
+                except Exception:
+                    pass
+            if not started_at:
+                started_at = modified.isoformat()
+
+            sessions.append({
+                'session_id': session_id,
+                'started_at': started_at,
+                'last_activity': modified.isoformat(),
+                'is_active': is_active,
+                'pid': pid,
+                'name': metadata.get('name') if metadata else None,
+                'first_message_preview': preview.get('first_user_message', ''),
+                'message_count': preview.get('line_count', 0),
+                'file_size': transcript.get('size', 0),
+                'cwd': cwd
+            })
+
+        # Sort by last_activity descending
+        sessions.sort(key=lambda s: s['last_activity'], reverse=True)
+
+        total = len(sessions)
+        paginated = sessions[offset:offset + limit] if limit > 0 else sessions[offset:]
+
+        return jsonify({
+            'sessions': paginated,
+            'total': total,
+            'offset': offset,
+            'limit': limit
+        })
+
+    @app.route('/api/sessions/<session_id>/watch', methods=['POST'])
+    def watch_session_transcript(session_id):
+        """Start watching a session's transcript for real-time updates."""
+        sessions = session_scanner.scan()
+        session = next((s for s in sessions if s.session_id == session_id), None)
+
+        if not session:
+            return jsonify({'error': 'Session not found or not running'}), 404
+
+        if not session.transcript_path:
+            return jsonify({'error': 'No transcript found for session'}), 404
+
+        watch_key = f"session-{session_id}"
+        success = transcript_watcher.watch_changeset(
+            watch_key, session.cwd, session_id
+        )
+
+        if success:
+            return jsonify({
+                'status': 'watching',
+                'session_id': session_id,
+                'pid': session.pid
+            })
+        return jsonify({'error': 'Failed to start watching'}), 500
+
+    @app.route('/api/sessions/<session_id>/transcript', methods=['GET'])
+    def get_session_transcript(session_id):
+        """Get historical transcript messages for a session.
+
+        Query params:
+            offset: Start index (default 0)
+            limit: Max messages to return (default 200, 0 = all)
+        """
+        from flask import request as req
+        offset = req.args.get('offset', 0, type=int)
+        limit = req.args.get('limit', 200, type=int)
+        project_paths = app.config.get('project_paths', [])
+
+        for pp in project_paths:
+            conversation = transcript_reader.read_full_conversation(
+                session_id, pp, include_subagents=False
+            )
+            if conversation['main']:
+                all_messages = conversation['main']
+                total = len(all_messages)
+                # Paginate: return most recent messages (tail)
+                if limit > 0:
+                    start = max(0, total - offset - limit)
+                    end = total - offset
+                    page = all_messages[start:end]
+                else:
+                    page = all_messages
+
+                messages = [transcript_reader.to_dict(m) for m in page]
+                return jsonify({
+                    'session_id': session_id,
+                    'messages': messages,
+                    'count': len(messages),
+                    'total': total,
+                    'has_more': (total - offset - limit) > 0 if limit > 0 else False
+                })
+
+        return jsonify({'session_id': session_id, 'messages': [], 'count': 0, 'total': 0, 'has_more': False})
+
+    # Dashboard config endpoint
+    @app.route('/api/config', methods=['GET'])
+    def get_dashboard_config():
+        """Return current dashboard configuration."""
+        config = _load_config()
+        config['actual_port'] = request.environ.get('SERVER_PORT', app.config.get('actual_port'))
+        return jsonify(config)
+
+    @app.route('/api/config', methods=['PUT'])
+    def update_dashboard_config():
+        """Update dashboard configuration."""
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dashboard.config.json')
+        current = _load_config()
+        updates = request.get_json() or {}
+
+        # Only allow known keys
+        allowed = {'port', 'host', 'open_browser', 'remote'}
+        for key in updates:
+            if key in allowed:
+                current[key] = updates[key]
+
+        with open(config_path, 'w') as f:
+            json.dump(current, f, indent=2)
+            f.write('\n')
+
+        return jsonify({'status': 'updated', 'config': current})
+
+    # Track spawned session PIDs for cleanup
+    _spawned_pids = set()
+
+    @app.route('/api/sessions/spawn', methods=['POST'])
+    def spawn_session():
+        """Spawn a new headless Claude Code CLI session."""
+        import subprocess
+        import shutil
+
+        claude_path = shutil.which('claude')
+        if not claude_path:
+            return jsonify({'error': 'Claude CLI not found in PATH'}), 404
+
+        data = request.get_json() or {}
+        prompt = data.get('prompt', '')
+
+        # Build CLI command
+        cmd = [claude_path, '--print', '--output-format', 'stream-json']
+
+        if data.get('continue_conversation'):
+            cmd.append('--continue')
+        if data.get('dangerously_skip_permissions', True):
+            cmd.append('--dangerously-skip-permissions')
+        if data.get('model'):
+            cmd.extend(['--model', str(data['model'])])
+        if data.get('max_turns'):
+            cmd.extend(['--max-turns', str(data['max_turns'])])
+        if data.get('permission_mode'):
+            cmd.extend(['--permission-mode', str(data['permission_mode'])])
+
+        # Add prompt
+        if prompt:
+            cmd.append(prompt)
+
+        # Working directory
+        session_cwd = data.get('cwd', project_root)
+
+        try:
+            process = subprocess.Popen(
+                cmd,
+                cwd=session_cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                start_new_session=True
+            )
+            _spawned_pids.add(process.pid)
+            print(f"Spawned Claude session: PID {process.pid}, cmd: {' '.join(cmd)}")
+
+            return jsonify({
+                'pid': process.pid,
+                'command': ' '.join(cmd),
+                'cwd': session_cwd,
+                'status': 'spawned'
+            })
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    # Cleanup spawned processes on shutdown
+    def _cleanup_spawned():
+        for pid in _spawned_pids:
+            try:
+                os.kill(pid, signal.SIGTERM)
+            except (OSError, ProcessLookupError):
+                pass
+    atexit.register(_cleanup_spawned)
 
     # Rescan endpoint
     @app.route('/api/rescan', methods=['POST'])
@@ -865,28 +1198,68 @@ def _cleanup():
     _shutdown_event.set()
 
 
+def _load_config():
+    """Load dashboard configuration from dashboard.config.json."""
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'dashboard.config.json')
+    defaults = {'port': 0, 'host': '127.0.0.1', 'open_browser': True, 'remote': False}
+    try:
+        with open(config_path, 'r') as f:
+            user_config = json.load(f)
+        defaults.update(user_config)
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    return defaults
+
+
+def _find_available_port(host='127.0.0.1', preferred=0):
+    """Find an available port. If preferred is 0, let the OS choose."""
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        s.bind((host, preferred))
+        return s.getsockname()[1]
+
+
+def _write_port_file(port):
+    """Write the actual port to a state file for other tools to discover."""
+    state_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)))
+    port_file = os.path.join(state_dir, '.dashboard.port')
+    with open(port_file, 'w') as f:
+        f.write(str(port))
+    return port_file
+
+
 def main():
     """Main entry point."""
+    config = _load_config()
+
     parser = argparse.ArgumentParser(description='Claude Marketplace Dashboard Server')
     parser.add_argument(
         '--port',
         type=int,
-        default=int(os.environ.get('DASHBOARD_PORT', 24282)),
-        help='Port to listen on (default: 24282)'
+        default=int(os.environ.get('DASHBOARD_PORT', config['port'])),
+        help='Port to listen on (default: 0 = auto-assign)'
     )
     parser.add_argument(
         '--host',
-        default='127.0.0.1',
+        default=config['host'],
         help='Host to bind to (default: 127.0.0.1)'
     )
     parser.add_argument(
         '--open-browser',
         action='store_true',
-        help='Open browser on startup'
+        default=config['open_browser'],
+        help='Open browser on startup (default: true)'
+    )
+    parser.add_argument(
+        '--no-open-browser',
+        action='store_true',
+        help='Do not open browser on startup'
     )
     parser.add_argument(
         '--remote',
         action='store_true',
+        default=config['remote'],
         help='Allow remote connections (requires auth token)'
     )
     parser.add_argument(
@@ -894,8 +1267,17 @@ def main():
         action='store_true',
         help='Disable parent process monitoring (for standalone use)'
     )
+    parser.add_argument(
+        '--reload',
+        action='store_true',
+        help='Auto-reload server on source file changes (like HMR for Python)'
+    )
 
     args = parser.parse_args()
+
+    # Handle --no-open-browser override
+    if args.no_open_browser:
+        args.open_browser = False
 
     # Check if this is a restart - wait for port to be available
     if os.environ.get('DASHBOARD_RESTART_DELAY'):
@@ -935,27 +1317,49 @@ def main():
     # Create app
     app = create_app(local_only=local_only)
 
-    # Open browser if requested
+    # Resolve port (0 = auto-assign)
+    actual_port = args.port
+    if actual_port == 0:
+        actual_port = _find_available_port(host)
+        print(f"Auto-assigned port: {actual_port}")
+
+    # Write port file so other tools can discover the actual port
+    port_file = _write_port_file(actual_port)
+    print(f"Port file written: {port_file}")
+
+    # Open browser after port is resolved
     if args.open_browser:
-        url = f"http://127.0.0.1:{args.port}"
-        print(f"Opening browser to {url}")
-        webbrowser.open(url)
+        browse_host = '127.0.0.1' if host in ('0.0.0.0', '127.0.0.1') else host
+        url = f"http://{browse_host}:{actual_port}"
+        # Delay browser open slightly so server has time to bind
+        def _open_browser():
+            time.sleep(1)
+            print(f"Opening browser to {url}")
+            webbrowser.open(url)
+        threading.Thread(target=_open_browser, daemon=True).start()
 
     # Run server
-    print(f"Starting dashboard server on {host}:{args.port}")
+    print(f"Starting dashboard server on {host}:{actual_port}")
     if not local_only:
         print(f"Remote access enabled - use auth token from /api/auth/token")
 
     try:
+        use_reload = args.reload
         app.run(
             host=host,
-            port=args.port,
-            debug=False,
+            port=actual_port,
+            debug=use_reload,
+            use_reloader=use_reload,
             threaded=True
         )
     except KeyboardInterrupt:
         pass
     finally:
+        # Clean up port file
+        try:
+            os.remove(port_file)
+        except OSError:
+            pass
         _cleanup()
 
 

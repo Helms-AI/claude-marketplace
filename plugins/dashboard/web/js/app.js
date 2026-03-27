@@ -27,6 +27,7 @@ import { TabService } from './services/tab-service.js';
 import { ModalService } from './services/modal-service.js';
 import { ApiService } from './services/api-service.js';
 import { PanelService } from './services/panel-service.js';
+import { SessionService } from './services/session-service.js';
 
 // Import atoms (self-registering)
 import './components/atoms/icon.js';
@@ -97,6 +98,8 @@ import './components/explorer/changeset-tree.js';
 import './components/explorer/changeset-item.js';
 import './components/explorer/agent-tree.js';
 import './components/explorer/agent-item.js';
+import './components/explorer/session-tree.js';
+import './components/explorer/session-item.js';
 import './components/explorer/skill-tree.js';
 import './components/explorer/skill-item.js';
 import './components/layout/dashboard-shell.js';
@@ -133,11 +136,70 @@ class DashboardApp {
             await Promise.all([
                 AgentService.init(),
                 SkillService.init(),
-                ChangesetService.init()
+                ChangesetService.init(),
+                this._loadActiveSessions(),
+                SessionService.loadAll()
             ]);
             console.log('[App] Initial data loaded');
         } catch (error) {
             console.error('[App] Error loading initial data:', error);
+        }
+    }
+
+    async _loadActiveSessions() {
+        try {
+            const response = await fetch('/api/sessions');
+            if (response.ok) {
+                const data = await response.json();
+                const sessions = data.sessions || [];
+                Actions.setActiveSessions(sessions);
+                console.log(`[App] Loaded ${data.count || 0} active session(s)`);
+
+                // Auto-open a session tab for each active session and load transcript history
+                for (const session of sessions) {
+                    Actions.openSessionTab(session, false);
+                    if (session.has_transcript) {
+                        this._restoreSessionTranscript(session.session_id);
+                    }
+                }
+            }
+        } catch (error) {
+            console.warn('[App] Could not load active sessions:', error);
+        }
+    }
+
+    async _restoreSessionTranscript(sessionId) {
+        try {
+            // Load most recent 200 messages first for fast initial render
+            const response = await fetch(`/api/sessions/${sessionId}/transcript?limit=200`);
+            if (!response.ok) return;
+            const data = await response.json();
+            if (data.messages && data.messages.length > 0) {
+                const convId = { type: 'session', id: sessionId };
+                Actions.setConversationMessages(convId, data.messages);
+                console.log(`[App] Restored ${data.messages.length}/${data.total} messages for session ${sessionId.slice(0, 8)}`);
+
+                // Load remaining older messages in background if there are more
+                if (data.has_more) {
+                    this._loadRemainingTranscript(sessionId, convId, data.count);
+                }
+            }
+        } catch (error) {
+            console.warn(`[App] Could not restore transcript for session ${sessionId}:`, error);
+        }
+    }
+
+    async _loadRemainingTranscript(sessionId, convId, alreadyLoaded) {
+        try {
+            const response = await fetch(`/api/sessions/${sessionId}/transcript?limit=0`);
+            if (!response.ok) return;
+            const data = await response.json();
+            if (data.messages && data.messages.length > alreadyLoaded) {
+                Actions.setConversationMessages(convId, data.messages);
+                console.log(`[App] Loaded full transcript: ${data.messages.length} messages for session ${sessionId.slice(0, 8)}`);
+            }
+        } catch (error) {
+            console.warn(`[App] Could not load full transcript for session ${sessionId}:`, error);
         }
     }
 
@@ -250,6 +312,9 @@ class DashboardApp {
                         });
                     }
                 }
+
+                // Session transcript messages are only used for history loading.
+                // Live messages come through the SDK query streaming path.
             }
 
             // Route conversation events
@@ -270,6 +335,34 @@ class DashboardApp {
             // Route tool events to ActivityService (batched handling)
             if (type === 'tool_use' || type === 'tool_result') {
                 ActivityService.handleToolEvent({ type, data: data?.data || data });
+            }
+
+            // Route session detection events
+            if (type === 'session_detected') {
+                const sessionData = data?.data || data;
+                Actions.addActiveSession(sessionData);
+                Actions.addActivity({
+                    type: 'session',
+                    message: `Session detected (PID ${sessionData.pid}, ${sessionData.entrypoint})`,
+                    sessionId: sessionData.session_id
+                });
+                // Auto-open session tab and load history if available
+                Actions.openSessionTab(sessionData, false);
+                if (sessionData.has_transcript) {
+                    this._restoreSessionTranscript(sessionData.session_id);
+                }
+                console.log('[SSE] Session detected:', sessionData.session_id);
+            }
+
+            if (type === 'session_ended') {
+                const sessionData = data?.data || data;
+                Actions.removeActiveSession(sessionData.session_id);
+                Actions.addActivity({
+                    type: 'session',
+                    message: `Session ended (PID ${sessionData.pid})`,
+                    sessionId: sessionData.session_id
+                });
+                console.log('[SSE] Session ended:', sessionData.session_id);
             }
 
             // Route command events (passthrough mode)
@@ -388,6 +481,17 @@ class DashboardApp {
         };
         window.addEventListener('theme-change', (e) => Actions.setTheme(e.detail.theme));
         window.addEventListener('sidebar-toggle', () => Actions.toggleSidebar());
+        window.addEventListener('session-open', (e) => {
+            const session = e.detail.session;
+            Actions.openSessionTab({
+                session_id: session.session_id,
+                pid: session.pid || null,
+                cwd: session.cwd,
+                name: session.name || session.first_message_preview || `Session ${session.session_id.slice(0, 8)}`,
+                entrypoint: 'cli'
+            }, true);
+            this._restoreSessionTranscript(session.session_id);
+        });
         // Note: SSE event routing is now consolidated in _initSSE()
     }
 

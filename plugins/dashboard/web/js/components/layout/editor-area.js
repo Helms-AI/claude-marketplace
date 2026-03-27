@@ -15,6 +15,8 @@ import '../atoms/tab-group.js';
 import '../atoms/tab-panel.js';
 import '../atoms/icon.js';
 import '../terminal/terminal-view.js';
+import '../terminal/session-tab-view.js';
+import '../terminal/spawn-session-dialog.js';
 import '../organisms/welcome-panel.js';
 import '../conversation/changeset-viewer.js';
 import './activities-aside.js';
@@ -23,7 +25,8 @@ import './artifact-shell.js';
 class EditorArea extends SignalWatcher(LitElement) {
     static properties = {
         tabs: { type: Array },
-        activeTabId: { type: String, attribute: 'active-tab-id' }
+        activeTabId: { type: String, attribute: 'active-tab-id' },
+        _spawnDialogOpen: { type: Boolean, state: true }
     };
 
     static styles = css`
@@ -40,6 +43,7 @@ class EditorArea extends SignalWatcher(LitElement) {
         .tab-content-wrapper .main-content {
             flex: 1;
             min-width: 0;
+            height: 100%;
             overflow: hidden;
         }
 
@@ -101,23 +105,39 @@ class EditorArea extends SignalWatcher(LitElement) {
     }
 
     _handleTabNew() {
-        // Open a new welcome tab or show new tab dialog
-        const newTabId = `tab-${Date.now()}`;
-        Actions.openTab({ id: newTabId, title: 'New Tab', type: 'welcome' });
+        // Open spawn session dialog
+        this._spawnDialogOpen = true;
     }
 
     // Terminal event handlers
     _handleSendMessage(e) {
-        const { message, model, settings, attachments } = e.detail;
-        // Initialize conversation if needed and send with terminal:main conversationId
-        Actions.initConversation(this._terminalConversationId);
-        SDKClient.sendMessage(message, {
-            conversationId: this._terminalConversationId,
-            model,
-            settings,
-            attachments: attachments || [],
-            resumeSession: true
-        });
+        const { message, model, settings, attachments, sessionId, conversationId } = e.detail;
+
+        if (sessionId && conversationId) {
+            // Message from a session tab
+            const { sessionAlive } = e.detail;
+            Actions.initConversation(conversationId);
+            SDKClient.sendMessage(message, {
+                conversationId,
+                model,
+                settings,
+                attachments: attachments || [],
+                resumeSession: false,
+                // Only resume ended sessions. Active sessions get fresh queries
+                // to avoid loading the full transcript (can be 37MB+) each time.
+                overrideResumeId: sessionAlive ? null : sessionId
+            });
+        } else {
+            // Message from the terminal tab
+            Actions.initConversation(this._terminalConversationId);
+            SDKClient.sendMessage(message, {
+                conversationId: this._terminalConversationId,
+                model,
+                settings,
+                attachments: attachments || [],
+                resumeSession: true
+            });
+        }
     }
 
     _handleInterrupt() {
@@ -158,7 +178,8 @@ class EditorArea extends SignalWatcher(LitElement) {
             'changeset': 'git-branch',
             'graph': 'share-2',
             'welcome': 'home',
-            'artifacts': 'files'
+            'artifacts': 'files',
+            'session': 'radio'
         };
         return iconMap[tab.type] || 'file';
     }
@@ -216,6 +237,26 @@ class EditorArea extends SignalWatcher(LitElement) {
                     ></terminal-view>
                 `;
                 return this._wrapWithActivitiesAside(terminalContent);
+            case 'session': {
+                const session = AppStore.activeSessions.value.find(
+                    s => s.session_id === tab.sessionId
+                );
+                const isAlive = session?.is_alive !== false && !tab.ended;
+
+                const sessionContent = html`
+                    <session-tab-view
+                        session-id="${tab.sessionId}"
+                        .pid=${tab.pid}
+                        .cwd=${tab.cwd}
+                        .name=${tab.title}
+                        .entrypoint=${tab.entrypoint || 'cli'}
+                        ?alive=${isAlive}
+                        @send-message=${this._handleSendMessage}
+                        @interrupt=${this._handleInterrupt}
+                    ></session-tab-view>
+                `;
+                return this._wrapWithActivitiesAside(sessionContent);
+            }
             case 'artifacts':
                 // Artifact viewer tab with full file viewer
                 return html`<artifact-shell></artifact-shell>`;
@@ -253,6 +294,10 @@ class EditorArea extends SignalWatcher(LitElement) {
                     </dash-tab-panel>
                 `)}
             </dash-tab-group>
+            <spawn-session-dialog
+                ?open=${this._spawnDialogOpen}
+                @close=${() => this._spawnDialogOpen = false}
+            ></spawn-session-dialog>
         `;
     }
 }

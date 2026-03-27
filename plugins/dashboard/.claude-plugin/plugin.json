@@ -1,7 +1,7 @@
 {
   "name": "dashboard",
   "description": "Marketplace dashboard UI built with Lit 3.x and Preact Signals following Atomic Design principles.",
-  "version": "2.39.1",
+  "version": "2.43.0",
   "homepage": "https://github.com/Helms-AI/claude-marketplace",
   "repository": "https://github.com/Helms-AI/claude-marketplace",
   "license": "MIT",

@@ -203,8 +203,8 @@
     {
       "name": "dashboard",
       "source": "./plugins/dashboard",
-      "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration. Includes passthrough mode, SSE events monitoring, and artifact viewer with content negotiation for any file type.",
-      "version": "2.39.1",
+      "description": "Real-time web dashboard for visualizing Claude Marketplace agents, skills, changesets, and cross-domain orchestration. Includes passthrough mode, SSE events monitoring, artifact viewer, and auto-detection of active Claude Code sessions.",
+      "version": "2.43.0",
       "author": {
         "name": "Platform Team"
       },

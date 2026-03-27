@@ -10,7 +10,7 @@
  */
 import { LitElement, html, css } from 'lit';
 import { SignalWatcher } from '../core/signal-watcher.js';
-import { AppStore, Actions, ConnectionState, agentCount, skillCount, activeChangesets } from '../../store/app-state.js';
+import { AppStore, Actions, ConnectionState, agentCount, skillCount, activeChangesets, activeSessionCount } from '../../store/app-state.js';
 import '../atoms/icon.js';
 import '../molecules/activity-list.js';
 
@@ -188,6 +188,59 @@ class DashWelcomePanel extends SignalWatcher(LitElement) {
         .activity-feed {
             flex: 1;
             overflow-y: auto;
+        }
+
+        /* Active Sessions Bar */
+        .sessions-bar {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm, 8px);
+            padding: var(--spacing-xs, 4px) var(--spacing-sm, 8px);
+            background: var(--bg-tertiary, rgba(255, 255, 255, 0.03));
+            border: 1px solid var(--border-primary, #2d2d2d);
+            border-radius: var(--radius-sm, 4px);
+            margin-bottom: var(--spacing-sm, 8px);
+            font-size: var(--font-size-xs, 11px);
+            color: var(--text-secondary, #a0a0a0);
+            flex-wrap: wrap;
+        }
+
+        .sessions-icon {
+            color: var(--color-success, #4ade80);
+        }
+
+        .sessions-label {
+            font-weight: 500;
+            color: var(--text-primary, #e0e0e0);
+            margin-right: var(--spacing-xs, 4px);
+        }
+
+        .session-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            background: var(--bg-secondary, rgba(255, 255, 255, 0.06));
+            border-radius: var(--radius-full, 100px);
+            font-size: var(--font-size-xs, 11px);
+            color: var(--text-secondary, #a0a0a0);
+        }
+
+        .session-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--color-success, #4ade80);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .session-pid {
+            opacity: 0.5;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
 
         .activity-empty {
@@ -412,6 +465,16 @@ class DashWelcomePanel extends SignalWatcher(LitElement) {
         this._greetingInterval = setInterval(() => {
             this.greeting = this._getRandomGreeting();
         }, 30000);
+
+        // Explicitly watch signals used in render for reactivity
+        this.watchSignals([
+            AppStore.connectionState,
+            AppStore.agents,
+            AppStore.skills,
+            AppStore.activeSessions,
+            AppStore.activities,
+            AppStore.changesets
+        ]);
     }
 
     disconnectedCallback() {
@@ -453,6 +516,28 @@ class DashWelcomePanel extends SignalWatcher(LitElement) {
             type: 'changeset',
             data: changeset
         });
+    }
+
+    _renderActiveSessions() {
+        const sessions = AppStore.activeSessions.value;
+
+        if (sessions.length === 0) {
+            return html``;
+        }
+
+        return html`
+            <div class="sessions-bar">
+                <dash-icon name="radio" size="12" class="sessions-icon"></dash-icon>
+                <span class="sessions-label">${sessions.length} active session${sessions.length > 1 ? 's' : ''}</span>
+                ${sessions.map(s => html`
+                    <span class="session-pill" title="PID ${s.pid} - ${s.entrypoint}">
+                        <span class="session-dot"></span>
+                        ${s.name || s.entrypoint || 'cli'}
+                        <span class="session-pid">:${s.pid}</span>
+                    </span>
+                `)}
+            </div>
+        `;
     }
 
     _renderActivityFeed() {
@@ -550,6 +635,7 @@ class DashWelcomePanel extends SignalWatcher(LitElement) {
             <div class="content-area">
                 <!-- Activity Feed - Primary Focus -->
                 <div class="activity-section">
+                    ${this._renderActiveSessions()}
                     <div class="section-header">
                         <div class="section-title">
                             <span class="live-indicator"></span>
@@ -612,8 +698,8 @@ class DashWelcomePanel extends SignalWatcher(LitElement) {
                                 <span class="stat-label">Skills</span>
                             </div>
                             <div class="stat-item">
-                                <span class="stat-value">${activeChangesets.value.length}</span>
-                                <span class="stat-label">Active</span>
+                                <span class="stat-value">${activeSessionCount.value}</span>
+                                <span class="stat-label">Sessions</span>
                             </div>
                         </div>
                     </div>

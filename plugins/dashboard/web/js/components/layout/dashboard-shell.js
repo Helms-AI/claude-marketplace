@@ -5,7 +5,7 @@
 
 import { LitElement, html, css } from 'lit';
 import { SignalWatcher } from '../core/signal-watcher.js';
-import { AppStore, Actions, isConnected, domainList, ConnectionState } from '../../store/app-state.js';
+import { AppStore, Actions, isConnected, domainList, ConnectionState, activeSessionCount } from '../../store/app-state.js';
 import { ArtifactService } from '../../services/artifact-service.js';
 import './titlebar.js';
 import './sidebar-panel.js';
@@ -263,6 +263,7 @@ class DashboardShell extends SignalWatcher(LitElement) {
             <status-bar
                 ?connected=${AppStore.connectionState.value === ConnectionState.CONNECTED}
                 theme=${AppStore.theme.value}
+                .sessionCount=${activeSessionCount.value}
                 .domainCount=${domainList.value.length}
                 .tasksDone=${AppStore.completedTasks.value}
                 .tasksTotal=${AppStore.tasks.value.length}

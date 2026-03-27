@@ -18,6 +18,8 @@ class TranscriptMessage:
     content: list = field(default_factory=list)  # List of content blocks
     text: str = ""  # Extracted text content
     tool_calls: list = field(default_factory=list)  # Tool use blocks
+    usage: Optional[dict] = None  # Token usage stats
+    model: Optional[str] = None  # Model identifier
 
 
 class TranscriptReader:
@@ -202,11 +204,51 @@ class TranscriptReader:
                         entry = json.loads(line)
                         msg_type = entry.get('type')
 
-                        # Filter by message type
                         if msg_type == 'progress' and not include_progress:
                             continue
                         if msg_type not in ('user', 'assistant'):
                             continue
+
+                        # User messages with tool_result blocks: merge results into
+                        # the preceding assistant message's tool_calls and blocks.
+                        # Sequence: assistant(tool_use) → user(tool_result) → assistant(next)
+                        if msg_type == 'user' and include_tool_results:
+                            raw_content = entry.get('message', {}).get('content', [])
+                            if isinstance(raw_content, list):
+                                for block in raw_content:
+                                    if not isinstance(block, dict) or block.get('type') != 'tool_result':
+                                        continue
+                                    tool_use_id = block.get('tool_use_id')
+                                    if not tool_use_id:
+                                        continue
+                                    result_content = block.get('content', '')
+                                    if isinstance(result_content, list):
+                                        # Content can be a list of blocks
+                                        result_content = '\n'.join(
+                                            b.get('text', str(b)) for b in result_content
+                                            if isinstance(b, dict)
+                                        )
+                                    if isinstance(result_content, str) and len(result_content) > 2000:
+                                        result_content = result_content[:2000] + '... [truncated]'
+                                    is_error = block.get('is_error', False)
+
+                                    # Find the preceding assistant message with this tool_use
+                                    for prev_msg in reversed(messages):
+                                        if prev_msg.role != 'assistant':
+                                            continue
+                                        for tc in prev_msg.tool_calls:
+                                            if tc.get('id') == tool_use_id:
+                                                tc['result'] = result_content
+                                                tc['is_error'] = is_error
+                                                tc['status'] = 'error' if is_error else 'success'
+                                                prev_msg.content.append({
+                                                    'type': 'tool_result',
+                                                    'tool_use_id': tool_use_id,
+                                                    'content': result_content,
+                                                    'is_error': is_error
+                                                })
+                                                break
+                                        break
 
                         message = self._parse_entry(entry, include_tool_results)
                         if message:
@@ -284,6 +326,12 @@ class TranscriptReader:
                 })
                 filtered_content.append(block)
 
+            elif block_type == 'thinking':
+                filtered_content.append({
+                    'type': 'thinking',
+                    'thinking': block.get('thinking', ''),
+                })
+
             elif block_type == 'tool_result':
                 # Collect tool results for merging with tool_calls
                 tool_use_id = block.get('tool_use_id')
@@ -308,8 +356,12 @@ class TranscriptReader:
                 tool_call['is_error'] = result.get('is_error', False)
                 tool_call['status'] = 'error' if result.get('is_error') else 'success'
 
+        # Extract usage and model from assistant messages
+        usage = message_data.get('usage') if msg_type == 'assistant' else None
+        model = message_data.get('model') if msg_type == 'assistant' else None
+
         # Skip messages with no meaningful content
-        if not text_parts and not tool_calls:
+        if not text_parts and not tool_calls and not any(b.get('type') == 'thinking' for b in filtered_content):
             return None
 
         return TranscriptMessage(
@@ -320,6 +372,8 @@ class TranscriptReader:
             agent_id=entry.get('agentId'),
             content=filtered_content,
             text='\n'.join(text_parts),
+            usage=usage,
+            model=model,
             tool_calls=tool_calls
         )
 
@@ -419,14 +473,15 @@ class TranscriptReader:
             Dictionary representation.
         """
         return {
+            'type': message.role,
             'id': message.id,
-            'timestamp': message.timestamp.isoformat(),
             'role': message.role,
-            'session_id': message.session_id,
-            'agent_id': message.agent_id,
-            'text': message.text,
+            'timestamp': message.timestamp.isoformat(),
+            'blocks': message.content,
+            'content': message.text,
             'tool_calls': message.tool_calls,
-            'content': message.content
+            'model': message.model,
+            'usage': message.usage,
         }
 
     def extract_agent_types(
@@ -499,6 +554,89 @@ class TranscriptReader:
                     }
 
         return agent_types
+
+    def get_transcript_preview(self, filepath: str, max_lines: int = 30) -> dict:
+        """Get a preview of a transcript file.
+
+        Args:
+            filepath: Path to the .jsonl file.
+            max_lines: Number of lines to read for preview (default 30).
+
+        Returns:
+            Dict with first_user_message (str) and line_count (int).
+        """
+        first_user_message = ""
+        line_count = 0
+
+        try:
+            with open(filepath, 'r') as f:
+                lines = []
+                for line in f:
+                    lines.append(line)
+
+            line_count = len(lines)
+
+            # Find first user message in first max_lines
+            for line in lines[:max_lines]:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    entry = json.loads(line)
+                    if entry.get('type') == 'user':
+                        message_data = entry.get('message', {})
+                        raw_content = message_data.get('content', '')
+                        if isinstance(raw_content, str):
+                            first_user_message = raw_content[:100]
+                        elif isinstance(raw_content, list):
+                            for block in raw_content:
+                                if isinstance(block, dict) and block.get('type') == 'text':
+                                    text = block.get('text', '')
+                                    if text:
+                                        first_user_message = text[:100]
+                                        break
+                        if first_user_message:
+                            break
+                except json.JSONDecodeError:
+                    continue
+
+        except Exception as e:
+            print(f"Error getting preview for {filepath}: {e}")
+
+        return {
+            'first_user_message': first_user_message,
+            'line_count': line_count
+        }
+
+    def get_session_metadata(self, session_id: str) -> Optional[dict]:
+        """Get session metadata from ~/.claude/sessions/ files.
+
+        Args:
+            session_id: The Claude Code session ID (UUID).
+
+        Returns:
+            Parsed session JSON dict or None if not found.
+        """
+        sessions_dir = os.path.join(self.claude_home, 'sessions')
+        if not os.path.isdir(sessions_dir):
+            return None
+
+        try:
+            for entry in os.listdir(sessions_dir):
+                if not entry.endswith('.json'):
+                    continue
+                filepath = os.path.join(sessions_dir, entry)
+                try:
+                    with open(filepath, 'r') as f:
+                        data = json.load(f)
+                    if data.get('sessionId') == session_id:
+                        return data
+                except (json.JSONDecodeError, OSError):
+                    continue
+        except Exception as e:
+            print(f"Error reading session metadata for {session_id}: {e}")
+
+        return None
 
     def get_recent_transcripts(self, project_path: str, limit: int = 10) -> list[str]:
         """Get the most recently modified transcript files.

@@ -13,7 +13,8 @@ class ConversationStream extends LitElement {
         streaming: { type: Boolean, reflect: true },
         autoScroll: { type: Boolean, attribute: 'auto-scroll' },
         streamingContent: { type: String, attribute: 'streaming-content' },
-        _userScrolled: { type: Boolean, state: true }
+        _userScrolled: { type: Boolean, state: true },
+        _visibleCount: { type: Number, state: true }
     };
 
     static styles = css`
@@ -35,9 +36,12 @@ class ConversationStream extends LitElement {
         .scroll-bottom:hover { background: var(--bg-secondary, #f8f9fa); transform: translateY(-2px); }
         .scroll-bottom svg { width: 18px; height: 18px; color: var(--text-secondary, #666); }
         :host([user-scrolled]) .scroll-bottom { display: flex; }
+        .load-more { display: flex; align-items: center; justify-content: center; padding: var(--spacing-sm, 8px); margin: var(--spacing-xs, 4px) var(--spacing-md, 12px); }
+        .load-more button { background: var(--bg-tertiary, rgba(255, 255, 255, 0.05)); border: 1px solid var(--border-color, #2d2d2d); border-radius: var(--radius-sm, 4px); color: var(--text-secondary, #a0a0a0); font-size: var(--font-size-xs, 11px); padding: var(--spacing-xs, 4px) var(--spacing-md, 12px); cursor: pointer; }
+        .load-more button:hover { background: var(--bg-secondary, rgba(255, 255, 255, 0.08)); color: var(--text-primary, #e0e0e0); }
     `;
 
-    constructor() { super(); this.messages = []; this.streaming = false; this.autoScroll = true; this.streamingContent = ''; this._userScrolled = false; this._lastMessageCount = 0; }
+    constructor() { super(); this.messages = []; this.streaming = false; this.autoScroll = true; this.streamingContent = ''; this._userScrolled = false; this._lastMessageCount = 0; this._visibleCount = 100; }
 
     connectedCallback() { super.connectedCallback(); this._setupScrollObserver(); }
 
@@ -85,14 +89,32 @@ class ConversationStream extends LitElement {
         return html`<message-bubble .message=${{ role: 'assistant', content: this.streamingContent, timestamp: Date.now() }} ?streaming=${true} show-avatar></message-bubble>`;
     }
 
+    _loadMore() {
+        this._visibleCount = Math.min(this._visibleCount + 100, this.messages?.length || 0);
+    }
+
     render() {
-        const hasMessages = this.messages?.length > 0;
+        const allMessages = this.messages || [];
+        const hasMessages = allMessages.length > 0;
+        // Window: only render the last _visibleCount messages
+        const hiddenCount = Math.max(0, allMessages.length - this._visibleCount);
+        const visibleMessages = hiddenCount > 0 ? allMessages.slice(hiddenCount) : allMessages;
+
         return html`
             <div class="stream-container" @scroll=${this._checkScrollPosition}>
                 <div class="stream">
                     ${!hasMessages && !this.streaming ? this._renderEmptyState() : html`
                         <div class="messages">
-                            ${repeat(this.messages, (msg) => msg.id || `${msg.role}-${msg.timestamp}`, (msg, index) => html`<message-bubble .message=${msg} ?user=${msg.role === 'user'} ?show-avatar=${this._shouldShowAvatar(index)}></message-bubble>`)}
+                            ${hiddenCount > 0 ? html`
+                                <div class="load-more">
+                                    <button @click=${this._loadMore}>${hiddenCount} older messages — click to load more</button>
+                                </div>
+                            ` : ''}
+                            ${repeat(visibleMessages, (msg) => msg.id || `${msg.role}-${msg.timestamp}`, (msg, index) => {
+                                const globalIndex = hiddenCount + index;
+                                const showAvatar = globalIndex === 0 || allMessages[globalIndex - 1]?.role !== msg.role;
+                                return html`<message-bubble .message=${msg} ?user=${msg.role === 'user'} ?show-avatar=${showAvatar}></message-bubble>`;
+                            })}
                             ${this._renderStreamingMessage()}
                         </div>
                     `}

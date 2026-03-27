@@ -194,6 +194,13 @@ export const AppStore = {
   completedTasks: signal(0),
 
   // ─────────────────────────────────────────────────────────────
+  // Active Claude Code Sessions
+  // ─────────────────────────────────────────────────────────────
+  activeSessions: signal([]),
+  historicalSessions: signal([]),
+  sessionFilter: signal(''),
+
+  // ─────────────────────────────────────────────────────────────
   // Activity/Errors
   // ─────────────────────────────────────────────────────────────
   activities: signal([]),
@@ -271,6 +278,7 @@ export const AppStore = {
 export const agentCount = computed(() => AppStore.agents.value.length);
 export const skillCount = computed(() => AppStore.skills.value.length);
 export const changesetCount = computed(() => AppStore.changesets.value.length);
+export const activeSessionCount = computed(() => AppStore.activeSessions.value.length);
 
 export const connectionStatusText = computed(() => {
   const state = AppStore.connectionState.value;
@@ -364,6 +372,16 @@ export const skillsByDomain = computed(() => {
 
   return Object.entries(groups).sort(([a], [b]) =>
     a === "external" ? 1 : b === "external" ? -1 : a.localeCompare(b),
+  );
+});
+
+export const filteredHistoricalSessions = computed(() => {
+  const filter = AppStore.sessionFilter.value.toLowerCase();
+  if (!filter) return AppStore.historicalSessions.value;
+  return AppStore.historicalSessions.value.filter(s =>
+    s.first_message_preview?.toLowerCase().includes(filter) ||
+    s.name?.toLowerCase().includes(filter) ||
+    s.session_id?.includes(filter)
   );
 });
 
@@ -583,6 +601,77 @@ export const Actions = {
 
   setSkills(skills) {
     AppStore.skills.value = skills;
+  },
+
+  setActiveSessions(sessions) {
+    AppStore.activeSessions.value = sessions;
+  },
+
+  setHistoricalSessions(sessions) {
+    AppStore.historicalSessions.value = sessions;
+  },
+
+  setSessionFilter(filter) {
+    AppStore.sessionFilter.value = filter;
+  },
+
+  addActiveSession(session) {
+    const current = AppStore.activeSessions.value;
+    if (!current.find(s => s.session_id === session.session_id)) {
+      AppStore.activeSessions.value = [...current, session];
+    }
+  },
+
+  removeActiveSession(sessionId) {
+    AppStore.activeSessions.value = AppStore.activeSessions.value.filter(
+      s => s.session_id !== sessionId
+    );
+    // Mark session tab as ended (user can close it manually via X button)
+    const tabId = `session-${sessionId}`;
+    const tabs = AppStore.openTabs.value;
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab) {
+      AppStore.openTabs.value = tabs.map(t =>
+        t.id === tabId ? { ...t, ended: true } : t
+      );
+    }
+  },
+
+  openSessionTab(session, autoFocus = false) {
+    const tabId = `session-${session.session_id}`;
+    const existing = AppStore.openTabs.value.find(t => t.id === tabId);
+    if (existing) return;
+
+    const convId = { type: 'session', id: session.session_id };
+    this.initConversation(convId);
+
+    const shortId = session.session_id.slice(0, 8);
+    const title = session.name || `Session ${shortId}`;
+
+    batch(() => {
+      AppStore.openTabs.value = [
+        ...AppStore.openTabs.value,
+        {
+          id: tabId,
+          title,
+          type: 'session',
+          closable: true,
+          sessionId: session.session_id,
+          pid: session.pid,
+          cwd: session.cwd,
+          entrypoint: session.entrypoint,
+          ended: false
+        }
+      ];
+      if (autoFocus) {
+        AppStore.activeTabId.value = tabId;
+      }
+    });
+  },
+
+  addSessionMessage(sessionId, message) {
+    const convId = { type: 'session', id: sessionId };
+    this.addConversationMessage(convId, message);
   },
 
   addTerminalMessage(message) {
@@ -1039,6 +1128,27 @@ export const Actions = {
   },
 
   /**
+   * Bulk-set messages for a conversation (used to restore history on reload)
+   * @param {{type: string, id: string}} conversationId
+   * @param {Array} messages
+   */
+  setConversationMessages(conversationId, messages) {
+    const key = this._serializeConversationId(conversationId);
+    const conversations = new Map(AppStore.conversations.value);
+    const conv = conversations.get(key);
+
+    if (conv) {
+      // Messages are already normalized by the caller — avoid redundant spreading
+      conversations.set(key, {
+        ...conv,
+        messages,
+        lastActivity: Date.now()
+      });
+      AppStore.conversations.value = conversations;
+    }
+  },
+
+  /**
    * Set streaming state for a specific conversation
    * @param {{type: string, id: string}} conversationId
    * @param {boolean} isStreaming
@@ -1061,15 +1171,18 @@ export const Actions = {
    */
   appendConversationStreamingContent(conversationId, text) {
     const key = this._serializeConversationId(conversationId);
-    const conversations = new Map(AppStore.conversations.value);
-    const conv = conversations.get(key);
+    const conv = AppStore.conversations.value.get(key);
+    if (!conv) return;
 
-    if (conv) {
-      conversations.set(key, {
-        ...conv,
-        streamingContent: conv.streamingContent + text
+    // Mutate in place and debounce the signal update to avoid
+    // cloning the entire Map on every text_delta (100+ per response)
+    conv.streamingContent = (conv.streamingContent || '') + text;
+
+    if (!this._streamingFlushTimer) {
+      this._streamingFlushTimer = requestAnimationFrame(() => {
+        this._streamingFlushTimer = null;
+        AppStore.conversations.value = new Map(AppStore.conversations.value);
       });
-      AppStore.conversations.value = conversations;
     }
   },
 

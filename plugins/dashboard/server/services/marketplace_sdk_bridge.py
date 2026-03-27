@@ -1149,9 +1149,6 @@ class MarketplaceSDKBridge:
         msg_type = getattr(message, 'type', None)
         msg_type_str = str(msg_type) if msg_type else ''
 
-        # Debug: print message structure for development
-        print(f"[SDK Bridge] Message type: {msg_type}, class: {type(message).__name__}", file=sys.stderr)
-
         # Handle StreamEvent (partial messages during streaming)
         # These provide real-time lifecycle visibility
         if type(message).__name__ == 'StreamEvent' or 'StreamEvent' in msg_type_str:

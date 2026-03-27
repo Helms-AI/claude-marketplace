@@ -15,6 +15,7 @@ import '../atoms/filter-input.js';
 import '../explorer/changeset-tree.js';
 import '../explorer/agent-tree.js';
 import '../explorer/skill-tree.js';
+import '../explorer/session-tree.js';
 
 class SidebarPanel extends SignalWatcher(LitElement) {
     static properties = {
@@ -90,9 +91,11 @@ class SidebarPanel extends SignalWatcher(LitElement) {
             AppStore.agents,
             AppStore.skills,
             AppStore.changesets,
+            AppStore.historicalSessions,
             AppStore.agentFilter,
             AppStore.skillFilter,
-            AppStore.changesetFilter
+            AppStore.changesetFilter,
+            AppStore.sessionFilter
         ]);
     }
 
@@ -125,6 +128,10 @@ class SidebarPanel extends SignalWatcher(LitElement) {
         Actions.setSkillFilter(e.detail.value);
     }
 
+    _handleSessionFilter(e) {
+        Actions.setSessionFilter(e.detail.value);
+    }
+
     _handleResizeStart(e) {
         e.preventDefault();
         this._resizing = true;
@@ -155,6 +162,7 @@ class SidebarPanel extends SignalWatcher(LitElement) {
                 <dash-tab slot="tabs" name="work" icon="clipboard">Work</dash-tab>
                 <dash-tab slot="tabs" name="agents" icon="users">Agents</dash-tab>
                 <dash-tab slot="tabs" name="skills" icon="layers">Skills</dash-tab>
+                <dash-tab slot="tabs" name="sessions" icon="message-square">Sessions</dash-tab>
 
                 <dash-tab-panel name="work">
                     <div class="filter-bar">
@@ -195,6 +203,20 @@ class SidebarPanel extends SignalWatcher(LitElement) {
                     </div>
                     <div class="tree-content">
                         <skill-tree></skill-tree>
+                    </div>
+                </dash-tab-panel>
+
+                <dash-tab-panel name="sessions">
+                    <div class="filter-bar">
+                        <dash-filter-input
+                            placeholder="Filter sessions..."
+                            debounce="150"
+                            .value="${AppStore.sessionFilter.value}"
+                            @dash-input="${this._handleSessionFilter}"
+                        ></dash-filter-input>
+                    </div>
+                    <div class="tree-content">
+                        <session-tree></session-tree>
                     </div>
                 </dash-tab-panel>
             </dash-tab-group>

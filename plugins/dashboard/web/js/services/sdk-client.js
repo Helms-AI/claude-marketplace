@@ -157,6 +157,7 @@ class SDKClientClass {
             model = AppStore.terminalModel.value || 'sonnet',
             contextPrefix = null,
             resumeSession = true,
+            overrideResumeId = null,  // Override the resume session ID (e.g. for CLI sessions)
             settings = {},
             attachments = []  // Image attachments
         } = options;
@@ -183,11 +184,17 @@ class SDKClientClass {
         AppStore.isStreaming.value = true;
 
         // Add user message to specific conversation AND legacy terminalMessages
-        // Include attachment previews for display in conversation
+        const userBlocks = [{ type: 'text', text: prompt }];
         const userMessage = {
             role: 'user',
             content: prompt,
+            text: prompt,
+            blocks: userBlocks,
             id: crypto.randomUUID(),
+            timestamp: Date.now(),
+            source: 'main',
+            isError: false,
+            tool_calls: [],
             ...(attachments.length > 0 && {
                 attachments: attachments.map(a => ({
                     id: a.id,
@@ -217,7 +224,7 @@ class SDKClientClass {
         const requestBody = {
             prompt: fullPrompt,  // Use full prompt with context prefix if provided
             model: settings.model || model,
-            resume: resumeSession ? this._sessionId : null,
+            resume: overrideResumeId || (resumeSession ? this._sessionId : null),
             // Image attachments in Claude format
             ...(images && { images }),
             // SDK options from settings panel
@@ -229,7 +236,8 @@ class SDKClientClass {
             ...(settings.sandboxMode !== undefined && { sandbox_mode: settings.sandboxMode }),
             ...(settings.fileCheckpointing !== undefined && { file_checkpointing: settings.fileCheckpointing }),
             ...(settings.mcpTools !== undefined && { mcp_tools: settings.mcpTools }),
-            ...(settings.betaFeatures !== undefined && { beta_features: settings.betaFeatures }),
+            ...(settings.betaContext1m && { beta_context_1m: true }),
+            ...(settings.toolRestrictions && settings.toolRestrictions !== 'all' && { tool_restrictions: settings.toolRestrictions }),
             ...(settings.maxRetries !== undefined && { max_retries: settings.maxRetries })
         };
 
@@ -307,21 +315,27 @@ class SDKClientClass {
                 }
             }
             if (currentAssistantMessage) {
-                // Add ID if not present
-                currentAssistantMessage.id = currentAssistantMessage.id || crypto.randomUUID();
+                // The SDK service already returns messages in canonical format
+                // with role, blocks[], content, tool_calls, model
+                const finalMessage = {
+                    ...currentAssistantMessage,
+                    id: currentAssistantMessage.id || crypto.randomUUID(),
+                    role: currentAssistantMessage.role || 'assistant',
+                    timestamp: Date.now()
+                };
 
                 // Add to specific conversation
                 if (this._activeConversationId) {
-                    Actions.addConversationMessage(this._activeConversationId, currentAssistantMessage);
+                    Actions.addConversationMessage(this._activeConversationId, finalMessage);
                 }
 
                 // Legacy: also add to terminalMessages for main terminal backwards compatibility
                 if (this._activeConversationId?.type === 'terminal' && this._activeConversationId?.id === 'main') {
-                    Actions.addTerminalMessage(currentAssistantMessage);
+                    Actions.addTerminalMessage(finalMessage);
                 }
 
                 // Save assistant message to IndexedDB
-                this._saveMessage(currentAssistantMessage);
+                this._saveMessage(finalMessage);
             }
             // Clear streaming state after message is finalized
             Actions.clearStreamingState();
@@ -442,7 +456,15 @@ class SDKClientClass {
             case 'system':
                 if (event.subtype === 'retry') {
                     console.log(`[SDK] Retry ${event.data?.attempt}/${event.data?.max_retries} after ${event.data?.delay}s`);
+                } else if (event.subtype === 'init') {
+                    // Session initialization — save session_id if present
+                    if (event.data?.session_id) {
+                        this._sessionId = event.data.session_id;
+                        AppStore.sessionId.value = event.data.session_id;
+                    }
                 }
+                // Log compaction/context events for debugging
+                console.log(`[SDK] System: ${event.subtype}`, event.data);
                 this._notifyListeners(SDKEventType.INIT, event);
                 break;
 
@@ -514,9 +536,6 @@ class SDKClientClass {
                     if (this._activeConversationId) {
                         Actions.appendConversationStreamingContent(this._activeConversationId, text);
                     }
-
-                    // Legacy: also update global streaming content for backwards compatibility
-                    Actions.appendStreamingContent(text);
                     this._notifyListeners(SDKEventType.TEXT, { content: text, fullContent: currentMessage.content });
                 } else if (delta_type === 'input_json_delta') {
                     // Tool input being built incrementally
@@ -573,7 +592,6 @@ class SDKClientClass {
             case SDKEventType.TEXT:
                 if (!currentMessage) currentMessage = { role: 'assistant', content: '', tools: [] };
                 currentMessage.content += data.content || '';
-                Actions.appendStreamingContent(data.content || '');
                 this._notifyListeners(type, { ...data, fullContent: currentMessage.content });
                 break;
             case SDKEventType.THINKING:

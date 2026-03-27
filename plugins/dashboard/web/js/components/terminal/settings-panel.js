@@ -16,15 +16,16 @@ import '../molecules/slider-row.js';
  */
 const DEFAULT_SETTINGS = {
     model: 'opus',                    // enum: sonnet, opus
-    permissionMode: 'bypassPermissions',  // enum: default, acceptEdits, bypassPermissions
+    permissionMode: 'bypassPermissions',  // enum: default, acceptEdits, plan, bypassPermissions
     extendedThinking: true,           // boolean
     continueConversation: false,      // boolean
     maxTurns: 50,                     // integer: 10-200
     fileCheckpointing: false,         // boolean
     sandboxMode: true,                // boolean
     maxThinkingTokens: 16000,         // integer: 1000-32000
-    betaFeatures: false,              // boolean
+    betaContext1m: false,             // boolean: enable 1M context beta
     mcpTools: true,                   // boolean
+    toolRestrictions: 'all',          // enum: all, read-only, no-bash, custom
     fallbackModel: 'sonnet',          // display only
     maxRetries: 3                     // integer: 0-10
 };
@@ -257,6 +258,110 @@ class SettingsPanel extends LitElement {
             outline: none;
             box-shadow: 0 0 0 2px var(--accent-color, #007acc);
         }
+
+        /* Permission Mode Card Selector */
+        .perm-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .perm-card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            padding: 8px 10px;
+            border-radius: var(--radius-md, 6px);
+            border: 1px solid var(--border-color, #3c3c3c);
+            background: var(--bg-tertiary, #2d2d2d);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            overflow: hidden;
+        }
+
+        .perm-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 3px;
+            height: 100%;
+            border-radius: 3px 0 0 3px;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        .perm-card:hover {
+            border-color: var(--text-muted, #6e7681);
+        }
+
+        .perm-card[data-active] {
+            border-color: transparent;
+        }
+
+        .perm-card[data-active]::before {
+            opacity: 1;
+        }
+
+        .perm-card-top {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .perm-card-icon {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm, 4px);
+            flex-shrink: 0;
+        }
+
+        .perm-card-icon svg {
+            width: 11px;
+            height: 11px;
+        }
+
+        .perm-card-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-secondary, #8b949e);
+            letter-spacing: 0.2px;
+        }
+
+        .perm-card[data-active] .perm-card-label {
+            color: var(--text-primary, #ccc);
+        }
+
+        .perm-card-desc {
+            font-size: 10px;
+            color: var(--text-muted, #6e7681);
+            line-height: 1.3;
+            padding-left: 22px;
+        }
+
+        /* Default mode - neutral gray */
+        .perm-card.mode-default::before { background: var(--text-muted, #6e7681); }
+        .perm-card.mode-default[data-active] { background: rgba(110, 118, 129, 0.1); border-color: rgba(110, 118, 129, 0.3); }
+        .perm-card.mode-default .perm-card-icon { background: rgba(110, 118, 129, 0.15); color: #8b949e; }
+
+        /* Plan mode - blue/purple */
+        .perm-card.mode-plan::before { background: #a882ff; }
+        .perm-card.mode-plan[data-active] { background: rgba(168, 130, 255, 0.08); border-color: rgba(168, 130, 255, 0.3); }
+        .perm-card.mode-plan .perm-card-icon { background: rgba(168, 130, 255, 0.15); color: #a882ff; }
+
+        /* Auto-edit mode - green */
+        .perm-card.mode-acceptEdits::before { background: #4ade80; }
+        .perm-card.mode-acceptEdits[data-active] { background: rgba(74, 222, 128, 0.08); border-color: rgba(74, 222, 128, 0.3); }
+        .perm-card.mode-acceptEdits .perm-card-icon { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+
+        /* Bypass mode - amber/warning */
+        .perm-card.mode-bypassPermissions::before { background: #fbbf24; }
+        .perm-card.mode-bypassPermissions[data-active] { background: rgba(251, 191, 36, 0.08); border-color: rgba(251, 191, 36, 0.3); }
+        .perm-card.mode-bypassPermissions .perm-card-icon { background: rgba(251, 191, 36, 0.15); color: #fbbf24; }
     `;
 
     constructor() {
@@ -373,6 +478,10 @@ class SettingsPanel extends LitElement {
         };
     }
 
+    _handlePermissionSelect(mode) {
+        this._updateSetting('permissionMode', mode);
+    }
+
     render() {
         const modelOptions = [
             { value: 'sonnet', label: 'Sonnet' },
@@ -381,8 +490,15 @@ class SettingsPanel extends LitElement {
 
         const permissionModeOptions = [
             { value: 'default', label: 'Default' },
+            { value: 'plan', label: 'Plan' },
             { value: 'acceptEdits', label: 'Auto-Edit' },
             { value: 'bypassPermissions', label: 'Bypass' }
+        ];
+
+        const toolRestrictionOptions = [
+            { value: 'all', label: 'All Tools' },
+            { value: 'read-only', label: 'Read Only' },
+            { value: 'no-bash', label: 'No Bash' }
         ];
 
         return html`
@@ -450,6 +566,22 @@ class SettingsPanel extends LitElement {
                                     .checked="${this._settings.mcpTools}"
                                     @change="${this._handleToggleChange('mcpTools')}"
                                 ></toggle-row>
+
+                                <div class="section-divider"></div>
+
+                                <div class="setting-row">
+                                    <div class="setting-row-header">
+                                        <dash-icon name="wrench" size="14"></dash-icon>
+                                        <span class="setting-row-label">Tool Access</span>
+                                    </div>
+                                    <span class="setting-row-description">Restrict which tools Claude can use</span>
+                                    <segmented-control
+                                        full-width
+                                        .options="${toolRestrictionOptions}"
+                                        .value="${this._settings.toolRestrictions}"
+                                        @dash-change="${this._handleSegmentedChange('toolRestrictions')}"
+                                    ></segmented-control>
+                                </div>
                             </div>
                         </collapsible-section>
 
@@ -458,16 +590,39 @@ class SettingsPanel extends LitElement {
                             <div class="section-content">
                                 <div class="setting-row">
                                     <div class="setting-row-header">
-                                        <dash-icon name="lock" size="14"></dash-icon>
+                                        <dash-icon name="shield" size="14"></dash-icon>
                                         <span class="setting-row-label">Permission Mode</span>
                                     </div>
-                                    <span class="setting-row-description">Control how tool permissions are handled</span>
-                                    <segmented-control
-                                        full-width
-                                        .options="${permissionModeOptions}"
-                                        .value="${this._settings.permissionMode}"
-                                        @dash-change="${this._handleSegmentedChange('permissionMode')}"
-                                    ></segmented-control>
+                                    <div class="perm-grid">
+                                        <div class="perm-card mode-default" ?data-active=${this._settings.permissionMode === 'default'} @click=${() => this._handlePermissionSelect('default')}>
+                                            <div class="perm-card-top">
+                                                <span class="perm-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 12 15 16 10"></polyline></svg></span>
+                                                <span class="perm-card-label">Default</span>
+                                            </div>
+                                            <span class="perm-card-desc">Ask before each action</span>
+                                        </div>
+                                        <div class="perm-card mode-plan" ?data-active=${this._settings.permissionMode === 'plan'} @click=${() => this._handlePermissionSelect('plan')}>
+                                            <div class="perm-card-top">
+                                                <span class="perm-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg></span>
+                                                <span class="perm-card-label">Plan</span>
+                                            </div>
+                                            <span class="perm-card-desc">Review plan before execution</span>
+                                        </div>
+                                        <div class="perm-card mode-acceptEdits" ?data-active=${this._settings.permissionMode === 'acceptEdits'} @click=${() => this._handlePermissionSelect('acceptEdits')}>
+                                            <div class="perm-card-top">
+                                                <span class="perm-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></span>
+                                                <span class="perm-card-label">Auto-Edit</span>
+                                            </div>
+                                            <span class="perm-card-desc">Auto-approve file changes</span>
+                                        </div>
+                                        <div class="perm-card mode-bypassPermissions" ?data-active=${this._settings.permissionMode === 'bypassPermissions'} @click=${() => this._handlePermissionSelect('bypassPermissions')}>
+                                            <div class="perm-card-top">
+                                                <span class="perm-card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg></span>
+                                                <span class="perm-card-label">YOLO</span>
+                                            </div>
+                                            <span class="perm-card-desc">Skip all permission checks</span>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <div class="section-divider"></div>
@@ -518,11 +673,11 @@ class SettingsPanel extends LitElement {
                                 <div class="section-divider"></div>
 
                                 <toggle-row
-                                    label="Beta Features"
-                                    description="Enable experimental SDK features"
-                                    icon="flask"
-                                    .checked="${this._settings.betaFeatures}"
-                                    @change="${this._handleToggleChange('betaFeatures')}"
+                                    label="1M Context Window"
+                                    description="Enable extended 1M token context (beta)"
+                                    icon="maximize-2"
+                                    .checked="${this._settings.betaContext1m}"
+                                    @change="${this._handleToggleChange('betaContext1m')}"
                                 ></toggle-row>
 
                                 <div class="section-divider"></div>

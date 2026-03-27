@@ -63,6 +63,8 @@ class SSEServiceClass {
             this._eventSource.addEventListener('conversation_event', (e) => this._handleEvent(SSEEventType.CONVERSATION_EVENT, this._parseData(e)));
             this._eventSource.addEventListener('transcript_message', (e) => this._handleEvent('transcript_message', this._parseData(e)));
             this._eventSource.addEventListener('activity', (e) => this._handleEvent(SSEEventType.ACTIVITY, this._parseData(e)));
+            this._eventSource.addEventListener('session_detected', (e) => this._handleEvent('session_detected', this._parseData(e)));
+            this._eventSource.addEventListener('session_ended', (e) => this._handleEvent('session_ended', this._parseData(e)));
             this._eventSource.addEventListener('error', (e) => this._handleEvent(SSEEventType.ERROR, this._parseData(e)));
             this._eventSource.addEventListener('heartbeat', () => this._resetHeartbeatMonitor());
 
